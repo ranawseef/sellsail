@@ -18,7 +18,9 @@ plus `sitemap.xml`, `robots.txt` and a 404 page.
 
 ## Before launch
 
-- Fill in `[bracketed]` placeholders (company details, listing limits).
+- Fill in `[bracketed]` placeholders (listing limits).
 - Have privacy, terms and cookie pages reviewed by a solicitor.
 - Check OnBuy fee rates in `src/lib/calc.ts` against OnBuy's current fee page.
 - The beta form does not store emails yet (no backend in phase 1).
+- Replace the example product photos in `src/content/product-images.ts` (loaded from Amazon and AliExpress listings) with your own product photos.
+- Blog covers are Unsplash photos (Unsplash licence, commercial use allowed).

@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { Input, Label, Select } from "@/components/ui/input";
-import { CATEGORY_RATES, calculate, formatPounds, toPence } from "@/lib/calc";
+import { CATEGORY_RATES, calculate, formatPounds, formatRate, toPence } from "@/lib/calc";
 import { cn } from "@/lib/utils";
 
 export function FeeCalculator({ showDelivery = false, className }: { showDelivery?: boolean; className?: string }) {
@@ -60,8 +60,8 @@ export function FeeCalculator({ showDelivery = false, className }: { showDeliver
         <Label htmlFor={`${id}-rate`}>OnBuy category</Label>
         <Select id={`${id}-rate`} value={rate} onChange={(e) => setRate(e.target.value)}>
           {CATEGORY_RATES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
+            <option key={c.label} value={String(c.bps)}>
+              {c.label} ({formatRate(c.bps)})
             </option>
           ))}
         </Select>

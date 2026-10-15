@@ -13,8 +13,8 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy policy" updated="15 October 2026">
       <p>
-        This policy explains how [Company name] Ltd (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. We are the
-        data controller for the data described here. Company number [number], registered office [address].
+        This policy explains how Horizon Retail Solutions Ltd (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. We are the
+        data controller for the data described here. Company number 15884637, registered office 2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE.
       </p>
       <h2>What we collect</h2>
       <ul>

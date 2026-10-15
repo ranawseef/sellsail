@@ -12,8 +12,8 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of service" updated="15 October 2026">
       <p>
-        These terms apply to your use of sellsail.io and the SellSail service, provided by [Company name] Ltd, company
-        number [number], registered office [address].
+        These terms apply to your use of sellsail.io and the SellSail service, provided by Horizon Retail Solutions Ltd, a company
+        registered in England and Wales (company number 15884637), registered office 2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE.
       </p>
       <h2>An independent tool</h2>
       <p>{site.disclaimer}</p>

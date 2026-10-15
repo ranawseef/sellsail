@@ -38,7 +38,7 @@ export default function ContactPage() {
           ))}
         </ul>
         <p className="mt-10 text-center text-muted">
-          [Company name] Ltd · Registered in England and Wales, company number [number] · [Registered office address]
+          SellSail is a trading name of Horizon Retail Solutions Ltd · Registered in England and Wales, company number 15884637 · 2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE
         </p>
       </section>
     </>

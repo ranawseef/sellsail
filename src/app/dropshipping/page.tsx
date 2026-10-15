@@ -44,7 +44,7 @@ export default function DropshippingPage() {
         <div className="mt-8"><Faq items={faq} /></div>
         <FaqJsonLd items={faq} />
         <div className="mt-8 text-center">
-          <Link href="/guides" className={buttonVariants({ variant: "outline" })}>Read the guides</Link>
+          <Link href="/blog/amazon-aliexpress-to-onbuy-dropshipping" className={buttonVariants({ variant: "outline" })}>Read: what to check before you start</Link>
         </div>
       </section>
       <CtaBand />

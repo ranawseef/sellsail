@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FeeCalculator } from "@/components/fee-calculator";
+import { CATEGORY_RATES, RATES_SOURCE, formatRate } from "@/lib/calc";
 import { CtaBand, Faq, FaqJsonLd, PageHero, SectionHeading } from "@/components/sections";
 
 export const metadata: Metadata = {
@@ -9,10 +10,6 @@ export const metadata: Metadata = {
     "Free OnBuy fee and profit calculator for UK sellers. Work out OnBuy commission, VAT, profit, margin and your break-even price. No sign-up.",
   alternates: { canonical: "/onbuy-fee-calculator" },
 };
-
-// Rates are from third-party sources and not yet checked against OnBuy's own
-// fee page. Update this date only after checking OnBuy's current fees.
-const RATES_LAST_CHECKED = "not yet verified with OnBuy";
 
 const faq = [
   {
@@ -46,8 +43,8 @@ export default function CalculatorPage() {
           <FeeCalculator showDelivery />
         </div>
         <p className="mx-auto mt-5 max-w-3xl text-center text-sm text-muted">
-          Commission rates used: most categories 15%, consumer electronics 7%, jewellery 20%, minimum £0.25 per sale.
-          Rates last checked: {RATES_LAST_CHECKED}. Estimates only, not financial or tax advice.
+          Rates from {RATES_SOURCE}, minimum £0.25 per sale. Some categories have a lower rate above a value threshold:
+          check your OnBuy seller account. Estimates only, not financial or tax advice.
         </p>
       </section>
       <section className="mx-auto max-w-[820px] px-6 py-12">
@@ -63,6 +60,29 @@ export default function CalculatorPage() {
             <Link href="/dropshipping">OnBuy dropshipping</Link> page.
           </p>
         </div>
+      </section>
+      <section className="mx-auto max-w-[820px] px-6 pb-16">
+        <SectionHeading title="OnBuy commission rates by category" intro="Commission is charged on the delivered total the buyer pays, including VAT and delivery." />
+        <div className="mt-8 overflow-x-auto rounded-3xl border border-line bg-white">
+          <table className="w-full text-left">
+            <caption className="sr-only">OnBuy commission rate for each category</caption>
+            <thead>
+              <tr className="border-b border-line text-sm text-muted">
+                <th scope="col" className="px-5 py-3 font-semibold">Category</th>
+                <th scope="col" className="px-5 py-3 font-semibold">Commission</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CATEGORY_RATES.map((c) => (
+                <tr key={c.label} className="border-b border-[#f1f4f2] last:border-0">
+                  <td className="px-5 py-3">{c.label}</td>
+                  <td className="px-5 py-3 font-semibold">{formatRate(c.bps)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-sm text-muted">Source: {RATES_SOURCE}. Minimum fee £0.25 per sale.</p>
       </section>
       <section className="mx-auto max-w-[820px] px-6 pb-16">
         <SectionHeading title="Calculator questions" />

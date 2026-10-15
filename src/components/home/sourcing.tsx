@@ -3,6 +3,7 @@ import { ArrowRight, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { BrowserFrame, CheckList, Eyebrow } from "@/components/sections";
+import { productImages } from "@/content/product-images";
 
 export function Sourcing() {
   return (
@@ -71,7 +72,11 @@ export function Sourcing() {
               </div>
               <div className="mt-4 rounded-2xl border border-[#eef3f1] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-bold">LED desk lamp, dimmable</span>
+                  <span className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={productImages.deskLamp} alt="" width={56} height={56} referrerPolicy="no-referrer" className="size-14 rounded-xl border border-[#eef3f1] object-contain" />
+                    <span className="font-bold">LED desk lamp, dimmable</span>
+                  </span>
                   <Badge variant="mint" size="sm">Ready to list</Badge>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">

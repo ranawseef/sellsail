@@ -1,16 +1,16 @@
 import Link from "next/link";
-import { Bike, Lamp, PackageOpen, Smartphone, UtensilsCrossed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { productImages } from "@/content/product-images";
 
 // Worked examples at 15% commission (7% for the phone stand) and 20% VAT.
 // Supplier cost includes the supplier's delivery charge.
 const examples = [
-  { name: "Steel water bottle", source: "Amazon", cost: "£10.89", price: "£19.99", fees: "£6.33", profit: "+£2.77", status: "WON", icon: PackageOpen, tile: "bg-sky text-[#3b7fb0]", r: "-6deg", y: "18px" },
-  { name: "LED desk lamp", source: "AliExpress", cost: "£16.90", price: "£29.99", fees: "£9.50", profit: "+£3.59", status: "RAISED", icon: Lamp, tile: "bg-sun-soft text-[#a07a00]", r: "-3deg", y: "4px" },
-  { name: "Bamboo cutlery set", source: "Amazon", cost: "£13.90", price: "£23.48", fees: "£7.43", profit: "+£2.15", status: "WON", icon: UtensilsCrossed, tile: "bg-mint text-sea", r: "0deg", y: "0px", featured: true },
-  { name: "Yoga mat", source: "AliExpress", cost: "£13.89", price: "£24.99", fees: "£7.92", profit: "+£3.18", status: "WON", icon: Bike, tile: "bg-lilac text-[#6b4fb0]", r: "3deg", y: "4px" },
-  { name: "Phone stand", source: "AliExpress", cost: "£5.49", price: "£12.99", fees: "£3.08", profit: "+£4.42", status: "WON", icon: Smartphone, tile: "bg-coral text-[#b5532f]", r: "6deg", y: "18px" },
+  { name: "Steel water bottle", source: "Amazon", cost: "£10.89", price: "£19.99", fees: "£6.33", profit: "+£2.77", status: "WON", image: productImages.waterBottle, r: "-6deg", y: "18px" },
+  { name: "LED desk lamp", source: "AliExpress", cost: "£16.90", price: "£29.99", fees: "£9.50", profit: "+£3.59", status: "RAISED", image: productImages.deskLamp, r: "-3deg", y: "4px" },
+  { name: "Bamboo cutlery set", source: "Amazon", cost: "£13.90", price: "£23.48", fees: "£7.43", profit: "+£2.15", status: "WON", image: productImages.cutlery, r: "0deg", y: "0px", featured: true },
+  { name: "Yoga mat", source: "AliExpress", cost: "£13.89", price: "£24.99", fees: "£7.92", profit: "+£3.18", status: "WON", image: productImages.yogaMat, r: "3deg", y: "4px" },
+  { name: "Phone stand", source: "AliExpress", cost: "£5.49", price: "£12.99", fees: "£3.08", profit: "+£4.42", status: "WON", image: productImages.phoneStand, r: "6deg", y: "18px" },
 ];
 
 export function Hero() {
@@ -75,8 +75,9 @@ export function Hero() {
               className={`fan-card flex-[0_1_200px] rounded-2xl bg-white p-4 text-left shadow-[0_14px_34px_rgba(16,35,28,.12)] ${e.featured ? "outline-2 outline-sea" : ""}`}
               style={{ "--r": e.r, "--y": e.y, animationDelay: `${0.05 + i * 0.1}s` } as React.CSSProperties}
             >
-              <div className={`flex h-20 items-center justify-center rounded-xl ${e.tile}`}>
-                <e.icon aria-hidden={true} className="size-8" />
+              <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={e.image} alt={e.name} width={160} height={128} loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
               </div>
               <div className="mt-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-bold">{e.name}</span>

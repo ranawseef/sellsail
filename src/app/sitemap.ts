@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { site } from "@/lib/site";
+import { posts } from "@/content/posts";
 
 const paths = [
   "",
@@ -9,7 +10,7 @@ const paths = [
   "/dropshipping/aliexpress-to-onbuy",
   "/onbuy-fee-calculator",
   "/pricing",
-  "/guides",
+  "/blog",
   "/about",
   "/contact",
   "/beta",
@@ -19,5 +20,8 @@ const paths = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return paths.map((p) => ({ url: `${site.url}${p}`, changeFrequency: "weekly", priority: p === "" ? 1 : 0.7 }));
+  return [
+    ...paths.map((p) => ({ url: `${site.url}${p}`, changeFrequency: "weekly" as const, priority: p === "" ? 1 : 0.7 })),
+    ...posts.map((p) => ({ url: `${site.url}/blog/${p.slug}`, lastModified: p.date, changeFrequency: "monthly" as const, priority: 0.8 })),
+  ];
 }
