@@ -48,7 +48,7 @@ export function Hero() {
 
         <div
           aria-hidden="true"
-          className="absolute top-40 left-0 hidden animate-bob rounded-2xl bg-white px-4 py-3 text-left text-[15px] font-bold shadow-[0_12px_30px_rgba(16,35,28,.12)] xl:block"
+          className="absolute top-40 left-0 hidden animate-bob rounded-2xl bg-white px-4 py-3 text-left text-[15px] font-bold shadow-[0_12px_30px_rgba(16,35,28,.12)] 2xl:block"
           style={{ "--r": "-8deg" } as React.CSSProperties}
         >
           Amazon · AliExpress
@@ -56,7 +56,7 @@ export function Hero() {
         </div>
         <div
           aria-hidden="true"
-          className="absolute top-52 right-0 hidden animate-bob rounded-2xl bg-white px-4 py-3 text-left text-[15px] font-bold shadow-[0_12px_30px_rgba(16,35,28,.12)] [animation-delay:1.2s] xl:block"
+          className="absolute top-52 right-0 hidden animate-bob rounded-2xl bg-white px-4 py-3 text-left text-[15px] font-bold shadow-[0_12px_30px_rgba(16,35,28,.12)] [animation-delay:1.2s] 2xl:block"
           style={{ "--r": "7deg" } as React.CSSProperties}
         >
           OnBuy listings
