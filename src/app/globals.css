@@ -1,26 +1,127 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-ink: #10231c;
+  --color-body: #33493f;
+  --color-muted: #4d6159;
+  --color-sea: #0e7c66;
+  --color-sea-dark: #0a5c4c;
+  --color-sea-mid: #2a9c84;
+  --color-mint: #e8f5f0;
+  --color-sun: #ffd23f;
+  --color-sun-soft: #fff4cc;
+  --color-sun-ink: #4a4020;
+  --color-paper: #fbfaf6;
+  --color-line: #ece8dc;
+  --color-line-soft: #e3ece8;
+  --color-sky: #e3f1fb;
+  --color-coral: #fde8e1;
+  --color-lilac: #efe9fb;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-dm-sans), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), cursive;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --animate-bob: bob 5s ease-in-out infinite;
+  --animate-rise: rise 0.8s ease-out both;
+  --animate-marquee: marquee 28s linear infinite;
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50% { transform: translateY(-10px) rotate(var(--r, 0deg)); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-sun);
+    outline-offset: 2px;
+  }
 }
+
+/* Dotted paper background used across the site. */
+.bg-dots {
+  background-image: radial-gradient(#ddd8ca 1.1px, transparent 1.1px);
+  background-size: 24px 24px;
+}
+
+/* Yellow highlighter that sweeps in under key words. */
+.highlight {
+  background-image: linear-gradient(transparent 58%, var(--color-sun) 58%, var(--color-sun) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  animation: highlight-in 1s 0.4s ease-out both;
+}
+@keyframes highlight-in {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+
+/* Fanned example cards in the hero. */
+.fan-card {
+  transform: translateY(var(--y, 0px)) rotate(var(--r, 0deg));
+  transition: transform 0.25s ease;
+  animation: fan-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fan-card:hover { transform: translateY(-14px) rotate(0deg); }
+@keyframes fan-in {
+  from { opacity: 0; transform: translateY(60px) rotate(0deg); }
+  to { opacity: 1; transform: translateY(var(--y, 0px)) rotate(var(--r, 0deg)); }
+}
+
+/* Activity toasts that take turns. */
+.toast-cycle { opacity: 0; animation: toast 12s infinite; }
+@keyframes toast {
+  0% { opacity: 0; transform: translateY(10px); }
+  4%, 30% { opacity: 1; transform: none; }
+  34%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+.draw-in { stroke-dasharray: 300; animation: draw 1.4s 0.6s ease-out both; }
+@keyframes draw {
+  from { stroke-dashoffset: 300; }
+  to { stroke-dashoffset: 0; }
+}
+
+.bar-grow { transform-origin: bottom; animation: bar 1s ease-out both; }
+@keyframes bar {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] .faq-icon { transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .toast-cycle:first-child { opacity: 1; }
+}
+
+/* Long-form text (legal pages, guides). */
+.prose-site { max-width: 72ch; line-height: 1.7; color: var(--color-body); }
+.prose-site h2 { margin: 2.2em 0 0.6em; font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; color: var(--color-ink); line-height: 1.15; }
+.prose-site h3 { margin: 1.6em 0 0.4em; font-size: 1.2rem; font-weight: 700; color: var(--color-ink); }
+.prose-site p, .prose-site ul, .prose-site ol { margin: 0 0 1em; }
+.prose-site ul { list-style: disc; padding-left: 1.4em; }
+.prose-site ol { list-style: decimal; padding-left: 1.4em; }
+.prose-site li { margin: 0.3em 0; }
+.prose-site a { color: var(--color-sea-dark); text-decoration: underline; text-underline-offset: 3px; }
+.prose-site strong { color: var(--color-ink); }
