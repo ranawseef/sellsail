@@ -92,11 +92,8 @@ export type Tx = {
   exec(sql: string, params?: readonly Param[]): Promise<ResultSetHeader>;
 };
 
-/** Run fn inside a transaction; rolled back if it throws. */
-export async function tx<T>(fn: (t: Tx) => Promise<T>): Promise<T> {
-  await dbReady();
-  const conn: PoolConnection = await pool().getConnection();
-  const t: Tx = {
+function wrap(conn: PoolConnection): Tx {
+  return {
     async q<R = Row>(sql: string, params: readonly Param[] = []) {
       const [rows] = await conn.query<RowDataPacket[]>(sql, params as unknown[]);
       return rows as unknown as R[];
@@ -106,6 +103,27 @@ export async function tx<T>(fn: (t: Tx) => Promise<T>): Promise<T> {
       return res;
     },
   };
+}
+
+/**
+ * Run fn on one dedicated connection, without a transaction. Needed for
+ * connection-scoped state such as GET_LOCK / RELEASE_LOCK.
+ */
+export async function withConnection<T>(fn: (c: Tx) => Promise<T>): Promise<T> {
+  await dbReady();
+  const conn: PoolConnection = await pool().getConnection();
+  try {
+    return await fn(wrap(conn));
+  } finally {
+    conn.release();
+  }
+}
+
+/** Run fn inside a transaction; rolled back if it throws. */
+export async function tx<T>(fn: (t: Tx) => Promise<T>): Promise<T> {
+  await dbReady();
+  const conn: PoolConnection = await pool().getConnection();
+  const t = wrap(conn);
   try {
     await conn.beginTransaction();
     const out = await fn(t);
