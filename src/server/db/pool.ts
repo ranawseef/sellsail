@@ -6,7 +6,7 @@
 // names, sort columns) come from fixed allow-lists in code.
 
 import mysql, { type Pool, type PoolConnection, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
-import { runMigrations } from "./migrate";
+import { runMigrations } from "./migrate.ts";
 
 type Globals = { __ssPool?: Pool; __ssReady?: Promise<void> };
 const g = globalThis as unknown as Globals;

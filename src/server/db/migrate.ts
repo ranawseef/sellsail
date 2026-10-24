@@ -3,7 +3,7 @@
 // run them. Each migration is recorded only after all its statements ran.
 
 import type { Pool } from "mysql2/promise";
-import { migrations } from "./migrations";
+import { migrations } from "./migrations.ts";
 
 export async function runMigrations(pool: Pool): Promise<void> {
   const conn = await pool.getConnection();

@@ -31,6 +31,23 @@ export const DEFAULT_BAND_LIMITS = [10, 20, 30, 50, 100, 150, 250, 500, 9999] as
 
 export const MAX_SOURCE_PRICE = 9999;
 
+// Starting margins for a new workspace, on the limits above. These are
+// SellSail's suggestion, not the reference app's figures: the seller reviews
+// them in onboarding before anything is priced. Percentages fall and minimum
+// profits rise with price so cheap items still earn and dear items stay
+// competitive.
+export const DEFAULT_BANDS: readonly PricingBand[] = [
+  { upTo: 10, profitPct: 30, fixedProfit: 0, minProfit: 2 },
+  { upTo: 20, profitPct: 25, fixedProfit: 0, minProfit: 3 },
+  { upTo: 30, profitPct: 22, fixedProfit: 0, minProfit: 4.5 },
+  { upTo: 50, profitPct: 20, fixedProfit: 0, minProfit: 6 },
+  { upTo: 100, profitPct: 18, fixedProfit: 0, minProfit: 9 },
+  { upTo: 150, profitPct: 16, fixedProfit: 0, minProfit: 15 },
+  { upTo: 250, profitPct: 15, fixedProfit: 0, minProfit: 22 },
+  { upTo: 500, profitPct: 12, fixedProfit: 0, minProfit: 35 },
+  { upTo: 9999, profitPct: 10, fixedProfit: 0, minProfit: 50 },
+];
+
 /**
  * Round half away from zero to `places`, the way PHP's round() does.
  *
