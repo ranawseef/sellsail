@@ -233,7 +233,13 @@ export async function amazonAccessToken(tenantId: number, accountId: number, pro
       // fetch a new one
     }
   }
-  const creds = decryptJson<StoredCreds>(row.credentials_enc, secretContext.sourceCredentials(tenantId, accountId));
+  let creds: StoredCreds;
+  try {
+    creds = decryptJson<StoredCreds>(row.credentials_enc, secretContext.sourceCredentials(tenantId, accountId));
+  } catch {
+    // Treated as a login failure so the account is flagged instead of retried forever.
+    throw new AmazonError("The saved Amazon keys can't be read (was the encryption key changed?). Reconnect this account.", 401);
+  }
   const token = await accessToken(proxy, clientFor(creds), creds.refreshToken);
   await exec("UPDATE source_accounts SET token_enc = ?, token_expires_at = ? WHERE id = ? AND tenant_id = ?", [
     encryptString(token.accessToken, secretContext.sourceToken(tenantId, accountId)),

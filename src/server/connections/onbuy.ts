@@ -1,7 +1,7 @@
 // The workspace's OnBuy account: encrypted keys, a cached access token, and
 // a TokenSource the jobs use.
 
-import { requestToken, type OnBuyCreds, type TokenSource } from "../integrations/onbuy/client.ts";
+import { OnBuyError, requestToken, type OnBuyCreds, type TokenSource } from "../integrations/onbuy/client.ts";
 import type { ProxyConfig } from "../net/egress.ts";
 import { decryptJson, decryptString, encryptJson, encryptString, maskSecret, secretContext } from "../crypto/secrets.ts";
 import { exec, one, tx } from "../db/pool.ts";
@@ -78,7 +78,12 @@ export function onbuyTokens(tenantId: number, proxy: ProxyConfig): TokenSource {
       [tenantId],
     );
     if (!row) throw new Error("OnBuy is not connected");
-    const creds = decryptJson<OnBuyCreds>(row.credentials_enc, secretContext.marketplaceCredentials(tenantId, "onbuy"));
+    let creds: OnBuyCreds;
+    try {
+      creds = decryptJson<OnBuyCreds>(row.credentials_enc, secretContext.marketplaceCredentials(tenantId, "onbuy"));
+    } catch {
+      throw new OnBuyError("The saved OnBuy keys can't be read (was the encryption key changed?). Enter them again under Connections.", 401);
+    }
     const token = await requestToken(proxy, creds);
     await exec("UPDATE marketplace_accounts SET token_enc = ?, token_expires_at = ? WHERE tenant_id = ? AND marketplace = 'onbuy'", [
       encryptString(token.accessToken, secretContext.marketplaceToken(tenantId, "onbuy")),

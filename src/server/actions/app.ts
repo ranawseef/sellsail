@@ -55,10 +55,9 @@ function refreshApp() {
   revalidatePath("/app", "layout");
 }
 
-/** Start due jobs now instead of waiting for the next poll. */
+/** Start due jobs now instead of waiting for the next poll (unless SCHEDULER=off). */
 function kickScheduler() {
-  ensureSchedulerStarted();
-  void pollOnce("ui").catch(() => {});
+  if (ensureSchedulerStarted()) void pollOnce("ui").catch(() => {});
 }
 
 const str = (form: FormData, k: string) => String(form.get(k) ?? "");
