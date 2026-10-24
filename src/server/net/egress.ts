@@ -150,7 +150,8 @@ export async function egressFetch(
     });
   } catch (err) {
     const cause = (err as { cause?: { code?: string; message?: string } }).cause;
-    const detail = `${cause?.code ?? ""} ${cause?.message ?? (err as Error).message}`.trim();
+    const message = cause?.message ?? (err as Error).message;
+    const detail = cause?.code && !message.includes(cause.code) ? `${cause.code} ${message}` : message;
     if (PROXY_ERROR.test(detail)) throw new ProxyFailureError(`Proxy failed: ${detail}`);
     throw new Error(`Request failed: ${detail}`);
   }

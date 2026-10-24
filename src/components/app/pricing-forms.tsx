@@ -45,7 +45,7 @@ export function BandsEditor({ bands, fees, next, submitLabel = "Save bands" }: {
   return (
     <form action={action} className="flex flex-col gap-5">
       {next && <input type="hidden" name="next" value={next} />}
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[560px] border-separate border-spacing-y-1.5 text-sm">
           <caption className="sr-only">Pricing bands</caption>
           <thead>

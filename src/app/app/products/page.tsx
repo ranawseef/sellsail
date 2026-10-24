@@ -117,7 +117,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             archived.length === 0 ? (
               <EmptyState icon={<Archive className="size-5" />} title="Nothing archived" />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-line text-[13px] text-muted">
@@ -154,7 +154,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               )}
             </EmptyState>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-sm">
                 <caption className="sr-only">Listings, page {page} of {pages}</caption>
                 <thead>
@@ -180,6 +180,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                             {p.asin !== p.sku && ` · ${p.asin}`}
                           </span>
                           {p.error && <span className="mt-1 block text-[12px] font-semibold text-danger">{p.error}</span>}
+                          {p.note && <span className="mt-1 block text-[12px] text-muted">{p.note}</span>}
                         </td>
                         <td className="py-3 pr-3 text-right tabular-nums">{formatGBP(p.sourcePrice)}</td>
                         <td className="py-3 pr-3 text-right tabular-nums">

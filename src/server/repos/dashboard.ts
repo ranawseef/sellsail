@@ -25,7 +25,7 @@ export async function getOverview(tenantId: number): Promise<Overview> {
             SUM(price IS NULL) AS unpriced,
             SUM(needs_push) AS pendingPush,
             SUM(push_error IS NOT NULL) AS pushErrors,
-            SUM(source_error IS NOT NULL) AS sourceErrors,
+            SUM(source_fails > 0) AS sourceErrors,
             MAX(NULLIF(priced_at, '1970-01-01 00:00:01.000')) AS lastRepriceAt,
             MAX(pushed_at) AS lastPushAt
        FROM products WHERE tenant_id = ?`,
@@ -125,7 +125,7 @@ export type RunRow = { id: number; kind: string; startedAt: Date; finishedAt: Da
 export async function recentRuns(tenantId: number, limit = 20): Promise<RunRow[]> {
   const rows = await q<Record<string, unknown>>(
     `SELECT r.id, j.kind, r.started_at, r.finished_at, r.ok, r.msg, r.via FROM job_runs r JOIN jobs j ON j.id = r.job_id
-      WHERE r.tenant_id = ? ORDER BY r.id DESC LIMIT ?`,
+      WHERE r.tenant_id = ? ORDER BY r.started_at DESC, r.id DESC LIMIT ?`,
     [tenantId, Math.min(Math.max(limit, 1), 100)],
   );
   return rows.map((r) => ({
@@ -143,7 +143,7 @@ export type EventRow = { id: number; level: "info" | "warn" | "error"; kind: str
 
 export async function recentEvents(tenantId: number, limit = 20, levels: EventRow["level"][] = ["info", "warn", "error"]): Promise<EventRow[]> {
   const rows = await q<Record<string, unknown>>(
-    "SELECT id, level, kind, message, created_at FROM events WHERE tenant_id = ? AND level IN (?) ORDER BY id DESC LIMIT ?",
+    "SELECT id, level, kind, message, created_at FROM events WHERE tenant_id = ? AND level IN (?) ORDER BY created_at DESC, id DESC LIMIT ?",
     [tenantId, levels, Math.min(Math.max(limit, 1), 100)],
   );
   return rows.map((r) => ({
@@ -164,7 +164,7 @@ const FILTER_SQL: Record<ProductFilter, string> = {
   "in-stock": "AND stock > 0",
   "out-of-stock": "AND stock = 0",
   pending: "AND needs_push = 1",
-  errors: "AND (push_error IS NOT NULL OR source_error IS NOT NULL)",
+  errors: "AND (push_error IS NOT NULL OR source_fails > 0)",
   unpriced: "AND price IS NULL",
 };
 
@@ -181,7 +181,10 @@ export type ProductRow = {
   needsPush: boolean;
   pricedAt: Date | null;
   pushedAt: Date | null;
+  /** OnBuy refused the last update, or Amazon reads keep failing. */
   error: string | null;
+  /** Why the listing is out of stock or unpriced; not an error. */
+  note: string | null;
 };
 
 export const PAGE_SIZE = 50;
@@ -203,7 +206,7 @@ export async function listProducts(
   const page = Math.max(1, Math.floor(opts.page));
   const rows = await q<Record<string, unknown>>(
     `SELECT id, sku, source_ref, title, source_price, price, stock, pushed_price, pushed_stock, needs_push,
-            NULLIF(priced_at, '1970-01-01 00:00:01.000') AS priced_at, pushed_at, COALESCE(push_error, source_error) AS error
+            NULLIF(priced_at, '1970-01-01 00:00:01.000') AS priced_at, pushed_at, push_error, source_error, source_fails
        FROM products WHERE ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`,
     [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
   );
@@ -223,7 +226,8 @@ export async function listProducts(
       needsPush: Boolean(r.needs_push),
       pricedAt: (r.priced_at as Date | null) ?? null,
       pushedAt: (r.pushed_at as Date | null) ?? null,
-      error: (r.error as string | null) ?? null,
+      error: (r.push_error as string | null) ?? (Number(r.source_fails) > 0 ? ((r.source_error as string | null) ?? "Amazon read failed") : null),
+      note: Number(r.source_fails) > 0 ? null : ((r.source_error as string | null) ?? null),
     })),
   };
 }

@@ -257,7 +257,7 @@ export async function saveBandsAction(_prev: ActionState, form: FormData): Promi
 }
 
 const settingsSchema = z.object({
-  marketplaceFeePct: money("Marketplace fee %", 60),
+  marketplaceFeePct: money("OnBuy commission %", 60),
   paymentFeePct: money("Payment fee %", 30),
   paymentFixedFee: money("Payment fixed fee", 50),
   inStockQty: z.coerce.number().int("Stock to show must be a whole number.").min(1).max(999),

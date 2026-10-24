@@ -1,0 +1,163 @@
+import type { Metadata } from "next";
+import { Check, CreditCard } from "lucide-react";
+import { PageHeader, SectionCard } from "@/components/app/page-bits";
+import { ProgressBar, Rise } from "@/components/app/motion";
+import { ActionButton } from "@/components/app/action-button";
+import { Badge } from "@/components/ui/badge";
+import { requireAuth } from "@/server/auth/context";
+import { usage } from "@/server/repos/dashboard";
+import { checkoutAction, portalAction } from "@/server/actions/app";
+import { stripeConfigured } from "@/server/billing/stripe";
+import { one } from "@/server/db/pool";
+import { PAID_PLANS, PLANS, planFor, stripePriceId, formatPence } from "@/config/plans";
+import { daysLeft, formatCount, formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = { title: "Billing" };
+
+const STATUS: Record<string, { label: string; variant: "mint" | "sun" | "danger" | "grey" }> = {
+  trialing: { label: "Free trial", variant: "sun" },
+  active: { label: "Active", variant: "mint" },
+  past_due: { label: "Payment due", variant: "danger" },
+  canceled: { label: "Cancelled", variant: "danger" },
+  expired: { label: "Expired", variant: "danger" },
+};
+
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
+  const auth = await requireAuth();
+  const sp = await searchParams;
+  const [use, tenant] = await Promise.all([
+    usage(auth.tenantId),
+    one<{ stripe_customer_id: string | null; stripe_subscription_id: string | null }>("SELECT stripe_customer_id, stripe_subscription_id FROM tenants WHERE id = ?", [auth.tenantId]),
+  ]);
+  const plan = planFor(auth.plan);
+  const status = STATUS[auth.planStatus] ?? STATUS.expired;
+  const subscribed = Boolean(tenant?.stripe_subscription_id) && (auth.planStatus === "active" || auth.planStatus === "past_due");
+  const canPay = auth.role !== "member";
+  const live = stripeConfigured();
+
+  return (
+    <>
+      <PageHeader eyebrow="Billing" title="Plan and payments" intro="Prices in pounds, billed monthly by Stripe. Cancel any time from the billing portal." />
+
+      {sp.checkout === "success" && (
+        <p role="status" className="rounded-2xl bg-mint p-4 font-semibold text-sea-dark">
+          Thank you. Your plan updates here as soon as Stripe confirms the payment, usually within a few seconds.
+        </p>
+      )}
+
+      <Rise>
+        <SectionCard
+          title={
+            <span className="flex flex-wrap items-center gap-2.5">
+              {auth.planStatus === "trialing" ? "Free trial" : plan.name}
+              <Badge variant={status.variant} size="sm">
+                {auth.planStatus === "trialing" ? `${daysLeft(auth.trialEndsAt)} day${daysLeft(auth.trialEndsAt) === 1 ? "" : "s"} left` : status.label}
+              </Badge>
+            </span>
+          }
+          intro={
+            auth.planStatus === "trialing"
+              ? `Ends ${formatDateTime(auth.trialEndsAt)}. Choose a plan to keep repricing after that.`
+              : auth.planStatus === "past_due"
+                ? "Your last payment failed. Update your card in the billing portal to keep syncing."
+                : undefined
+          }
+          actions={
+            canPay &&
+            tenant?.stripe_customer_id &&
+            live && (
+              <ActionButton action={portalAction} pendingLabel="Opening Stripe…">
+                <CreditCard aria-hidden="true" className="size-4" /> Manage billing
+              </ActionButton>
+            )
+          }
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <p className="flex justify-between text-sm">
+                <span className="font-semibold">Listings</span>
+                <span className="text-muted">
+                  {formatCount(use.skus)} of {formatCount(plan.maxSkus)}
+                </span>
+              </p>
+              <div className="mt-2">
+                <ProgressBar value={use.skus} max={plan.maxSkus} label="Listings used" tone={use.skus >= plan.maxSkus ? "danger" : "sea"} />
+              </div>
+            </div>
+            <div>
+              <p className="flex justify-between text-sm">
+                <span className="font-semibold">Amazon accounts</span>
+                <span className="text-muted">
+                  {use.amazonAccounts} of {plan.maxAmazonAccounts}
+                </span>
+              </p>
+              <div className="mt-2">
+                <ProgressBar value={use.amazonAccounts} max={plan.maxAmazonAccounts} label="Amazon accounts used" tone={use.amazonAccounts >= plan.maxAmazonAccounts ? "sun" : "sea"} />
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      </Rise>
+
+      {!live && (
+        <p className="rounded-2xl bg-sun-soft p-4 text-sm font-semibold text-sun-ink">Online payment isn&apos;t switched on yet. Email us to start a paid plan.</p>
+      )}
+
+      <Rise delay={0.05}>
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Plans">
+          {PAID_PLANS.map((id) => {
+            const p = PLANS[id];
+            const current = subscribed && auth.plan === id;
+            const featured = id === "growth";
+            return (
+              <li key={id} className={cn("flex flex-col rounded-3xl border bg-white p-6", featured ? "border-2 border-sea" : "border-line")}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-xl font-bold">{p.name}</h2>
+                  {current ? <Badge variant="mint" size="sm">Your plan</Badge> : featured && <Badge variant="solid" size="sm">Most popular</Badge>}
+                </div>
+                <p className="mt-3 font-display text-[40px] leading-none font-extrabold tracking-[-0.04em]">
+                  {formatPence(p.pricePence)}
+                  <span className="ml-1 font-sans text-base font-semibold text-muted">/month</span>
+                </p>
+                <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
+                  {[
+                    `Up to ${formatCount(p.maxSkus)} listings`,
+                    `${p.maxAmazonAccounts} Amazon account${p.maxAmazonAccounts === 1 ? "" : "s"}`,
+                    `OnBuy updates every ${Math.round(p.pushIntervalS / 60)} minutes`,
+                    "Fee-aware pricing, brakes and history",
+                  ].map((f) => (
+                    <li key={f} className="flex gap-2">
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-sea" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6">
+                  {current ? (
+                    <p className="text-sm font-semibold text-muted">Change or cancel in Manage billing.</p>
+                  ) : subscribed ? (
+                    canPay && live ? (
+                      <ActionButton action={portalAction} variant="outline" pendingLabel="Opening Stripe…">
+                        Switch in billing portal
+                      </ActionButton>
+                    ) : null
+                  ) : (
+                    canPay && (
+                      <ActionButton action={checkoutAction} fields={{ plan: id }} variant={featured ? "sea" : "ink"} pendingLabel="Opening checkout…" disabled={!live || !stripePriceId(id)}>
+                        Choose {p.name}
+                      </ActionButton>
+                    )
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </Rise>
+      <p className="text-[13px] text-muted">
+        Need several OnBuy accounts? The Agency plan starts at £249 a month: email us.
+      </p>
+    </>
+  );
+}

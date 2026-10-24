@@ -49,7 +49,7 @@ export default async function PricingPage() {
           {canEdit ? (
             <BandsEditor bands={bands} fees={settings.fees} />
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full min-w-[480px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-[13px] text-muted">

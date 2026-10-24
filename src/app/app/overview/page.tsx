@@ -126,7 +126,7 @@ export default async function OverviewPage() {
             <ul className="flex flex-col gap-2">
               {[
                 { label: "OnBuy rejected an update", n: o.pushErrors, href: "/app/products?filter=errors" },
-                { label: "Amazon price problems", n: o.sourceErrors, href: "/app/products?filter=errors" },
+                { label: "Amazon reads failing", n: o.sourceErrors, href: "/app/products?filter=errors" },
                 { label: "Not priced yet", n: o.unpriced, href: "/app/products?filter=unpriced" },
                 { label: "Archived (not on OnBuy)", n: o.archived, href: "/app/products?filter=archived" },
               ].map((row) => (
