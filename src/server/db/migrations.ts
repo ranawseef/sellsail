@@ -361,4 +361,12 @@ export const migrations: Migration[] = [
       ) ${T}`,
     ],
   },
+  {
+    id: "005_onboarding",
+    statements: [
+      // Set when the seller saves their pricing bands in onboarding, so the
+      // wizard knows the defaults were looked at before anything is priced.
+      `ALTER TABLE tenants ADD COLUMN pricing_reviewed_at DATETIME(3) NULL AFTER onboarded_at`,
+    ],
+  },
 ];
