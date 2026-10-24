@@ -369,4 +369,29 @@ export const migrations: Migration[] = [
       `ALTER TABLE tenants ADD COLUMN pricing_reviewed_at DATETIME(3) NULL AFTER onboarded_at`,
     ],
   },
+  {
+    id: "006_email",
+    statements: [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at DATETIME(3) NULL AFTER password_hash`,
+      // Accounts made before email codes existed count as verified, so nobody
+      // is locked out by this change.
+      `UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL`,
+      // One-time 6-digit codes, sent by email. Only an HMAC is kept; a code
+      // dies after 15 minutes, 5 wrong tries, or one use.
+      `CREATE TABLE IF NOT EXISTS email_codes (
+        id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id    INT UNSIGNED    NOT NULL,
+        purpose    VARCHAR(8)      NOT NULL,
+        code_hash  CHAR(64)        NOT NULL,
+        attempts   INT UNSIGNED    NOT NULL DEFAULT 0,
+        expires_at DATETIME(3)     NOT NULL,
+        used_at    DATETIME(3)     NULL,
+        created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (id),
+        KEY ix_email_codes_user (user_id, purpose, created_at),
+        CONSTRAINT fk_email_codes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        CONSTRAINT ck_email_codes_purpose CHECK (purpose IN ('verify','reset'))
+      ) ${T}`,
+    ],
+  },
 ];

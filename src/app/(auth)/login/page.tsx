@@ -6,14 +6,17 @@ import { getAuth } from "@/server/auth/context";
 
 export const metadata: Metadata = { title: "Log in", alternates: { canonical: "/login" } };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string }> }) {
   if (await getAuth()) redirect("/app");
-  const { next } = await searchParams;
+  const { next, reset } = await searchParams;
   return (
     <Card className="w-full max-w-md animate-rise p-8">
       <h1 className="font-display text-[34px] leading-none font-extrabold tracking-[-0.04em]">Welcome back</h1>
       <p className="mt-2 mb-6 text-body">Log in to your SellSail dashboard.</p>
-      <LoginForm next={typeof next === "string" ? next.slice(0, 200) : ""} />
+      <LoginForm
+        next={typeof next === "string" ? next.slice(0, 200) : ""}
+        notice={reset === "1" ? "Your password has been changed. Log in with the new one." : undefined}
+      />
     </Card>
   );
 }

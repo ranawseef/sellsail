@@ -230,6 +230,7 @@ export async function maintenance(): Promise<void> {
     "DELETE FROM sessions WHERE expires_at < NOW(3) LIMIT 5000",
     "DELETE FROM rate_limits WHERE window_start < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
     "DELETE FROM oauth_states WHERE expires_at < NOW(3) LIMIT 5000",
+    "DELETE FROM email_codes WHERE created_at < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
     "DELETE FROM job_runs WHERE started_at < NOW(3) - INTERVAL 14 DAY LIMIT 5000",
     "DELETE FROM price_history WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",
     "DELETE FROM events WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",

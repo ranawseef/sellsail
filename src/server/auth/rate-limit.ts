@@ -14,6 +14,10 @@ export const LIMITS = {
   loginPerEmail: { max: 8, windowSec: 15 * 60 },
   signupPerIp: { max: 6, windowSec: 60 * 60 },
   connectionTestPerTenant: { max: 30, windowSec: 60 * 60 },
+  // Emails sent per address, and reset requests / code checks per network.
+  codeEmailPerUser: { max: 5, windowSec: 60 * 60 },
+  resetPerIp: { max: 10, windowSec: 60 * 60 },
+  codeCheckPerIp: { max: 30, windowSec: 15 * 60 },
 } satisfies Record<string, Limit>;
 
 /** Keys that carry personal data (emails) are hashed before storing. */

@@ -29,6 +29,8 @@ export class ForbiddenError extends Error {
 export async function requireAuth(min: Role = "member"): Promise<SessionInfo> {
   const auth = await getAuth();
   if (!auth) redirect("/login");
+  // The dashboard opens only once the account's email is confirmed.
+  if (!auth.emailVerified) redirect("/verify-email");
   if (!roleAtLeast(auth.role, min)) throw new ForbiddenError();
   return auth;
 }
@@ -41,6 +43,7 @@ export async function requireAuth(min: Role = "member"): Promise<SessionInfo> {
 export async function authForAction(min: Role = "member"): Promise<SessionInfo> {
   const auth = await getAuth();
   if (!auth) throw new ForbiddenError("Your session has ended. Please log in again.");
+  if (!auth.emailVerified) throw new ForbiddenError("Please confirm your email address first.");
   if (!roleAtLeast(auth.role, min)) throw new ForbiddenError(`Only a workspace ${min} or owner can do that.`);
   return auth;
 }

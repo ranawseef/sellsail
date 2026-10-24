@@ -4,8 +4,142 @@ import Link from "next/link";
 import { useActionState, useId } from "react";
 import { TextField, CheckboxField } from "@/components/app/field";
 import { SubmitButton } from "@/components/app/form-bits";
-import { loginAction, signupAction, type FormState } from "@/server/actions/auth";
-import { AlertTriangle } from "lucide-react";
+import {
+  forgotPasswordAction,
+  loginAction,
+  resendVerifyCodeAction,
+  resetPasswordAction,
+  signupAction,
+  verifyEmailAction,
+  type FormState,
+} from "@/server/actions/auth";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+
+function FormNotice({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <p role="status" className="flex items-start gap-2 rounded-xl bg-mint p-3 text-sm font-semibold text-sea-dark">
+      <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      {text}
+    </p>
+  );
+}
+
+// One-time code input: digits only, phone keypad, filled from the SMS/email
+// suggestion on devices that offer it.
+function CodeField({ id, error }: { id: string; error?: string }) {
+  return (
+    <TextField
+      id={id}
+      name="code"
+      label="6-digit code"
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      pattern="[0-9 ]*"
+      maxLength={7}
+      required
+      className="[&_input]:text-center [&_input]:font-mono [&_input]:text-2xl [&_input]:tracking-[0.4em]"
+      error={error}
+    />
+  );
+}
+
+export function VerifyEmailForm() {
+  const id = useId();
+  const [state, action] = useActionState(verifyEmailAction, undefined);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormError state={state} />
+      <CodeField id={`${id}-code`} error={state?.fieldErrors?.code} />
+      <SubmitButton size="lg" pendingLabel="Checking…" className="mt-2 w-full">
+        Confirm email
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function ResendCodeForm() {
+  const [state, action] = useActionState(resendVerifyCodeAction, undefined);
+  return (
+    <form action={action} className="flex flex-col items-center gap-3">
+      <FormError state={state} />
+      <FormNotice text={state?.notice} />
+      <SubmitButton variant="ghost" size="sm" pendingLabel="Sending…">
+        Send a new code
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function ForgotPasswordForm() {
+  const id = useId();
+  const [state, action] = useActionState(forgotPasswordAction, undefined);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormError state={state} />
+      <TextField
+        id={`${id}-email`}
+        name="email"
+        type="email"
+        label="Email"
+        autoComplete="email"
+        required
+        defaultValue={state?.values?.email}
+        error={state?.fieldErrors?.email}
+      />
+      <SubmitButton size="lg" pendingLabel="Sending…" className="mt-2 w-full">
+        Email me a reset code
+      </SubmitButton>
+      <p className="text-center text-sm text-body">
+        Remembered it?{" "}
+        <Link href="/login" className="font-bold text-sea-dark underline underline-offset-4">
+          Log in
+        </Link>
+      </p>
+    </form>
+  );
+}
+
+export function ResetPasswordForm({ email }: { email: string }) {
+  const id = useId();
+  const [state, action] = useActionState(resetPasswordAction, undefined);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormError state={state} />
+      <TextField
+        id={`${id}-email`}
+        name="email"
+        type="email"
+        label="Email"
+        autoComplete="email"
+        required
+        defaultValue={state?.values?.email ?? email}
+        error={state?.fieldErrors?.email}
+      />
+      <CodeField id={`${id}-code`} error={state?.fieldErrors?.code} />
+      <TextField
+        id={`${id}-password`}
+        name="password"
+        type="password"
+        label="New password"
+        hint="At least 10 characters."
+        autoComplete="new-password"
+        required
+        minLength={10}
+        error={state?.fieldErrors?.password}
+      />
+      <SubmitButton size="lg" pendingLabel="Saving…" className="mt-2 w-full">
+        Set new password
+      </SubmitButton>
+      <p className="text-center text-sm text-body">
+        No email?{" "}
+        <Link href="/forgot-password" className="font-bold text-sea-dark underline underline-offset-4">
+          Send another code
+        </Link>
+      </p>
+    </form>
+  );
+}
 
 function FormError({ state }: { state: FormState }) {
   if (!state?.error) return null;
@@ -17,12 +151,13 @@ function FormError({ state }: { state: FormState }) {
   );
 }
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, notice }: { next: string; notice?: string }) {
   const id = useId();
   const [state, action] = useActionState(loginAction, undefined);
   return (
     <form action={action} className="flex flex-col gap-4" noValidate>
       <input type="hidden" name="next" value={next} />
+      {!state && <FormNotice text={notice} />}
       <FormError state={state} />
       <TextField
         id={`${id}-email`}
@@ -43,6 +178,9 @@ export function LoginForm({ next }: { next: string }) {
         required
         error={state?.fieldErrors?.password}
       />
+      <Link href="/forgot-password" className="-mt-2 self-end text-sm font-semibold text-sea-dark underline underline-offset-4">
+        Forgot password?
+      </Link>
       <SubmitButton size="lg" pendingLabel="Logging in…" className="mt-2 w-full">
         Log in
       </SubmitButton>

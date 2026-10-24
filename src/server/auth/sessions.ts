@@ -24,6 +24,7 @@ export type SessionInfo = {
   userId: number;
   email: string;
   name: string;
+  emailVerified: boolean;
   tenantId: number;
   role: Role;
   tenantName: string;
@@ -56,6 +57,7 @@ type Row = {
   last_seen_at: Date;
   email: string;
   name: string;
+  email_verified_at: Date | null;
   role: Role | null;
   m_tenant_id: number | null;
   tenant_name: string | null;
@@ -75,7 +77,7 @@ export async function lookupSession(token: string | undefined | null): Promise<S
   if (!token || token.length > 100) return null;
   const id = hashToken(token);
   const row = await one<Row>(
-    `SELECT s.id, s.user_id, s.tenant_id, s.last_seen_at, u.email, u.name,
+    `SELECT s.id, s.user_id, s.tenant_id, s.last_seen_at, u.email, u.name, u.email_verified_at,
             m.role, m.tenant_id AS m_tenant_id, t.name AS tenant_name, t.plan, t.plan_status,
             t.trial_ends_at, t.paused, t.onboarded_at
        FROM sessions s
@@ -116,6 +118,7 @@ export async function lookupSession(token: string | undefined | null): Promise<S
     userId: row.user_id,
     email: row.email,
     name: row.name,
+    emailVerified: row.email_verified_at !== null,
     tenantId: row.m_tenant_id,
     role: (row.role ?? "member") as Role,
     tenantName: row.tenant_name ?? "",
