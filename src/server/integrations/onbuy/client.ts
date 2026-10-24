@@ -1,5 +1,5 @@
-// OnBuy (OnCommerce) API v2. Every call goes through the tenant's proxy via
-// egressFetch; nothing here opens a connection itself.
+// OnBuy (OnCommerce) API v2. Every call goes out through egressFetch on the
+// route the caller names (the seller's proxy, or direct); nothing here opens a connection itself.
 //
 // Checked against docs.api.onbuy.com (Postman collection "[LIVE] OnCommerce
 // API Documentation v2") on 2026-10-24:
@@ -11,7 +11,7 @@
 //   PUT  /listings/by-sku  { site_id, listings: [{ sku, price, stock,
 //        boost_marketing_commission }] }, up to 1000 per request.
 
-import { egressFetch, type EgressResponse, type ProxyConfig } from "../../net/egress.ts";
+import { egressFetch, type EgressResponse, type Route } from "../../net/egress.ts";
 import { isAuthFailure } from "./results.ts";
 
 export const ONBUY_API = "https://api.onbuy.com/v2";
@@ -44,9 +44,9 @@ export function onbuyErrorText(res: { status: number; json: unknown; text: strin
   return `OnBuy answered HTTP ${res.status}${msg ? `: ${msg.slice(0, 160)}` : ""}`;
 }
 
-export async function requestToken(proxy: ProxyConfig | null, creds: OnBuyCreds): Promise<{ accessToken: string; expiresAt: Date }> {
+export async function requestToken(route: Route, creds: OnBuyCreds): Promise<{ accessToken: string; expiresAt: Date }> {
   const body = new URLSearchParams({ secret_key: creds.secretKey, consumer_key: creds.consumerKey }).toString();
-  const res = await egressFetch(proxy, `${ONBUY_API}/auth/request-token`, {
+  const res = await egressFetch(route, `${ONBUY_API}/auth/request-token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body,
@@ -68,7 +68,7 @@ export type TokenSource = { get(): Promise<string>; renew(): Promise<string> };
 
 /** One OnBuy call; on a 401 the token is renewed once and the call repeated. */
 export async function onbuyCall(
-  proxy: ProxyConfig | null,
+  route: Route,
   tokens: TokenSource,
   method: "GET" | "PUT" | "POST",
   path: string,
@@ -78,7 +78,7 @@ export async function onbuyCall(
   for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, String(v));
 
   const send = async (token: string) =>
-    egressFetch(proxy, url.toString(), {
+    egressFetch(route, url.toString(), {
       method,
       headers: {
         Authorization: token,
@@ -118,13 +118,13 @@ function toListing(r: unknown): OnBuyListing | null {
 
 /** One page of the seller's listings. */
 export async function browseListings(
-  proxy: ProxyConfig | null,
+  route: Route,
   tokens: TokenSource,
   offset: number,
   limit = BROWSE_PAGE,
   siteId = ONBUY_UK_SITE,
 ): Promise<{ listings: OnBuyListing[]; totalRows: number }> {
-  const res = await onbuyCall(proxy, tokens, "GET", "/listings", { query: { site_id: siteId, limit, offset } });
+  const res = await onbuyCall(route, tokens, "GET", "/listings", { query: { site_id: siteId, limit, offset } });
   if (res.status !== 200) throw new OnBuyError(onbuyErrorText(res), res.status);
   const j = res.json as { results?: unknown[]; metadata?: { total_rows?: unknown } } | null;
   const listings = (Array.isArray(j?.results) ? j.results : []).map(toListing).filter((l): l is OnBuyListing => l !== null);
@@ -136,7 +136,7 @@ export type ListingUpdate = { sku: string; price: number; stock: number };
 
 /** PUT /listings/by-sku. The caller reads the per-SKU results (see results.ts). */
 export async function updateListingsBySku(
-  proxy: ProxyConfig | null,
+  route: Route,
   tokens: TokenSource,
   updates: readonly ListingUpdate[],
   boostPct: number | null,
@@ -149,5 +149,5 @@ export async function updateListingsBySku(
     stock: u.stock,
     ...(boostPct !== null ? { boost_marketing_commission: boostPct } : {}),
   }));
-  return onbuyCall(proxy, tokens, "PUT", "/listings/by-sku", { body: { site_id: siteId, listings }, timeoutMs: 120_000 });
+  return onbuyCall(route, tokens, "PUT", "/listings/by-sku", { body: { site_id: siteId, listings }, timeoutMs: 120_000 });
 }

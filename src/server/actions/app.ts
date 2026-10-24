@@ -17,12 +17,11 @@ import { passwordProblem, PASSWORD_MAX } from "../auth/password.ts";
 import { changePassword } from "../tenants/accounts.ts";
 import { audit, logEvent } from "../audit.ts";
 import { exec, one, tx } from "../db/pool.ts";
-import { loadProxy, parseProxyInput, proxyForJob, saveProxy, testProxy } from "../connections/proxy.ts";
+import { loadProxy, parseProxyInput, removeProxy, routeForTenant, saveProxy, testProxy } from "../connections/proxy.ts";
 import { connectOnBuy, disconnectOnBuy, getOnBuyAccount, parseOnBuyKeys } from "../connections/onbuy.ts";
-import { addSelfAuthorised, PlanLimitError, removeAmazonAccount, startOAuth } from "../connections/amazon.ts";
 import { repriceLocally, saveBands, saveSettings, getSettings } from "../repos/pricing.ts";
 import { startOnBuyImport, upsertListings } from "../jobs/import.ts";
-import { rebalanceShards, runJobNow } from "../jobs/registry.ts";
+import { runJobNow } from "../jobs/registry.ts";
 import { requestFullPush } from "../jobs/push.ts";
 import { ensureSchedulerStarted, pollOnce } from "../jobs/scheduler.ts";
 import { checkoutUrl, portalUrl } from "../billing/stripe.ts";
@@ -38,7 +37,7 @@ import type { PricingBand } from "../../lib/pricing.ts";
 export type ActionState = { ok?: boolean; message?: string; error?: string; fieldErrors?: Record<string, string> } | undefined;
 
 // Errors whose message is written for the seller and safe to show.
-const SHOWABLE = [ForbiddenError, PlanLimitError, EgressBlockedError, ProxyFailureError, OnBuyError, AmazonError, SecretsConfigError];
+const SHOWABLE = [ForbiddenError, EgressBlockedError, ProxyFailureError, OnBuyError, AmazonError, SecretsConfigError];
 
 async function attempt(fn: () => Promise<ActionState>): Promise<ActionState> {
   try {
@@ -104,13 +103,28 @@ export async function saveProxyAction(_prev: ActionState, form: FormData): Promi
     try {
       const egress = await testProxy(auth.tenantId);
       next = wizardNext(form);
-      return { ok: true, message: `Proxy works. OnBuy and Amazon will see the IP address ${egress}.` };
+      return { ok: true, message: `Proxy works. OnBuy will see the IP address ${egress}.` };
     } catch (err) {
-      return { error: `Saved, but the test failed: ${(err as Error).message}. Nothing will be sent until it works.` };
+      return {
+        error: `Saved, but the test failed: ${(err as Error).message}. Nothing is sent to OnBuy until it works, or until you remove the proxy.`,
+      };
     }
   });
   if (next) redirect(next);
   return state;
+}
+
+export async function removeProxyAction(): Promise<ActionState> {
+  return attempt(async () => {
+    const auth = await authForAction("admin");
+    if (!(await removeProxy(auth.tenantId))) return { error: "There was no proxy to remove." };
+    const { ip } = await requestInfo();
+    await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "proxy.remove", ip });
+    await logEvent(auth.tenantId, "info", "proxy", "Proxy removed. OnBuy requests now go direct from SellSail.");
+    refreshApp();
+    kickScheduler();
+    return { ok: true, message: "Proxy removed. OnBuy requests now go direct from SellSail." };
+  });
 }
 
 export async function testProxyAction(): Promise<ActionState> {
@@ -125,10 +139,11 @@ export async function testProxyAction(): Promise<ActionState> {
 
 // ---- OnBuy ---------------------------------------------------------------------
 
-async function requireWorkingProxy(tenantId: number) {
-  const { proxy, reason } = await proxyForJob(tenantId);
-  if (!proxy) throw new EgressBlockedError(`${reason}. Set up and test the proxy first: every OnBuy and Amazon request goes through it.`);
-  return proxy;
+/** Direct, or the workspace's proxy. A saved proxy that isn't working blocks the call. */
+async function requireRoute(tenantId: number) {
+  const { route, reason } = await routeForTenant(tenantId);
+  if (!route) throw new EgressBlockedError(`${reason}. Fix the proxy, or remove it to connect directly.`);
+  return route;
 }
 
 export async function connectOnBuyAction(_prev: ActionState, form: FormData): Promise<ActionState> {
@@ -138,8 +153,8 @@ export async function connectOnBuyAction(_prev: ActionState, form: FormData): Pr
     if (!(await connectionTestAllowed(auth.tenantId))) return { error: "Too many connection tests this hour. Please wait a little." };
     const creds = parseOnBuyKeys(str(form, "consumerKey"), str(form, "secretKey"));
     if (typeof creds === "string") return { error: creds };
-    const proxy = await requireWorkingProxy(auth.tenantId);
-    const acc = await connectOnBuy(auth.tenantId, proxy, creds);
+    const route = await requireRoute(auth.tenantId);
+    const acc = await connectOnBuy(auth.tenantId, route, creds);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "onbuy.connect", detail: `Consumer key ${acc.keyHint}`, ip });
     await logEvent(auth.tenantId, "info", "onbuy", "OnBuy connected.");
@@ -159,60 +174,6 @@ export async function disconnectOnBuyAction(): Promise<ActionState> {
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "onbuy.disconnect", ip });
     refreshApp();
     return { ok: true, message: "OnBuy disconnected and its keys deleted." };
-  });
-}
-
-// ---- Amazon --------------------------------------------------------------------
-
-export async function addAmazonSelfAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  let next: string | null = null;
-  const state = await attempt(async () => {
-    const auth = await authForAction("admin");
-    if (!(await connectionTestAllowed(auth.tenantId))) return { error: "Too many connection tests this hour. Please wait a little." };
-    const schema = z.object({
-      label: z.string().max(80),
-      clientId: z.string().trim().min(10, "Enter the LWA client id.").max(200),
-      clientSecret: z.string().trim().min(10, "Enter the LWA client secret.").max(200),
-      refreshToken: z.string().trim().min(20, "Enter the refresh token.").max(2000),
-    });
-    const parsed = schema.safeParse({ label: str(form, "label"), clientId: str(form, "clientId"), clientSecret: str(form, "clientSecret"), refreshToken: str(form, "refreshToken") });
-    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the fields." };
-    const proxy = await requireWorkingProxy(auth.tenantId);
-    await addSelfAuthorised(auth.tenantId, proxy, parsed.data);
-    const { ip } = await requestInfo();
-    await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "amazon.connect", detail: "Self-authorised app", ip });
-    await logEvent(auth.tenantId, "info", "amazon", "Amazon account connected.");
-    refreshApp();
-    kickScheduler();
-    next = wizardNext(form);
-    return { ok: true, message: "Amazon account connected. Pricing calls will use it." };
-  });
-  if (next) redirect(next);
-  return state;
-}
-
-export async function startAmazonOAuthAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  let url: string | null = null;
-  const state = await attempt(async () => {
-    const auth = await authForAction("admin");
-    await requireWorkingProxy(auth.tenantId); // the code exchange afterwards goes through it
-    url = await startOAuth(auth.tenantId, auth.userId, str(form, "label").slice(0, 80));
-    return undefined;
-  });
-  if (url) redirect(url);
-  return state;
-}
-
-export async function removeAmazonAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
-    const auth = await authForAction("admin");
-    const id = Number(form.get("accountId"));
-    if (!Number.isInteger(id) || id <= 0) return { error: "Unknown account." };
-    if (!(await removeAmazonAccount(auth.tenantId, id))) return { error: "That account was already removed." };
-    const { ip } = await requestInfo();
-    await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "amazon.remove", detail: `Account #${id}`, ip });
-    refreshApp();
-    return { ok: true, message: "Amazon account removed and its keys deleted." };
   });
 }
 
@@ -335,7 +296,6 @@ export async function uploadCsvAction(_prev: ActionState, form: FormData): Promi
       overLimit += res.overLimit;
       archived += res.archivedSkipped;
     }
-    await rebalanceShards(auth.tenantId);
     await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'reprice' AND enabled = 1", [auth.tenantId]);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "import.csv", detail: `${imported} imported, ${parsed.skipped.length} skipped`, ip });

@@ -1,269 +1,168 @@
-// The workspace's Amazon SP-API accounts. Each one is a shard with its own
-// rate budget. Two ways to connect:
-//   oauth  the seller approves SellSail's app in Seller Central; we keep the
-//          refresh token, SellSail's LWA client id/secret come from env vars.
-//   self   the seller brings their own private app (client id, secret and a
-//          self-authorised refresh token).
+// SellSail's own Amazon SP-API keys. Sellers don't connect Amazon: product
+// prices are public, so SellSail reads them for every workspace with its own
+// app credentials, set as numbered env vars (1..MAX_APPS):
+//
+//   SPAPI_1_CLIENT_ID, SPAPI_1_CLIENT_SECRET, SPAPI_1_REFRESH_TOKEN
+//   SPAPI_2_CLIENT_ID, ...
+//
+// Each set is one "app" with its own rate budget (getItemOffersBatch: one
+// call every 10 s). The apps form a pool shared by all workspaces: a reprice
+// run reserves whichever app is free next, so more key sets means more
+// listings repriced per hour for everyone.
+//
+// Optional SPAPI_PROXY (e.g. "http://user:pass@1.2.3.4:8080") sends Amazon
+// calls through one proxy; without it they go direct from the server.
+//
+// Runtime state (cached token, next free slot, health) lives in amazon_apps,
+// one row per slot. The keys themselves never touch the database.
 
-import { createHash, randomBytes } from "node:crypto";
-import {
-  accessToken,
-  amazonErrorText,
-  AmazonError,
-  batchResponses,
-  consentUrl,
-  exchangeAuthCode,
-  itemOffersBatch,
-  type LwaClient,
-} from "../integrations/amazon/spapi.ts";
-import type { ProxyConfig } from "../net/egress.ts";
-import { decryptJson, decryptString, encryptJson, encryptString, maskSecret, secretContext } from "../crypto/secrets.ts";
-import { exec, one, q, tx } from "../db/pool.ts";
-import { ensureJob, rebalanceShards } from "../jobs/registry.ts";
-import { planFor } from "../../config/plans.ts";
+import { accessToken, type LwaClient } from "../integrations/amazon/spapi.ts";
+import { DIRECT, parseProxyUrl, viaProxy, type Route } from "../net/egress.ts";
+import { decryptString, encryptString, secretContext } from "../crypto/secrets.ts";
+import { exec, one, q } from "../db/pool.ts";
 
-export type SourceAccount = {
-  id: number;
-  label: string;
-  mode: "oauth" | "self";
-  sellingPartnerId: string | null;
-  keyHint: string;
-  status: "untested" | "connected" | "error";
-  lastError: string | null;
-  lastOkAt: Date | null;
-  nextAllowedAt: Date;
-  rateIntervalMs: number;
-};
+export const MAX_APPS = 20;
+/** How long an app that failed to log in sits out before it is tried again. */
+export const APP_ERROR_BACKOFF_S = 15 * 60;
 
-type StoredCreds = { refreshToken: string; clientId?: string; clientSecret?: string };
+export type AmazonApp = { slot: number; client: LwaClient; refreshToken: string };
 
-const COLS = `id, label, mode, selling_partner_id AS sellingPartnerId, key_hint AS keyHint, status,
-  last_error AS lastError, last_ok_at AS lastOkAt, next_allowed_at AS nextAllowedAt, rate_interval_ms AS rateIntervalMs`;
-
-export async function listAmazonAccounts(tenantId: number): Promise<SourceAccount[]> {
-  return q<SourceAccount>(`SELECT ${COLS} FROM source_accounts WHERE tenant_id = ? AND source = 'amazon' ORDER BY id`, [tenantId]);
-}
-
-/** SellSail's own SP-API app, for the OAuth route. Null when not configured. */
-export function appClient(): (LwaClient & { appId: string; draft: boolean }) | null {
-  const clientId = process.env.SPAPI_LWA_CLIENT_ID;
-  const clientSecret = process.env.SPAPI_LWA_CLIENT_SECRET;
-  const appId = process.env.SPAPI_APP_ID;
-  if (!clientId || !clientSecret || !appId) return null;
-  return { clientId, clientSecret, appId, draft: process.env.SPAPI_DRAFT_APP === "1" };
-}
-
-function clientFor(creds: StoredCreds): LwaClient {
-  if (creds.clientId && creds.clientSecret) return { clientId: creds.clientId, clientSecret: creds.clientSecret };
-  const app = appClient();
-  if (!app) throw new Error("SellSail's Amazon app is not configured (SPAPI_LWA_CLIENT_ID / SPAPI_LWA_CLIENT_SECRET)");
-  return app;
-}
-
-export class PlanLimitError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PlanLimitError";
+/** The key sets configured in env, in slot order. */
+export function configuredApps(env: NodeJS.ProcessEnv = process.env): AmazonApp[] {
+  const apps: AmazonApp[] = [];
+  for (let slot = 1; slot <= MAX_APPS; slot++) {
+    const clientId = env[`SPAPI_${slot}_CLIENT_ID`]?.trim();
+    const clientSecret = env[`SPAPI_${slot}_CLIENT_SECRET`]?.trim();
+    const refreshToken = env[`SPAPI_${slot}_REFRESH_TOKEN`]?.trim();
+    if (clientId && clientSecret && refreshToken) apps.push({ slot, client: { clientId, clientSecret }, refreshToken });
   }
-}
-
-async function assertAccountRoom(tenantId: number): Promise<void> {
-  const t = await one<{ plan: string; n: number }>(
-    "SELECT t.plan, (SELECT COUNT(*) FROM source_accounts s WHERE s.tenant_id = t.id AND s.source = 'amazon') AS n FROM tenants t WHERE t.id = ?",
-    [tenantId],
-  );
-  const plan = planFor(t?.plan);
-  if (Number(t?.n ?? 0) >= plan.maxAmazonAccounts) {
-    throw new PlanLimitError(`Your ${plan.name} plan allows ${plan.maxAmazonAccounts} Amazon account${plan.maxAmazonAccounts === 1 ? "" : "s"}. Upgrade to add more.`);
-  }
+  return apps;
 }
 
 /**
- * A token plus one priced-offers call for a dummy ASIN. The batch answers 200
- * with an item-level error, which proves the token works and the app has the
- * Pricing role, at the cost of one call of the account's rate budget.
+ * How Amazon calls leave the server: through SPAPI_PROXY when set, otherwise
+ * direct. A proxy that is set but can't be parsed blocks the calls rather
+ * than quietly going direct.
  */
-async function verifyAccess(proxy: ProxyConfig, client: LwaClient, refreshToken: string): Promise<string> {
-  const token = await accessToken(proxy, client, refreshToken);
-  const res = await itemOffersBatch(proxy, token.accessToken, ["B000000000"]);
-  if (res.status === 403) {
-    throw new AmazonError("Amazon accepted the login but refused the pricing call. The app needs the Pricing role.", 403);
+export function amazonRoute(env: NodeJS.ProcessEnv = process.env): { route: Route | null; reason: string } {
+  try {
+    const proxy = parseProxyUrl(env.SPAPI_PROXY);
+    return { route: proxy ? viaProxy(proxy) : DIRECT, reason: "" };
+  } catch (err) {
+    return { route: null, reason: `SPAPI_PROXY is set but unusable: ${(err as Error).message}` };
   }
-  if (res.status !== 200 || !batchResponses(res)) throw new AmazonError(amazonErrorText(res), res.status);
-  return token.accessToken;
 }
 
-async function insertAccount(
-  tenantId: number,
-  a: { label: string; mode: "oauth" | "self"; sellingPartnerId: string | null; creds: StoredCreds; keyHint: string; token?: string },
-): Promise<number> {
-  const id = await tx(async (t) => {
-    const res = await t.exec(
-      `INSERT INTO source_accounts (tenant_id, source, label, mode, selling_partner_id, credentials_enc, key_hint, status, last_ok_at, next_allowed_at)
-       VALUES (?, 'amazon', ?, ?, ?, '', ?, 'connected', NOW(3), NOW(3) + INTERVAL 10 SECOND)`,
-      [tenantId, a.label, a.mode, a.sellingPartnerId, a.keyHint],
-    );
-    const accountId = res.insertId;
-    await t.exec(
-      "UPDATE source_accounts SET credentials_enc = ?, token_enc = ?, token_expires_at = NOW(3) + INTERVAL 50 MINUTE WHERE id = ? AND tenant_id = ?",
-      [
-        encryptJson(a.creds, secretContext.sourceCredentials(tenantId, accountId)),
-        a.token ? encryptString(a.token, secretContext.sourceToken(tenantId, accountId)) : null,
-        accountId,
-        tenantId,
-      ],
-    );
-    await ensureJob(tenantId, "reprice", accountId, {}, t);
-    return accountId;
-  });
-  await rebalanceShards(tenantId);
-  return id;
-}
-
-export function cleanLabel(label: string, fallback: string): string {
-  return label.trim().replace(/\s+/g, " ").slice(0, 80) || fallback;
-}
-
-export async function addSelfAuthorised(
-  tenantId: number,
-  proxy: ProxyConfig,
-  input: { label: string; clientId: string; clientSecret: string; refreshToken: string },
-): Promise<number> {
-  await assertAccountRoom(tenantId);
-  const creds: StoredCreds = {
-    clientId: input.clientId.trim(),
-    clientSecret: input.clientSecret.trim(),
-    refreshToken: input.refreshToken.trim(),
-  };
-  const token = await verifyAccess(proxy, clientFor(creds), creds.refreshToken);
-  const n = (await listAmazonAccounts(tenantId)).length;
-  return insertAccount(tenantId, {
-    label: cleanLabel(input.label, `Amazon account ${n + 1}`),
-    mode: "self",
-    sellingPartnerId: null,
-    creds,
-    keyHint: maskSecret(creds.clientId),
-    token,
-  });
-}
-
-const STATE_TTL_MIN = 15;
-
-/** Starts the Seller Central approval: a single-use state tied to this user and workspace. */
-export async function startOAuth(tenantId: number, userId: number, label: string): Promise<string> {
-  const app = appClient();
-  if (!app) throw new Error("Connecting through Seller Central isn't set up on this server yet. Use your own app keys instead.");
-  await assertAccountRoom(tenantId);
-  const state = randomBytes(32).toString("base64url");
-  await exec("DELETE FROM oauth_states WHERE expires_at < NOW(3)");
-  await exec(
-    "INSERT INTO oauth_states (state_hash, tenant_id, user_id, purpose, label, expires_at) VALUES (?, ?, ?, 'amazon', ?, NOW(3) + INTERVAL ? MINUTE)",
-    [createHash("sha256").update(state).digest("hex"), tenantId, userId, label.slice(0, 80), STATE_TTL_MIN],
-  );
-  return consentUrl(app.appId, state, app.draft);
+/** Makes sure every configured slot has a state row. Cheap; safe to call often. */
+async function ensureRows(apps: AmazonApp[]): Promise<void> {
+  if (apps.length === 0) return;
+  const values = apps.map(() => "(?)").join(", ");
+  await exec(`INSERT IGNORE INTO amazon_apps (slot) VALUES ${values}`, apps.map((a) => a.slot));
 }
 
 /**
- * The redirect back from Seller Central. The state must belong to the same
- * user and workspace that started it, and is deleted on first use.
+ * Waits for, and reserves, the next free app's call slot. Returns the app, or
+ * null when none frees up before `canWait(ms)` says to stop. A slot is taken
+ * with one conditional UPDATE, so two workers can never share one call.
  */
-export async function completeOAuth(
-  tenantId: number,
-  userId: number,
-  proxy: ProxyConfig,
-  input: { state: string; code: string; sellingPartnerId: string; redirectUri: string },
-): Promise<number> {
-  const hash = createHash("sha256").update(input.state).digest("hex");
-  const row = await one<{ label: string }>(
-    "SELECT label FROM oauth_states WHERE state_hash = ? AND tenant_id = ? AND user_id = ? AND purpose = 'amazon' AND expires_at > NOW(3)",
-    [hash, tenantId, userId],
-  );
-  const del = await exec("DELETE FROM oauth_states WHERE state_hash = ? AND tenant_id = ? AND user_id = ?", [hash, tenantId, userId]);
-  if (!row || del.affectedRows !== 1) throw new Error("This approval link has expired or was already used. Start again from Connections.");
-  if (!/^[A-Z0-9]{8,40}$/.test(input.sellingPartnerId)) throw new Error("Amazon sent back an unexpected seller id.");
+export async function reserveAmazonApp(
+  canWait: (waitMs: number) => boolean,
+  sleep: (ms: number) => Promise<void>,
+): Promise<AmazonApp | null> {
+  const apps = configuredApps();
+  if (apps.length === 0) return null;
+  await ensureRows(apps);
+  const slots = apps.map((a) => a.slot);
 
-  const app = appClient();
-  if (!app) throw new Error("SellSail's Amazon app is not configured");
-  const refreshToken = await exchangeAuthCode(proxy, app, input.code, input.redirectUri);
-
-  const existing = await one<{ id: number }>(
-    "SELECT id FROM source_accounts WHERE tenant_id = ? AND source = 'amazon' AND selling_partner_id = ?",
-    [tenantId, input.sellingPartnerId],
-  );
-  if (existing) {
-    // Re-approval of an account we already have: replace its token.
-    await exec(
-      "UPDATE source_accounts SET credentials_enc = ?, token_enc = NULL, status = 'connected', last_error = NULL, mode = 'oauth' WHERE id = ? AND tenant_id = ?",
-      [encryptJson({ refreshToken }, secretContext.sourceCredentials(tenantId, existing.id)), existing.id, tenantId],
+  for (;;) {
+    const ready = await one<{ slot: number }>(
+      "SELECT slot FROM amazon_apps WHERE slot IN (?) AND next_allowed_at <= NOW(3) ORDER BY next_allowed_at LIMIT 1",
+      [slots],
     );
-    await rebalanceShards(tenantId);
-    return existing.id;
+    if (ready) {
+      const res = await exec(
+        `UPDATE amazon_apps SET next_allowed_at = NOW(3) + INTERVAL (rate_interval_ms * 1000) MICROSECOND
+          WHERE slot = ? AND next_allowed_at <= NOW(3)`,
+        [ready.slot],
+      );
+      if (res.affectedRows === 1) return apps.find((a) => a.slot === ready.slot) ?? null;
+      continue; // another worker took it first; look again
+    }
+    const next = await one<{ wait_ms: number }>(
+      "SELECT GREATEST(0, MIN(TIMESTAMPDIFF(MICROSECOND, NOW(3), next_allowed_at)) / 1000) AS wait_ms FROM amazon_apps WHERE slot IN (?)",
+      [slots],
+    );
+    const wait = Math.min(Number(next?.wait_ms ?? 1000) + 50, 15_000);
+    if (!canWait(wait)) return null;
+    await sleep(wait);
   }
-  await assertAccountRoom(tenantId);
-  const n = (await listAmazonAccounts(tenantId)).length;
-  return insertAccount(tenantId, {
-    label: cleanLabel(row.label, `Amazon account ${n + 1}`),
-    mode: "oauth",
-    sellingPartnerId: input.sellingPartnerId,
-    creds: { refreshToken },
-    keyHint: input.sellingPartnerId.slice(0, 4) + "••••",
-  });
 }
 
-export async function removeAmazonAccount(tenantId: number, accountId: number): Promise<boolean> {
-  const res = await tx(async (t) => {
-    await t.exec("DELETE FROM jobs WHERE tenant_id = ? AND kind = 'reprice' AND target_id = ?", [tenantId, accountId]);
-    return t.exec("DELETE FROM source_accounts WHERE id = ? AND tenant_id = ?", [accountId, tenantId]);
-  });
-  await rebalanceShards(tenantId);
-  return res.affectedRows > 0;
+/** Holds an app back, e.g. after Amazon answered 429. */
+export async function backOffAmazonApp(slot: number, seconds: number): Promise<void> {
+  await exec("UPDATE amazon_apps SET next_allowed_at = GREATEST(next_allowed_at, NOW(3) + INTERVAL ? SECOND) WHERE slot = ?", [seconds, slot]);
 }
 
-/** An access token for jobs, cached (encrypted) until shortly before expiry. */
-export async function amazonAccessToken(tenantId: number, accountId: number, proxy: ProxyConfig, forceNew = false): Promise<string> {
-  const row = await one<{ credentials_enc: string; token_enc: string | null; token_expires_at: Date | null }>(
-    "SELECT credentials_enc, token_enc, token_expires_at FROM source_accounts WHERE id = ? AND tenant_id = ?",
-    [accountId, tenantId],
+/** An access token for an app, cached (encrypted) until shortly before expiry. */
+export async function amazonAppToken(app: AmazonApp, route: Route, forceNew = false): Promise<string> {
+  const row = await one<{ token_enc: string | null; token_expires_at: Date | null }>(
+    "SELECT token_enc, token_expires_at FROM amazon_apps WHERE slot = ?",
+    [app.slot],
   );
-  if (!row) throw new Error("Amazon account not found");
-  if (!forceNew && row.token_enc && row.token_expires_at && new Date(row.token_expires_at).getTime() > Date.now()) {
+  if (!forceNew && row?.token_enc && row.token_expires_at && new Date(row.token_expires_at).getTime() > Date.now()) {
     try {
-      return decryptString(row.token_enc, secretContext.sourceToken(tenantId, accountId));
+      return decryptString(row.token_enc, secretContext.amazonAppToken(app.slot));
     } catch {
       // fetch a new one
     }
   }
-  let creds: StoredCreds;
-  try {
-    creds = decryptJson<StoredCreds>(row.credentials_enc, secretContext.sourceCredentials(tenantId, accountId));
-  } catch {
-    // Treated as a login failure so the account is flagged instead of retried forever.
-    throw new AmazonError("The saved Amazon keys can't be read (was the encryption key changed?). Reconnect this account.", 401);
-  }
-  const token = await accessToken(proxy, clientFor(creds), creds.refreshToken);
-  await exec("UPDATE source_accounts SET token_enc = ?, token_expires_at = ? WHERE id = ? AND tenant_id = ?", [
-    encryptString(token.accessToken, secretContext.sourceToken(tenantId, accountId)),
+  const token = await accessToken(route, app.client, app.refreshToken);
+  await exec("UPDATE amazon_apps SET token_enc = ?, token_expires_at = ? WHERE slot = ?", [
+    encryptString(token.accessToken, secretContext.amazonAppToken(app.slot)),
     token.expiresAt,
-    accountId,
-    tenantId,
+    app.slot,
   ]);
   return token.accessToken;
 }
 
-export async function markAmazonStatus(tenantId: number, accountId: number, ok: boolean, error?: string): Promise<void> {
-  const before = await one<{ status: string }>("SELECT status FROM source_accounts WHERE id = ? AND tenant_id = ?", [accountId, tenantId]);
+/** Records whether an app's last call worked. A failing app sits out for a while. */
+export async function markAmazonApp(slot: number, ok: boolean, error?: string): Promise<void> {
   if (ok) {
-    await exec("UPDATE source_accounts SET status = 'connected', last_error = NULL, last_ok_at = NOW(3) WHERE id = ? AND tenant_id = ?", [
-      accountId,
-      tenantId,
-    ]);
-  } else {
-    await exec("UPDATE source_accounts SET status = 'error', last_error = ? WHERE id = ? AND tenant_id = ?", [
-      (error ?? "").slice(0, 255),
-      accountId,
-      tenantId,
-    ]);
+    await exec("UPDATE amazon_apps SET status = 'ok', last_error = NULL, last_ok_at = NOW(3) WHERE slot = ?", [slot]);
+    return;
   }
-  // A shard that stops or starts working changes who reprices what.
-  if (before && (before.status === "connected") !== ok) await rebalanceShards(tenantId);
+  console.error(`[amazon] app ${slot} failed: ${(error ?? "").slice(0, 200)}`);
+  await exec(
+    `UPDATE amazon_apps SET status = 'error', last_error = ?, token_enc = NULL,
+       next_allowed_at = GREATEST(next_allowed_at, NOW(3) + INTERVAL ? SECOND)
+     WHERE slot = ?`,
+    [(error ?? "").slice(0, 255), APP_ERROR_BACKOFF_S, slot],
+  );
+}
+
+export type AmazonPoolStatus = {
+  /** Key sets configured in env. */
+  configured: number;
+  /** Of those, how many are currently working (or not yet tried). */
+  healthy: number;
+  lastOkAt: Date | null;
+};
+
+/** For the dashboard: is SellSail's Amazon pricing available right now? */
+export async function amazonPoolStatus(): Promise<AmazonPoolStatus> {
+  const apps = configuredApps();
+  if (apps.length === 0) return { configured: 0, healthy: 0, lastOkAt: null };
+  const rows = await q<{ slot: number; status: string; last_ok_at: Date | null }>(
+    "SELECT slot, status, last_ok_at FROM amazon_apps WHERE slot IN (?)",
+    [apps.map((a) => a.slot)],
+  );
+  const bySlot = new Map(rows.map((r) => [r.slot, r]));
+  let healthy = 0;
+  let lastOkAt: Date | null = null;
+  for (const a of apps) {
+    const r = bySlot.get(a.slot);
+    if (!r || r.status !== "error") healthy++;
+    if (r?.last_ok_at && (!lastOkAt || r.last_ok_at > lastOkAt)) lastOkAt = r.last_ok_at;
+  }
+  return { configured: apps.length, healthy, lastOkAt };
 }

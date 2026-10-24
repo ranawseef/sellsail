@@ -1,10 +1,26 @@
-// The workspace's proxy: every OnBuy and Amazon request leaves through it.
+// The workspace's optional proxy for OnBuy traffic.
 //
-// Health: a proxy error marks it failing, and while it is failing jobs send
-// nothing to OnBuy or Amazon. The scheduler re-tests it (an IP lookup, not a
-// marketplace call) every few minutes and resumes when it answers again.
+// No proxy saved: OnBuy requests go direct from SellSail's server.
+// Proxy saved: every OnBuy request goes through it, and never around it. A
+// proxy error marks it failing, and while it is failing jobs send nothing to
+// OnBuy. The scheduler re-tests it (an IP lookup, not a marketplace call)
+// every few minutes and resumes when it answers again. Removing the proxy is
+// how a seller goes back to direct.
+//
+// Amazon pricing calls don't use this: they run on SellSail's own Amazon
+// keys (connections/amazon.ts).
 
-import { egressIp, ProxyFailureError, proxyProblem, type ProxyConfig, PROXY_TYPES, type ProxyType } from "../net/egress.ts";
+import {
+  DIRECT,
+  egressIp,
+  ProxyFailureError,
+  proxyProblem,
+  viaProxy,
+  type ProxyConfig,
+  PROXY_TYPES,
+  type ProxyType,
+  type Route,
+} from "../net/egress.ts";
 import { decryptJson, encryptJson, maskHost, secretContext } from "../crypto/secrets.ts";
 import { exec, one } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
@@ -81,18 +97,28 @@ export async function saveProxy(tenantId: number, config: ProxyConfig): Promise<
   await dropMarketplaceTokens(tenantId);
 }
 
-// OnBuy tokens only work from the IP that requested them, and Amazon tokens
-// are cheap to renew, so a new proxy or a new exit IP means new tokens.
+// OnBuy tokens only work from the IP that requested them, so a new route or a
+// new exit IP means new tokens.
 async function dropMarketplaceTokens(tenantId: number): Promise<void> {
   await exec("UPDATE marketplace_accounts SET token_enc = NULL, token_expires_at = NULL WHERE tenant_id = ?", [tenantId]);
-  await exec("UPDATE source_accounts SET token_enc = NULL, token_expires_at = NULL WHERE tenant_id = ?", [tenantId]);
+}
+
+/** Deletes the proxy, so OnBuy traffic goes direct from now on. */
+export async function removeProxy(tenantId: number): Promise<boolean> {
+  const res = await exec("DELETE FROM proxies WHERE tenant_id = ?", [tenantId]);
+  if (res.affectedRows > 0) await dropMarketplaceTokens(tenantId);
+  return res.affectedRows > 0;
 }
 
 /** Looks up the exit IP through the proxy and records the result. Throws on failure. */
 export async function testProxy(tenantId: number): Promise<string> {
   const row = await loadProxy(tenantId);
+  if (!row?.config) {
+    const reason = row ? "the saved proxy details can't be read; enter them again" : "no proxy is saved";
+    throw new ProxyFailureError(`Can't test: ${reason}`);
+  }
   try {
-    const ip = await egressIp(row?.config ?? null);
+    const ip = await egressIp(viaProxy(row.config));
     await markProxyOk(tenantId, ip, row);
     return ip;
   } catch (err) {
@@ -121,30 +147,33 @@ export async function markProxyFailing(tenantId: number, message: string): Promi
   );
   const row = await one<{ fail_streak: number }>("SELECT fail_streak FROM proxies WHERE tenant_id = ?", [tenantId]);
   if (res.affectedRows && row?.fail_streak === 1) {
-    await logEvent(tenantId, "error", "proxy", `Proxy failed, so nothing is being sent to OnBuy or Amazon: ${message.slice(0, 200)}`);
+    await logEvent(tenantId, "error", "proxy", `Proxy failed, so nothing is being sent to OnBuy: ${message.slice(0, 200)}`);
   }
 }
 
 /**
- * The proxy to use for a job, or null when traffic must not flow (none set,
- * unreadable, or failing and not yet recovered). Re-tests a failing or
- * untested proxy at most every few minutes.
+ * How this workspace's OnBuy requests leave the server: direct when no proxy
+ * is saved, through the proxy when it works, and not at all (route null) when
+ * a saved proxy is unreadable or failing. Re-tests a failing or untested
+ * proxy at most every few minutes.
  */
-export async function proxyForJob(tenantId: number): Promise<{ proxy: ProxyConfig | null; reason: string }> {
+export async function routeForTenant(tenantId: number): Promise<{ route: Route | null; reason: string }> {
   const row = await loadProxy(tenantId);
-  if (!row) return { proxy: null, reason: "No proxy set up" };
-  if (!row.config) return { proxy: null, reason: "Proxy details can't be read; enter them again" };
-  if (row.status === "ok") return { proxy: row.config, reason: "" };
+  if (!row) return { route: DIRECT, reason: "" };
+  if (!row.config) return { route: null, reason: "Proxy details can't be read; enter them again or remove the proxy" };
+  const problem = proxyProblem(row.config);
+  if (problem) return { route: null, reason: `Proxy details are invalid: ${problem}` };
+  if (row.status === "ok") return { route: viaProxy(row.config), reason: "" };
 
   const lastCheck = row.lastCheckedAt ? new Date(row.lastCheckedAt).getTime() : 0;
   if (row.status === "failing" && Date.now() - lastCheck < PROXY_RETEST_MS) {
-    return { proxy: null, reason: `Proxy failing: ${row.lastError ?? "unknown error"}` };
+    return { route: null, reason: `Proxy failing: ${row.lastError ?? "unknown error"}` };
   }
   try {
     await testProxy(tenantId);
-    return { proxy: row.config, reason: "" };
+    return { route: viaProxy(row.config), reason: "" };
   } catch (err) {
-    return { proxy: null, reason: `Proxy failing: ${(err as Error).message}` };
+    return { route: null, reason: `Proxy failing: ${(err as Error).message}` };
   }
 }
 

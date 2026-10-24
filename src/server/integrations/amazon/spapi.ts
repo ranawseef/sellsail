@@ -1,18 +1,17 @@
-// Amazon Selling Partner API (EU endpoint, UK marketplace). Every call,
-// including the Login with Amazon token exchange, goes through the tenant's
-// proxy via egressFetch.
+// Amazon Selling Partner API (EU endpoint, UK marketplace), on SellSail's own
+// app keys. Every call, including the Login with Amazon token refresh, goes
+// out through egressFetch on the route the caller names.
 //
 // SP-API calls need only an LWA access token in x-amz-access-token (no AWS
 // request signing since 2023). Checked against developer-docs.amazon on
 // 2026-10-24: POST /batches/products/pricing/v0/itemOffers takes up to 20
 // requests, usage plan 0.1 requests/second with a burst of 1.
 
-import { egressFetch, type EgressResponse, type ProxyConfig } from "../../net/egress.ts";
+import { egressFetch, type EgressResponse, type Route } from "../../net/egress.ts";
 import { AMAZON_UK_MARKETPLACE } from "./offers.ts";
 
 export const LWA_TOKEN_URL = "https://api.amazon.com/auth/o2/token";
 export const SPAPI_EU = "https://sellingpartnerapi-eu.amazon.com";
-export const SELLER_CENTRAL_UK = "https://sellercentral.amazon.co.uk";
 export const OFFERS_BATCH_MAX = 20;
 
 export type LwaClient = { clientId: string; clientSecret: string };
@@ -35,21 +34,8 @@ function errorText(res: EgressResponse): string {
   return `Amazon answered HTTP ${res.status}${msg ? `: ${msg.slice(0, 160)}` : ""}`;
 }
 
-/**
- * Seller Central page where the seller approves SellSail. Opened in the
- * seller's own browser, not fetched by the server. `beta` is for apps still
- * in draft (SPAPI_DRAFT_APP=1).
- */
-export function consentUrl(appId: string, state: string, draft: boolean): string {
-  const u = new URL("/apps/authorize/consent", SELLER_CENTRAL_UK);
-  u.searchParams.set("application_id", appId);
-  u.searchParams.set("state", state);
-  if (draft) u.searchParams.set("version", "beta");
-  return u.toString();
-}
-
-async function lwaToken(proxy: ProxyConfig | null, form: Record<string, string>): Promise<Record<string, unknown>> {
-  const res = await egressFetch(proxy, LWA_TOKEN_URL, {
+async function lwaToken(route: Route, form: Record<string, string>): Promise<Record<string, unknown>> {
+  const res = await egressFetch(route, LWA_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8", Accept: "application/json" },
     body: new URLSearchParams(form).toString(),
@@ -59,30 +45,8 @@ async function lwaToken(proxy: ProxyConfig | null, form: Record<string, string>)
   return res.json as Record<string, unknown>;
 }
 
-/** Swap the one-time code from the consent redirect for a refresh token. */
-export async function exchangeAuthCode(
-  proxy: ProxyConfig | null,
-  client: LwaClient,
-  code: string,
-  redirectUri: string,
-): Promise<string> {
-  const j = await lwaToken(proxy, {
-    grant_type: "authorization_code",
-    code,
-    redirect_uri: redirectUri,
-    client_id: client.clientId,
-    client_secret: client.clientSecret,
-  });
-  if (typeof j.refresh_token !== "string" || !j.refresh_token) throw new AmazonError("Amazon did not return a refresh token", 200);
-  return j.refresh_token;
-}
-
-export async function accessToken(
-  proxy: ProxyConfig | null,
-  client: LwaClient,
-  refreshToken: string,
-): Promise<{ accessToken: string; expiresAt: Date }> {
-  const j = await lwaToken(proxy, {
+export async function accessToken(route: Route, client: LwaClient, refreshToken: string): Promise<{ accessToken: string; expiresAt: Date }> {
+  const j = await lwaToken(route, {
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: client.clientId,
@@ -111,13 +75,13 @@ export function offersBatchBody(asins: readonly string[], marketplaceId = AMAZON
  * entry checked on its own (see readItemOfferResponse in offers.ts).
  */
 export async function itemOffersBatch(
-  proxy: ProxyConfig | null,
+  route: Route,
   token: string,
   asins: readonly string[],
   marketplaceId = AMAZON_UK_MARKETPLACE,
 ): Promise<EgressResponse> {
   if (asins.length === 0 || asins.length > OFFERS_BATCH_MAX) throw new Error(`itemOffers batch needs 1-${OFFERS_BATCH_MAX} ASINs`);
-  return egressFetch(proxy, `${SPAPI_EU}/batches/products/pricing/v0/itemOffers`, {
+  return egressFetch(route, `${SPAPI_EU}/batches/products/pricing/v0/itemOffers`, {
     method: "POST",
     headers: { "x-amz-access-token": token, "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(offersBatchBody(asins, marketplaceId)),

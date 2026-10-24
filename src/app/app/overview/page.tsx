@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireAuth } from "@/server/auth/context";
 import { changesByHour, getOverview, listJobs, recentEvents, recentRuns } from "@/server/repos/dashboard";
-import { listAmazonAccounts } from "@/server/connections/amazon";
+import { amazonPoolStatus } from "@/server/connections/amazon";
 import { getOnBuyAccount } from "@/server/connections/onbuy";
 import { getBands } from "@/server/repos/pricing";
 import { formatCount, timeAgo } from "@/lib/format";
@@ -25,30 +25,30 @@ function greeting(name: string) {
 export default async function OverviewPage() {
   const auth = await requireAuth();
   const t = auth.tenantId;
-  const [o, hours, jobs, runs, events, amazon, onbuy, bands] = await Promise.all([
+  const [o, hours, jobs, runs, events, pool, onbuy, bands] = await Promise.all([
     getOverview(t),
     changesByHour(t),
     listJobs(t),
     recentRuns(t, 8),
     recentEvents(t, 8),
-    listAmazonAccounts(t),
+    amazonPoolStatus(),
     getOnBuyAccount(t),
     getBands(t),
   ]);
 
   const reprice = jobs.filter((j) => j.kind === "reprice");
   const push = jobs.find((j) => j.kind === "push");
-  const connectedAmazon = amazon.filter((a) => a.status === "connected").length;
+  const amazonOn = pool.configured > 0;
   const stageState = (set: boolean, running: boolean, failing: boolean): Stage["state"] =>
     !set ? "off" : failing ? "attention" : running ? "working" : "ok";
 
   const stages: [Stage, Stage, Stage] = [
     {
       title: "Amazon",
-      state: stageState(amazon.length > 0, reprice.some((j) => j.running), amazon.length > 0 && connectedAmazon === 0 || reprice.some((j) => j.lastOk === false)),
+      state: stageState(amazonOn && o.products > 0, reprice.some((j) => j.running), amazonOn && (pool.healthy === 0 || reprice.some((j) => j.lastOk === false))),
       value: o.products - o.unpriced,
       unit: "priced",
-      detail: amazon.length ? `${connectedAmazon} of ${amazon.length} account${amazon.length === 1 ? "" : "s"} · last read ${timeAgo(o.lastRepriceAt)}` : "Connect an Amazon account",
+      detail: amazonOn ? `SellSail's connection · last read ${timeAgo(o.lastRepriceAt)}` : "Starting soon",
     },
     {
       title: "Pricing",
@@ -90,7 +90,7 @@ export default async function OverviewPage() {
               </span>
               <div>
                 <p className="font-display text-xl font-bold">Finish setting up</p>
-                <p className="text-sun-ink">Connect your proxy, OnBuy and Amazon, then import your listings.</p>
+                <p className="text-sun-ink">Connect OnBuy, check your margins, then import your listings.</p>
               </div>
             </div>
             <Link href="/app/onboarding" className={buttonVariants({ variant: "ink" })}>
@@ -161,7 +161,7 @@ export default async function OverviewPage() {
         <SectionCard title="Sources and marketplaces" intro="Where products come from and where they're sold.">
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: "Amazon", role: "Source", on: amazon.length > 0, note: amazon.length ? `${amazon.length} account${amazon.length === 1 ? "" : "s"}` : "Not connected" },
+              { name: "Amazon", role: "Source", on: amazonOn, note: amazonOn ? "Provided by SellSail" : "Starting soon", label: amazonOn ? "Included" : "Soon" },
               { name: "OnBuy", role: "Marketplace", on: Boolean(onbuy), note: onbuy ? `Key ${onbuy.keyHint}` : "Not connected" },
               { name: "AliExpress", role: "Source", soon: true, note: "Import and reprice from AliExpress" },
               { name: "eBay", role: "Marketplace", soon: true, note: "List and reprice on eBay" },
@@ -175,7 +175,7 @@ export default async function OverviewPage() {
                     </Badge>
                   ) : (
                     <Badge variant={c.on ? "mint" : "grey"} size="sm">
-                      {c.on ? "Connected" : "Off"}
+                      {"label" in c && c.label ? c.label : c.on ? "Connected" : "Off"}
                     </Badge>
                   )}
                 </div>

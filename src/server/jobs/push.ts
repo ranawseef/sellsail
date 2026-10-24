@@ -11,7 +11,7 @@ import { isAuthFailure, isMissingSkuError, splitPushResults } from "../integrati
 import { EgressBlockedError } from "../net/egress.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
-import { proxyForJob, reportProxyError } from "../connections/proxy.ts";
+import { routeForTenant, reportProxyError } from "../connections/proxy.ts";
 import { markOnBuyStatus, onbuyTokens } from "../connections/onbuy.ts";
 import { getSettings } from "../repos/pricing.ts";
 import { timeLeft, type JobCtx, type RunResult } from "./types.ts";
@@ -19,7 +19,7 @@ import { timeLeft, type JobCtx, type RunResult } from "./types.ts";
 export const BATCHES_PER_RUN = 5;
 
 /** The network edge of this job, swapped out in tests. */
-export const pushDeps = { proxyForJob, onbuyTokens, updateListingsBySku };
+export const pushDeps = { routeForTenant, onbuyTokens, updateListingsBySku };
 /** Listings with no fresh Amazon price for this long are taken out of stock. */
 export const STALE_HOURS = 24;
 
@@ -77,11 +77,11 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
   );
   if (Number(pendingAtStart?.n ?? 0) === 0) return { ok: true, msg: "Nothing to push", progress: { done: 0, total: 0, note: "" } };
 
-  const { proxy, reason } = await pushDeps.proxyForJob(tenantId);
-  if (!proxy) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 300 };
+  const { route, reason } = await pushDeps.routeForTenant(tenantId);
+  if (!route) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 300 };
 
   const settings = await getSettings(tenantId);
-  const tokens = pushDeps.onbuyTokens(tenantId, proxy);
+  const tokens = pushDeps.onbuyTokens(tenantId, route);
   let applied = 0;
   let rejected = 0;
   let archived = 0;
@@ -107,7 +107,7 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
 
     let res;
     try {
-      res = await pushDeps.updateListingsBySku(proxy, tokens, sent, settings.boostPct);
+      res = await pushDeps.updateListingsBySku(route, tokens, sent, settings.boostPct);
     } catch (err) {
       if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed mid-run; stopped", nextInS: 300 };
       if (err instanceof EgressBlockedError) return { ok: false, msg: err.message, nextInS: 300 };
@@ -122,7 +122,7 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
 
     if (isAuthFailure(res.status, res.json)) {
       // Still refused after one token renewal.
-      const msg = `OnBuy refused the update after a fresh login (${onbuyErrorText(res)}). Check the keys and that the proxy IP is stable.`;
+      const msg = `OnBuy refused the update after a fresh login (${onbuyErrorText(res)}). Check the keys, and if you use a proxy, that its IP is stable.`;
       await markOnBuyStatus(tenantId, false, msg);
       await logEvent(tenantId, "error", "onbuy", msg);
       return { ok: false, msg, nextInS: 900 };

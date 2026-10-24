@@ -1,22 +1,14 @@
 "use client";
 
-// Forms for the proxy, OnBuy and Amazon. Used by the onboarding wizard and
+// Forms for the optional proxy and OnBuy. Used by the onboarding wizard and
 // the Connections page. Secrets are never sent back to the browser: saved
 // values show as a masked hint, and an empty password box keeps the old one.
 
-import { useActionState, useId, useState } from "react";
-import { ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
+import { useActionState, useId } from "react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import { TextField, SelectField, CheckboxField } from "@/components/app/field";
 import { FormMessage, SubmitButton } from "@/components/app/form-bits";
-import {
-  addAmazonSelfAction,
-  connectOnBuyAction,
-  saveProxyAction,
-  startAmazonOAuthAction,
-  startImportAction,
-  uploadCsvAction,
-} from "@/server/actions/app";
-import { cn } from "@/lib/utils";
+import { connectOnBuyAction, saveProxyAction, startImportAction, uploadCsvAction } from "@/server/actions/app";
 
 function NextField({ next }: { next?: string }) {
   return next ? <input type="hidden" name="next" value={next} /> : null;
@@ -97,86 +89,6 @@ export function OnBuyForm({ keyHint, next, disabled }: { keyHint?: string; next?
         </div>
       </div>
     </form>
-  );
-}
-
-export function AmazonForms({ oauthAvailable, next, disabled }: { oauthAvailable: boolean; next?: string; disabled?: boolean }) {
-  const id = useId();
-  const [tab, setTab] = useState<"oauth" | "self">(oauthAvailable ? "oauth" : "self");
-  const [oauthState, oauthAction] = useActionState(startAmazonOAuthAction, undefined);
-  const [selfState, selfAction] = useActionState(addAmazonSelfAction, undefined);
-
-  const tabButton = (key: "oauth" | "self", label: string) => (
-    <button
-      type="button"
-      role="tab"
-      id={`${id}-tab-${key}`}
-      aria-selected={tab === key}
-      aria-controls={`${id}-panel-${key}`}
-      onClick={() => setTab(key)}
-      className={cn("min-h-11 rounded-full px-4 text-sm font-semibold transition-colors", tab === key ? "bg-ink text-white" : "text-ink hover:bg-mint")}
-    >
-      {label}
-    </button>
-  );
-
-  return (
-    <div>
-      <div role="tablist" aria-label="How to connect Amazon" className="inline-flex flex-wrap gap-1 rounded-full bg-mist p-1">
-        {tabButton("oauth", "Seller Central approval")}
-        {tabButton("self", "My own app keys")}
-      </div>
-
-      {tab === "oauth" && (
-        <div role="tabpanel" id={`${id}-panel-oauth`} aria-labelledby={`${id}-tab-oauth`} className="mt-5">
-          {oauthAvailable ? (
-            <form action={oauthAction} className="flex flex-col gap-4">
-              <NextField next={next} />
-              <TextField id={`${id}-label`} name="label" label="Name for this account" placeholder="Main Amazon account" maxLength={80} disabled={disabled} />
-              <FormMessage state={oauthState} />
-              <div className="flex flex-wrap items-center gap-3">
-                <SubmitButton variant="sea" pendingLabel="Opening Seller Central…" disabled={disabled}>
-                  Approve in Seller Central <ExternalLink aria-hidden="true" className="size-4" />
-                </SubmitButton>
-                <p className="text-[13px] text-muted">You&apos;ll sign in on Amazon and come straight back here.</p>
-              </div>
-            </form>
-          ) : (
-            <p className="rounded-xl bg-mist p-4 text-sm text-body">
-              Seller Central approval isn&apos;t switched on for this server yet. Use your own app keys for now.
-            </p>
-          )}
-        </div>
-      )}
-
-      {tab === "self" && (
-        <form action={selfAction} role="tabpanel" id={`${id}-panel-self`} aria-labelledby={`${id}-tab-self`} className="mt-5 grid gap-4 sm:grid-cols-2">
-          <NextField next={next} />
-          <TextField id={`${id}-slabel`} name="label" label="Name for this account" placeholder="Main Amazon account" maxLength={80} className="sm:col-span-2" disabled={disabled} />
-          <TextField id={`${id}-cid`} name="clientId" label="LWA client id" autoComplete="off" spellCheck={false} required disabled={disabled} />
-          <TextField id={`${id}-csecret`} name="clientSecret" type="password" label="LWA client secret" autoComplete="new-password" required disabled={disabled} />
-          <TextField
-            id={`${id}-refresh`}
-            name="refreshToken"
-            type="password"
-            label="Refresh token"
-            hint="From self-authorising your private app in Seller Central. The app needs the Pricing role."
-            autoComplete="new-password"
-            required
-            className="sm:col-span-2"
-            disabled={disabled}
-          />
-          <div className="flex flex-col gap-3 sm:col-span-2">
-            <FormMessage state={selfState} />
-            <div>
-              <SubmitButton variant="sea" pendingLabel="Checking with Amazon…" disabled={disabled}>
-                <KeyRound aria-hidden="true" className="size-4" /> Connect Amazon
-              </SubmitButton>
-            </div>
-          </div>
-        </form>
-      )}
-    </div>
   );
 }
 

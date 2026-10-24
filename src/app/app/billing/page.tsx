@@ -73,7 +73,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             )
           }
         >
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5">
             <div>
               <p className="flex justify-between text-sm">
                 <span className="font-semibold">Listings</span>
@@ -83,17 +83,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               </p>
               <div className="mt-2">
                 <ProgressBar value={use.skus} max={plan.maxSkus} label="Listings used" tone={use.skus >= plan.maxSkus ? "danger" : "sea"} />
-              </div>
-            </div>
-            <div>
-              <p className="flex justify-between text-sm">
-                <span className="font-semibold">Amazon accounts</span>
-                <span className="text-muted">
-                  {use.amazonAccounts} of {plan.maxAmazonAccounts}
-                </span>
-              </p>
-              <div className="mt-2">
-                <ProgressBar value={use.amazonAccounts} max={plan.maxAmazonAccounts} label="Amazon accounts used" tone={use.amazonAccounts >= plan.maxAmazonAccounts ? "sun" : "sea"} />
               </div>
             </div>
           </div>
@@ -123,7 +112,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
                   {[
                     `Up to ${formatCount(p.maxSkus)} listings`,
-                    `${p.maxAmazonAccounts} Amazon account${p.maxAmazonAccounts === 1 ? "" : "s"}`,
+                    "Amazon prices included, no keys needed",
                     `OnBuy updates every ${Math.round(p.pushIntervalS / 60)} minutes`,
                     "Fee-aware pricing, brakes and history",
                   ].map((f) => (

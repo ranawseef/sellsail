@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Build guard: every OnBuy / Amazon request must go through the tenant's proxy.
+// Build guard: every OnBuy / Amazon request must go through egressFetch(),
+// which sends it on an explicit route (a proxy, or direct) and never around a
+// proxy that was chosen.
 //
 // src/server/net/egress.ts is the only file allowed to open outbound HTTP
 // connections to marketplace APIs. This script fails (exit 1) when any other
@@ -72,7 +74,7 @@ for (const file of walk(srcDir)) {
 }
 
 if (problems.length) {
-  console.error("Egress guard failed. Marketplace requests must go through egressFetch() (tenant proxy):\n");
+  console.error("Egress guard failed. Marketplace requests must go through egressFetch():\n");
   for (const p of problems) console.error("  " + p);
   console.error(`\n${problems.length} problem(s). See src/server/net/egress.ts.`);
   process.exit(1);

@@ -5,6 +5,7 @@ import { ToolGrid } from "@/components/home/tool-grid";
 import { BuyBoxDive, FloorsDive, SyncDive } from "@/components/home/deep-dives";
 import { Comparison } from "@/components/home/comparison";
 import { CalculatorBand, HowItWorks, Included, PricingCards } from "@/components/home/misc";
+import { InsideLook } from "@/components/home/inside-look";
 import { homeFaq } from "@/content/faq";
 
 export default function HomePage() {
@@ -12,6 +13,7 @@ export default function HomePage() {
     <>
       <Hero />
       <TrustMarquee />
+      <InsideLook />
       <Sourcing />
 
       <section className="mx-auto max-w-[1200px] px-6 pb-10">

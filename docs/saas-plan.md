@@ -70,3 +70,22 @@ settings, billing; owner = all, including deleting the workspace.
 ## Later phases
 
 Orders and dispatch, profit reports from local snapshots (no live API paging), the Chrome "Order Agent" extension with a per-tenant key, eBay, AliExpress, and team invites.
+
+## Change (2026-10-25): SellSail's own Amazon keys, optional proxy
+
+- **Amazon:** sellers no longer connect Amazon. Prices are read with SellSail's
+  own SP-API key sets from env (`SPAPI_1_CLIENT_ID` / `_CLIENT_SECRET` /
+  `_REFRESH_TOKEN`, up to 20 sets). The sets form a pool shared by every
+  workspace (`amazon_apps` holds each set's token, call slot and health); each
+  reprice batch reserves the next free set. A set Amazon refuses sits out for
+  15 minutes. One reprice job per workspace (`target_id` 0). Optional
+  `SPAPI_PROXY` sends Amazon calls through one proxy. Migration 007 deleted any
+  seller-provided Amazon keys and the Seller Central OAuth route is gone.
+- **Proxy:** optional. No proxy means OnBuy calls go direct from the server.
+  A saved proxy is never bypassed: while it is unreadable or failing, nothing
+  is sent to OnBuy until it is fixed or removed (Connections → Remove).
+  `egressFetch` takes an explicit `Route` (`proxy` or `direct`), so no caller
+  can fall back to direct by passing null.
+- **Wizard:** three steps (OnBuy, Pricing, Import); the proxy is an optional
+  fold-out in the OnBuy step.
+- **Home page:** `InsideLook`, an animated dashboard preview with demo data.

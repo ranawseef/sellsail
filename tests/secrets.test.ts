@@ -30,7 +30,7 @@ test("a ciphertext moved to another tenant or column does not open", () => {
   const sealed = encryptJson({ host: "p.example", password: "pw" }, secretContext.proxy(1));
   assert.deepEqual(decryptJson(sealed, secretContext.proxy(1)), { host: "p.example", password: "pw" });
   assert.throws(() => decryptJson(sealed, secretContext.proxy(2)));
-  assert.throws(() => decryptJson(sealed, secretContext.sourceCredentials(1, 1)));
+  assert.throws(() => decryptJson(sealed, secretContext.marketplaceCredentials(1, "onbuy")));
 });
 
 test("tampering is detected", () => {

@@ -1,18 +1,23 @@
-// Reprice: read Amazon offers for one Amazon account's share of products and
-// set each listing's price and stock.
+// Reprice: read Amazon offers for a workspace's products and set each
+// listing's price and stock.
 //
-// Up to 10 batches of 20 ASINs per run, oldest-priced first. Amazon allows
-// this endpoint 0.1 requests/second per account, so batches are paced by
-// source_accounts.next_allowed_at: a slot is reserved with one conditional
-// UPDATE, which also keeps two workers from sharing an account's budget.
+// Up to 10 batches of 20 ASINs per run, oldest-priced first. The Amazon calls
+// use SellSail's own app keys (connections/amazon.ts), shared by every
+// workspace: each batch reserves whichever app is free next, so workspaces
+// take turns on the pool and no seller needs Amazon keys of their own.
 
 import { readItemOfferResponse, type ItemOfferResult } from "../integrations/amazon/offers.ts";
 import { AmazonError, batchResponses, itemOffersBatch, OFFERS_BATCH_MAX } from "../integrations/amazon/spapi.ts";
-import { EgressBlockedError } from "../net/egress.ts";
-import { exec, one, q, tx } from "../db/pool.ts";
-import { logEvent } from "../audit.ts";
-import { proxyForJob, reportProxyError } from "../connections/proxy.ts";
-import { amazonAccessToken, markAmazonStatus } from "../connections/amazon.ts";
+import { EgressBlockedError, ProxyFailureError } from "../net/egress.ts";
+import { one, q, tx } from "../db/pool.ts";
+import {
+  amazonAppToken,
+  amazonRoute,
+  backOffAmazonApp,
+  configuredApps,
+  markAmazonApp,
+  reserveAmazonApp,
+} from "../connections/amazon.ts";
 import { getRepriceConfig } from "../repos/pricing.ts";
 import { batchLooksBroken, decide, listingChanged, type ProductState } from "./decide.ts";
 import { timeLeft, type JobCtx, type RunResult } from "./types.ts";
@@ -20,57 +25,20 @@ import { timeLeft, type JobCtx, type RunResult } from "./types.ts";
 export const BATCHES_PER_RUN = 10;
 
 /** The network edge of this job, swapped out in tests. */
-export const repriceDeps = { proxyForJob, amazonAccessToken, itemOffersBatch };
+export const repriceDeps = { reserveAmazonApp, amazonAppToken, itemOffersBatch, amazonRoute, configuredApps, markAmazonApp, backOffAmazonApp };
 /** A product is not re-read sooner than this after its last price. */
 export const MIN_REPRICE_AGE_S = 10 * 60;
 
 type Product = { id: number; source_ref: string; source_price: number | null; price: number | null; stock: number | null; source_fails: number };
 
-/** Waits for, and reserves, this account's next Amazon call. False if the deadline comes first. */
-async function reserveSlot(ctx: JobCtx, accountId: number): Promise<boolean> {
-  for (;;) {
-    const res = await exec(
-      `UPDATE source_accounts SET next_allowed_at = NOW(3) + INTERVAL (rate_interval_ms * 1000) MICROSECOND
-        WHERE id = ? AND tenant_id = ? AND next_allowed_at <= NOW(3)`,
-      [accountId, ctx.tenantId],
-    );
-    if (res.affectedRows === 1) return true;
-    const row = await one<{ wait_ms: number }>(
-      "SELECT GREATEST(0, TIMESTAMPDIFF(MICROSECOND, NOW(3), next_allowed_at) / 1000) AS wait_ms FROM source_accounts WHERE id = ? AND tenant_id = ?",
-      [accountId, ctx.tenantId],
-    );
-    const wait = Math.min(Number(row?.wait_ms ?? 1000) + 50, 15_000);
-    if (timeLeft(ctx) < wait + 20_000) return false;
-    await ctx.sleep(wait);
-  }
-}
-
-async function pushBack(accountId: number, tenantId: number, seconds: number): Promise<void> {
-  await exec("UPDATE source_accounts SET next_allowed_at = NOW(3) + INTERVAL ? SECOND WHERE id = ? AND tenant_id = ?", [seconds, accountId, tenantId]);
-}
-
 export async function runReprice(ctx: JobCtx): Promise<RunResult> {
-  const { tenantId, targetId: accountId } = ctx;
-  const account = await one<{ status: string }>("SELECT status FROM source_accounts WHERE id = ? AND tenant_id = ? AND source = 'amazon'", [
-    accountId,
-    tenantId,
-  ]);
-  if (!account) return { ok: false, msg: "Amazon account was removed", disable: true };
+  const { tenantId } = ctx;
 
-  const { proxy, reason } = await repriceDeps.proxyForJob(tenantId);
-  if (!proxy) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 300 };
-
-  // An account in error has no products assigned; check whether it recovered.
-  if (account.status !== "connected") {
-    try {
-      await repriceDeps.amazonAccessToken(tenantId, accountId, proxy, true);
-      await markAmazonStatus(tenantId, accountId, true);
-      await logEvent(tenantId, "info", "amazon", "Amazon account is working again.");
-    } catch (err) {
-      if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed", nextInS: 300 };
-      return { ok: false, msg: `Amazon login still failing: ${(err as Error).message}`, nextInS: 900 };
-    }
+  if (repriceDeps.configuredApps().length === 0) {
+    return { ok: false, msg: "Amazon pricing isn't switched on yet (SellSail's Amazon keys are not set up)", nextInS: 900 };
   }
+  const { route, reason } = repriceDeps.amazonRoute();
+  if (!route) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 900 };
 
   const cfg = await getRepriceConfig(tenantId);
   let read = 0;
@@ -78,7 +46,6 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
   let oos = 0;
   let retry = 0;
   let batches = 0;
-  let authRetried = false;
   const tried = new Set<string>();
 
   while (batches < BATCHES_PER_RUN && timeLeft(ctx) > 25_000) {
@@ -89,51 +56,58 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
     // than using up its three strikes in a few seconds.
     const candidates = await q<{ source_ref: string }>(
       `SELECT source_ref FROM products
-        WHERE tenant_id = ? AND source_account_id = ? AND source = 'amazon' AND priced_at < NOW(3) - INTERVAL ? SECOND
+        WHERE tenant_id = ? AND source = 'amazon' AND priced_at < NOW(3) - INTERVAL ? SECOND
           ${tried.size ? "AND source_ref NOT IN (?)" : ""}
         ORDER BY priced_at LIMIT 100`,
-      tried.size ? [tenantId, accountId, MIN_REPRICE_AGE_S, [...tried]] : [tenantId, accountId, MIN_REPRICE_AGE_S],
+      tried.size ? [tenantId, MIN_REPRICE_AGE_S, [...tried]] : [tenantId, MIN_REPRICE_AGE_S],
     );
     const asins = [...new Set(candidates.map((c) => c.source_ref))].slice(0, OFFERS_BATCH_MAX);
     if (asins.length === 0) break;
     for (const a of asins) tried.add(a);
 
-    if (!(await reserveSlot(ctx, accountId))) break;
+    // Wait for a free app only briefly: when every app is backing off after an
+    // error, give the worker back instead of sleeping through the run.
+    const app = await repriceDeps.reserveAmazonApp(
+      (wait) => wait <= 30_000 && timeLeft(ctx) > wait + 20_000,
+      (ms) => ctx.sleep(ms),
+    );
+    if (!app) break; // no app free soon enough: the next run carries on
     batches++;
 
-    let token: string;
     let res;
     try {
-      token = await repriceDeps.amazonAccessToken(tenantId, accountId, proxy);
-      res = await repriceDeps.itemOffersBatch(proxy, token, asins);
-      if ((res.status === 401 || res.status === 403) && !authRetried) {
-        authRetried = true;
-        token = await repriceDeps.amazonAccessToken(tenantId, accountId, proxy, true);
-        if (!(await reserveSlot(ctx, accountId))) break;
-        res = await repriceDeps.itemOffersBatch(proxy, token, asins);
+      let token = await repriceDeps.amazonAppToken(app, route);
+      res = await repriceDeps.itemOffersBatch(route, token, asins);
+      if (res.status === 401 || res.status === 403) {
+        // Possibly a stale token: renew once and repeat on the same reserved slot.
+        token = await repriceDeps.amazonAppToken(app, route, true);
+        res = await repriceDeps.itemOffersBatch(route, token, asins);
       }
     } catch (err) {
-      if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed mid-run; stopped", nextInS: 300 };
-      if (err instanceof EgressBlockedError) return { ok: false, msg: err.message, nextInS: 300 };
-      if (!(err instanceof AmazonError) || ![400, 401, 403].includes(err.status)) {
-        return { ok: false, msg: `Amazon call failed: ${(err as Error).message}`, nextInS: 120 };
+      if (err instanceof EgressBlockedError || err instanceof ProxyFailureError) {
+        return { ok: false, msg: `Amazon call not sent: ${(err as Error).message}`, nextInS: 300 };
       }
-      // Token refresh refused: the refresh token was revoked or the app removed.
-      await markAmazonStatus(tenantId, accountId, false, (err as Error).message);
-      await logEvent(tenantId, "error", "amazon", `Amazon login failed: ${(err as Error).message}`);
-      return { ok: false, msg: (err as Error).message, nextInS: 900 };
+      if (err instanceof AmazonError && [400, 401, 403].includes(err.status)) {
+        // The token refresh was refused, so this key set is broken. It sits
+        // out for a while and the run carries on with the other apps.
+        await repriceDeps.markAmazonApp(app.slot, false, err.message);
+        for (const a of asins) tried.delete(a);
+        continue;
+      }
+      return { ok: false, msg: `Amazon call failed: ${(err as Error).message}`, nextInS: 120 };
     }
 
     if (res.status === 401 || res.status === 403) {
-      const msg = `Amazon refused the pricing call (HTTP ${res.status}). Reconnect the account or check the app's Pricing role.`;
-      await markAmazonStatus(tenantId, accountId, false, msg);
-      await logEvent(tenantId, "error", "amazon", msg);
-      return { ok: false, msg, nextInS: 900 };
+      await repriceDeps.markAmazonApp(app.slot, false, `Pricing call refused (HTTP ${res.status}); the app needs the Pricing role`);
+      for (const a of asins) tried.delete(a);
+      continue;
     }
     if (res.status === 429) {
-      await pushBack(accountId, tenantId, 60);
-      break;
+      await repriceDeps.backOffAmazonApp(app.slot, 60);
+      for (const a of asins) tried.delete(a); // not read: try them again on another app
+      continue;
     }
+    if (res.status === 200) await repriceDeps.markAmazonApp(app.slot, true);
 
     const results = new Map<string, ItemOfferResult>();
     const list = res.status === 200 ? batchResponses(res) : null;
@@ -144,8 +118,8 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
 
     const products = await q<Product>(
       `SELECT id, source_ref, source_price, price, stock, source_fails FROM products
-        WHERE tenant_id = ? AND source_account_id = ? AND source_ref IN (?)`,
-      [tenantId, accountId, asins],
+        WHERE tenant_id = ? AND source = 'amazon' AND source_ref IN (?)`,
+      [tenantId, asins],
     );
     const ordered = asins.map((a) => results.get(a.toUpperCase()));
     const inStock = asins.map((a) => products.some((p) => p.source_ref === a && (p.stock ?? 0) > 0));
@@ -187,22 +161,25 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
     if (!(await ctx.heartbeat())) break;
   }
 
-  if (batches > 0) await markAmazonStatus(tenantId, accountId, true);
   // Backlog of never-failed items only: items waiting on a retry come back at
   // the normal interval, not seconds later.
   const pending = await one<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM products WHERE tenant_id = ? AND source_account_id = ? AND source_fails = 0 AND priced_at < NOW(3) - INTERVAL ? SECOND",
-    [tenantId, accountId, MIN_REPRICE_AGE_S],
+    "SELECT COUNT(*) AS n FROM products WHERE tenant_id = ? AND source = 'amazon' AND source_fails = 0 AND priced_at < NOW(3) - INTERVAL ? SECOND",
+    [tenantId, MIN_REPRICE_AGE_S],
   );
+  const backlog = Number(pending?.n ?? 0);
   const msg =
     read === 0
-      ? "Nothing due for repricing"
+      ? batches > 0 || backlog > 0
+        ? "Waiting for Amazon; trying again shortly"
+        : "Nothing due for repricing"
       : `Read ${read} listing${read === 1 ? "" : "s"}: ${changed} changed, ${oos} out of stock${retry ? `, ${retry} to retry` : ""}`;
   return {
-    ok: true,
+    ok: read > 0 || backlog === 0,
     msg,
-    // Keep going straight away while there is a backlog.
-    nextInS: Number(pending?.n ?? 0) > 0 ? 5 : undefined,
-    progress: { done: read, total: read + Number(pending?.n ?? 0), note: `${batches} batch${batches === 1 ? "" : "es"}` },
+    // Keep going straight away while there is a backlog and Amazon is
+    // answering; otherwise wait a minute rather than spin.
+    nextInS: backlog > 0 ? (read > 0 ? 5 : 60) : undefined,
+    progress: { done: read, total: read + backlog, note: `${batches} batch${batches === 1 ? "" : "es"}` },
   };
 }

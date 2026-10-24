@@ -93,9 +93,8 @@ export async function listJobs(tenantId: number): Promise<JobRow[]> {
   const rows = await q<Record<string, unknown>>(
     `SELECT j.id, j.kind, j.target_id, j.enabled, (j.lease_until IS NOT NULL AND j.lease_until > NOW(3)) AS running, j.run_now,
             j.next_run_at, j.last_started_at, j.last_finished_at, j.last_ok, j.last_msg, j.prog_done, j.prog_total, j.prog_note, j.runs,
-            COALESCE(s.label, IF(j.kind = 'reprice', 'Amazon account', 'OnBuy')) AS target_label
+            IF(j.kind = 'reprice', 'Amazon prices', 'OnBuy') AS target_label
        FROM jobs j
-       LEFT JOIN source_accounts s ON j.kind = 'reprice' AND s.id = j.target_id AND s.tenant_id = j.tenant_id
       WHERE j.tenant_id = ?
       ORDER BY FIELD(j.kind, 'import', 'reprice', 'push'), j.id`,
     [tenantId],
@@ -242,8 +241,9 @@ export async function listArchived(tenantId: number, limit = 100) {
 export type OnboardingState = {
   proxyOk: boolean;
   proxySaved: boolean;
+  /** A saved proxy that isn't working blocks OnBuy traffic until fixed or removed. */
+  proxyBlocking: boolean;
   onbuyConnected: boolean;
-  amazonAccounts: number;
   pricingReviewed: boolean;
   products: number;
   importRunning: boolean;
@@ -255,7 +255,6 @@ export async function getOnboardingState(tenantId: number): Promise<OnboardingSt
     `SELECT
        (SELECT status FROM proxies WHERE tenant_id = t.id) AS proxy_status,
        (SELECT status FROM marketplace_accounts WHERE tenant_id = t.id AND marketplace = 'onbuy') AS onbuy_status,
-       (SELECT COUNT(*) FROM source_accounts WHERE tenant_id = t.id AND source = 'amazon') AS amazon,
        (SELECT COUNT(*) FROM products WHERE tenant_id = t.id) AS products,
        (SELECT COUNT(*) FROM jobs WHERE tenant_id = t.id AND kind = 'import' AND enabled = 1) AS import_running,
        t.pricing_reviewed_at, t.onboarded_at
@@ -265,8 +264,8 @@ export async function getOnboardingState(tenantId: number): Promise<OnboardingSt
   return {
     proxyOk: r?.proxy_status === "ok",
     proxySaved: Boolean(r?.proxy_status),
+    proxyBlocking: Boolean(r?.proxy_status) && r?.proxy_status !== "ok",
     onbuyConnected: r?.onbuy_status === "connected",
-    amazonAccounts: Number(r?.amazon ?? 0),
     pricingReviewed: Boolean(r?.pricing_reviewed_at),
     products: Number(r?.products ?? 0),
     importRunning: Number(r?.import_running ?? 0) > 0,
@@ -274,11 +273,7 @@ export async function getOnboardingState(tenantId: number): Promise<OnboardingSt
   };
 }
 
-export async function usage(tenantId: number): Promise<{ skus: number; amazonAccounts: number }> {
-  const r = await one<{ skus: number; amazon: number }>(
-    `SELECT (SELECT COUNT(*) FROM products WHERE tenant_id = ?) AS skus,
-            (SELECT COUNT(*) FROM source_accounts WHERE tenant_id = ? AND source = 'amazon') AS amazon`,
-    [tenantId, tenantId],
-  );
-  return { skus: Number(r?.skus ?? 0), amazonAccounts: Number(r?.amazon ?? 0) };
+export async function usage(tenantId: number): Promise<{ skus: number }> {
+  const r = await one<{ skus: number }>("SELECT COUNT(*) AS skus FROM products WHERE tenant_id = ?", [tenantId]);
+  return { skus: Number(r?.skus ?? 0) };
 }

@@ -1,9 +1,25 @@
 // Creating and nudging scheduled jobs. One row per (workspace, kind, target):
-//   reprice  target = source_accounts.id       (one per Amazon account/shard)
+//   reprice  target = 0                        (one per workspace; SellSail's Amazon keys)
 //   push     target = marketplace_accounts.id  (one per OnBuy account)
 //   import   target = marketplace_accounts.id  (runs once when asked)
 
-import { exec, one, type Tx } from "../db/pool.ts";
+import { exec, type Tx } from "../db/pool.ts";
+
+/** The reprice job's target id: it isn't tied to any seller account. */
+export const REPRICE_TARGET = 0;
+
+/**
+ * Makes sure the workspace has its reprice job, without touching it if it
+ * exists (so a seller who switched repricing off keeps it off).
+ */
+export async function ensureRepriceJob(tenantId: number, t?: Tx): Promise<void> {
+  const run = t ? t.exec.bind(t) : exec;
+  await run(
+    `INSERT IGNORE INTO jobs (tenant_id, kind, target_id, enabled, interval_s, next_run_at)
+     VALUES (?, 'reprice', ?, 1, ?, NOW(3))`,
+    [tenantId, REPRICE_TARGET, DEFAULT_INTERVALS.reprice],
+  );
+}
 
 export type JobKind = "reprice" | "push" | "import";
 
@@ -51,30 +67,4 @@ export async function setJobsEnabled(tenantId: number, kind: JobKind, enabled: b
 
 export async function deleteJobs(tenantId: number, kind: JobKind, targetId: number): Promise<void> {
   await exec("DELETE FROM jobs WHERE tenant_id = ? AND kind = ? AND target_id = ?", [tenantId, kind, targetId]);
-}
-
-/**
- * Spread the workspace's Amazon-sourced products over its connected Amazon
- * accounts so each account's rate budget reprices its own share. Products are
- * split by id, so the same product stays on the same account between runs.
- */
-export async function rebalanceShards(tenantId: number): Promise<void> {
-  const accounts = await one<{ ids: string | null }>(
-    `SELECT GROUP_CONCAT(id ORDER BY id) AS ids FROM source_accounts
-      WHERE tenant_id = ? AND source = 'amazon' AND status = 'connected'`,
-    [tenantId],
-  );
-  const ids = (accounts?.ids ?? "").split(",").filter(Boolean).map(Number);
-  if (ids.length === 0) {
-    await exec("UPDATE products SET source_account_id = NULL WHERE tenant_id = ? AND source = 'amazon'", [tenantId]);
-    return;
-  }
-  // ELT(1 + id mod n, a, b, c) picks the n-th account id; ids are integers we
-  // read from the database, passed as placeholders.
-  const placeholders = ids.map(() => "?").join(", ");
-  await exec(
-    `UPDATE products SET source_account_id = ELT(1 + MOD(id, ?), ${placeholders})
-      WHERE tenant_id = ? AND source = 'amazon'`,
-    [ids.length, ...ids, tenantId],
-  );
 }

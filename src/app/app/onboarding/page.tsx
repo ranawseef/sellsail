@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Globe, KeyRound, PackageOpen, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Globe, KeyRound, PackageOpen, SlidersHorizontal, Sparkles } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { ProgressBar, Rise } from "@/components/app/motion";
-import { AmazonForms, CsvImportForm, OnBuyForm, OnBuyImportForm, ProxyForm } from "@/components/app/connection-forms";
+import { CsvImportForm, OnBuyForm, OnBuyImportForm, ProxyForm } from "@/components/app/connection-forms";
+import { ActionButton } from "@/components/app/action-button";
 import { BandsEditor } from "@/components/app/pricing-forms";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { requireAuth } from "@/server/auth/context";
 import { getOnboardingState, listJobs } from "@/server/repos/dashboard";
 import { loadProxy } from "@/server/connections/proxy";
 import { getOnBuyAccount } from "@/server/connections/onbuy";
-import { appClient, listAmazonAccounts } from "@/server/connections/amazon";
 import { getBands, getSettings } from "@/server/repos/pricing";
-import { finishOnboardingAction } from "@/server/actions/app";
+import { finishOnboardingAction, removeProxyAction } from "@/server/actions/app";
 import { WIZARD_STEPS, type WizardStep } from "@/server/onboarding";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,43 +21,26 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Set up" };
 
 const STEPS: Record<WizardStep, { title: string; short: string; icon: typeof Globe }> = {
-  proxy: { title: "Your proxy", short: "Proxy", icon: Globe },
   onbuy: { title: "Connect OnBuy", short: "OnBuy", icon: KeyRound },
-  amazon: { title: "Connect Amazon", short: "Amazon", icon: ShoppingCart },
   pricing: { title: "Your margins", short: "Pricing", icon: SlidersHorizontal },
   import: { title: "Bring in your listings", short: "Import", icon: PackageOpen },
 };
 
 const step = (s: WizardStep) => `/app/onboarding?step=${s}`;
 
-function AmazonReturn({ result }: { result?: string }) {
-  if (!result) return null;
-  const text =
-    result === "connected"
-      ? "Amazon account connected."
-      : result === "cancelled"
-        ? "Amazon approval was cancelled. Try again when you're ready."
-        : "Connecting Amazon didn't work. The reason is in your activity feed on the Overview page.";
-  return (
-    <p role={result === "connected" ? "status" : "alert"} className={cn("mb-5 rounded-xl p-3 text-sm font-semibold", result === "connected" ? "bg-mint text-sea-dark" : "bg-danger-soft text-danger")}>
-      {text}
-    </p>
-  );
-}
-
-export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string; amazon?: string }> }) {
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
   const state = await getOnboardingState(auth.tenantId);
   const done: Record<WizardStep, boolean> = {
-    proxy: state.proxyOk,
     onbuy: state.onbuyConnected,
-    amazon: state.amazonAccounts > 0,
     pricing: state.pricingReviewed,
     import: state.products > 0,
   };
   const firstOpen = WIZARD_STEPS.find((s) => !done[s]) ?? "import";
-  const current: WizardStep = (WIZARD_STEPS as readonly string[]).includes(sp.step ?? "") ? (sp.step as WizardStep) : firstOpen;
+  // Old links to the removed proxy and Amazon steps land on the OnBuy step.
+  const asked = sp.step === "proxy" || sp.step === "amazon" ? "onbuy" : sp.step;
+  const current: WizardStep = (WIZARD_STEPS as readonly string[]).includes(asked ?? "") ? (asked as WizardStep) : firstOpen;
   const completed = WIZARD_STEPS.filter((s) => done[s]).length;
   const canEdit = auth.role !== "member";
   const nextOf = (s: WizardStep) => {
@@ -65,23 +48,23 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     return i < WIZARD_STEPS.length - 1 ? step(WIZARD_STEPS[i + 1]) : undefined;
   };
 
-  const [proxy, onbuy, amazon, bands, settings, jobs] = await Promise.all([
+  const [proxy, onbuy, bands, settings, jobs] = await Promise.all([
     loadProxy(auth.tenantId),
     getOnBuyAccount(auth.tenantId),
-    listAmazonAccounts(auth.tenantId),
     getBands(auth.tenantId),
     getSettings(auth.tenantId),
     listJobs(auth.tenantId),
   ]);
   const importJob = jobs.find((j) => j.kind === "import");
   const meta = STEPS[current];
+  const ready = done.onbuy && !state.proxyBlocking;
 
   return (
     <>
       <PageHeader
         eyebrow="Setup"
         title="Get SellSail repricing"
-        intro="Five short steps. Every OnBuy and Amazon request goes through your own proxy, so we start there."
+        intro="Three short steps. Amazon prices come from SellSail's own connection, so there's nothing to set up on the Amazon side."
       />
       <div className="max-w-md">
         <ProgressBar value={completed} max={WIZARD_STEPS.length} label="Setup progress" />
@@ -125,6 +108,10 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               );
             })}
           </ol>
+          <p className="mt-4 hidden items-start gap-2 rounded-2xl bg-mint p-3 text-[13px] text-sea-dark lg:flex">
+            <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            Amazon prices are read with SellSail&apos;s own Amazon connection. No Amazon keys needed.
+          </p>
         </nav>
 
         <Rise key={current}>
@@ -136,70 +123,66 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               </span>
             }
             intro={
-              current === "proxy"
-                ? "Several sellers share SellSail's servers. Sending your requests from your own proxy keeps your OnBuy and Amazon accounts from ever appearing linked to anyone else's. Without a working proxy, nothing is sent at all."
-                : current === "onbuy"
-                  ? "Your OnBuy API keys let SellSail read your listings and update their prices and stock. They're stored encrypted and only used through your proxy."
-                  : current === "amazon"
-                    ? "SellSail reads Amazon's offers for each ASIN to find the price you'd pay. Add more than one account later to reprice a big catalogue faster."
-                    : current === "pricing"
-                      ? "Margins by Amazon price. These are our suggested starting points: check them against your own costs before anything is priced."
-                      : "Import your current OnBuy listings, or upload a CSV of SKUs. SellSail then prices them from Amazon and keeps OnBuy in step."
+              current === "onbuy"
+                ? "Your OnBuy API keys let SellSail read your listings and update their prices and stock. They're stored encrypted."
+                : current === "pricing"
+                  ? "Margins by Amazon price. These are our suggested starting points: check them against your own costs before anything is priced."
+                  : "Import your current OnBuy listings, or upload a CSV of SKUs. SellSail then prices them from Amazon and keeps OnBuy in step."
             }
           >
-            {current === "proxy" && (
-              <>
-                {proxy?.status === "ok" && (
-                  <p role="status" className="mb-5 rounded-xl bg-mint p-3 text-sm font-semibold text-sea-dark">
-                    Working. OnBuy and Amazon see the IP address {proxy.egressIp}.{" "}
-                    <Link href={step("onbuy")} className="underline underline-offset-4">
-                      Continue to OnBuy
-                    </Link>
-                  </p>
-                )}
-                {canEdit ? <ProxyForm hostHint={proxy?.hostHint} savedType={proxy?.config?.type} savedPort={proxy?.config?.port} next={nextOf("proxy")} /> : <p className="text-body">Ask a workspace admin to set up the proxy.</p>}
-              </>
-            )}
-
             {current === "onbuy" && (
               <>
-                {!state.proxyOk && <NeedsProxy />}
+                {state.proxyBlocking && (
+                  <p role="alert" className="mb-5 rounded-xl bg-danger-soft p-3 text-sm font-semibold text-danger">
+                    Your proxy isn&apos;t working, so nothing can be sent to OnBuy. Fix it below, or remove it to connect directly.
+                  </p>
+                )}
                 {onbuy?.status === "connected" && (
                   <p role="status" className="mb-5 rounded-xl bg-mint p-3 text-sm font-semibold text-sea-dark">
                     Connected with consumer key {onbuy.keyHint}.{" "}
-                    <Link href={step("amazon")} className="underline underline-offset-4">
-                      Continue to Amazon
-                    </Link>
-                  </p>
-                )}
-                {canEdit && <OnBuyForm keyHint={onbuy?.keyHint} next={nextOf("onbuy")} disabled={!state.proxyOk} />}
-              </>
-            )}
-
-            {current === "amazon" && (
-              <>
-                <AmazonReturn result={sp.amazon} />
-                {!state.proxyOk && <NeedsProxy />}
-                {amazon.length > 0 && (
-                  <ul className="mb-5 flex flex-col gap-2">
-                    {amazon.map((a) => (
-                      <li key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-mist px-4 py-3">
-                        <span className="font-semibold">{a.label}</span>
-                        <Badge variant={a.status === "connected" ? "mint" : "danger"} size="sm">
-                          {a.status === "connected" ? "Connected" : "Needs attention"}
-                        </Badge>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {amazon.length > 0 && (
-                  <p className="mb-5 text-sm">
-                    <Link href={step("pricing")} className={buttonVariants({ variant: "ink", size: "sm" })}>
+                    <Link href={step("pricing")} className="underline underline-offset-4">
                       Continue to pricing
                     </Link>
                   </p>
                 )}
-                {canEdit && <AmazonForms oauthAvailable={Boolean(appClient())} next={nextOf("amazon")} disabled={!state.proxyOk} />}
+                {canEdit ? (
+                  <OnBuyForm keyHint={onbuy?.keyHint} next={nextOf("onbuy")} disabled={state.proxyBlocking} />
+                ) : (
+                  <p className="text-body">Ask a workspace admin to connect OnBuy.</p>
+                )}
+
+                {canEdit && (
+                  <details className="group mt-8 rounded-2xl border border-line bg-paper/60" open={state.proxySaved}>
+                    <summary className="flex min-h-12 items-center gap-3 px-4 py-3 font-semibold">
+                      <Globe aria-hidden="true" className="size-4 text-sea" />
+                      Use your own proxy
+                      <Badge variant="grey" size="sm">Optional</Badge>
+                      {proxy?.status === "ok" && <Badge variant="mint" size="sm">Working</Badge>}
+                      {state.proxyBlocking && <Badge variant="danger" size="sm">Not working</Badge>}
+                      <ChevronDown aria-hidden="true" className="ml-auto size-4 text-muted transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="border-t border-line p-4">
+                      <p className="mb-4 text-sm text-body">
+                        By default OnBuy requests go straight from SellSail. If you run several OnBuy accounts or want OnBuy to see your own
+                        fixed IP address, send them through your own static-IP proxy instead. Once a proxy is saved, SellSail never goes
+                        around it: if it stops working, syncing pauses until it&apos;s fixed or removed.
+                      </p>
+                      {proxy?.status === "ok" && (
+                        <p role="status" className="mb-4 rounded-xl bg-mint p-3 text-sm font-semibold text-sea-dark">
+                          Working. OnBuy sees the IP address {proxy.egressIp}.
+                        </p>
+                      )}
+                      <ProxyForm hostHint={proxy?.hostHint} savedType={proxy?.config?.type} savedPort={proxy?.config?.port} next={step("onbuy")} />
+                      {state.proxySaved && (
+                        <div className="mt-4 border-t border-line pt-4">
+                          <ActionButton action={removeProxyAction} pendingLabel="Removing…" confirm="Remove the proxy? OnBuy requests will go direct from SellSail.">
+                            Remove proxy and connect directly
+                          </ActionButton>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
               </>
             )}
 
@@ -232,10 +215,10 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                 <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-mint p-5 md:col-span-2">
                   <p className="font-semibold text-sea-dark">
                     {state.products > 0 ? `${formatCount(state.products)} listing${state.products === 1 ? "" : "s"} ready.` : "No listings yet."}{" "}
-                    {state.products > 0 && !(done.proxy && done.onbuy && done.amazon) && "Finish the earlier steps so they can be priced."}
+                    {state.products > 0 && !ready && "Connect OnBuy first so they can be kept in step."}
                   </p>
                   <form action={finishOnboardingAction}>
-                    <Button type="submit" variant="ink" disabled={!canEdit || state.products === 0 || !(done.proxy && done.onbuy && done.amazon)}>
+                    <Button type="submit" variant="ink" disabled={!canEdit || state.products === 0 || !ready}>
                       Start repricing <span aria-hidden="true">→</span>
                     </Button>
                   </form>
@@ -246,16 +229,5 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         </Rise>
       </div>
     </>
-  );
-}
-
-function NeedsProxy() {
-  return (
-    <p role="status" className="mb-5 rounded-xl bg-sun-soft p-3 text-sm font-semibold text-sun-ink">
-      Set up a working proxy first: this step talks to the marketplace through it.{" "}
-      <Link href={step("proxy")} className="underline underline-offset-4">
-        Go to the proxy step
-      </Link>
-    </p>
   );
 }

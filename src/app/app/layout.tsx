@@ -88,14 +88,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Banner
         key="proxy"
         tone="danger"
-        title="Your proxy isn't working, so nothing is being sent"
+        title="Your proxy isn't working, so nothing is being sent to OnBuy"
         action={
           <Link href="/app/connections#proxy" className={buttonVariants({ variant: "ink", size: "sm" })}>
             Check the proxy
           </Link>
         }
       >
-        {proxy.lastError ?? "The last check failed."} We test it again every few minutes.
+        {proxy.lastError ?? "The last check failed."} We test it again every few minutes. Or remove the proxy to send directly.
       </Banner>,
     );
   }

@@ -11,15 +11,15 @@ import { skuImportReason, skuToAsin } from "../../lib/sku.ts";
 import { EgressBlockedError } from "../net/egress.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
-import { proxyForJob, reportProxyError } from "../connections/proxy.ts";
+import { routeForTenant, reportProxyError } from "../connections/proxy.ts";
 import { markOnBuyStatus, onbuyTokens } from "../connections/onbuy.ts";
 import { getRepriceConfig } from "../repos/pricing.ts";
-import { ensureJob, rebalanceShards } from "./registry.ts";
+import { ensureJob } from "./registry.ts";
 import { planFor } from "../../config/plans.ts";
 import { timeLeft, type JobCtx, type RunResult } from "./types.ts";
 
 /** The network edge of this job, swapped out in tests. */
-export const importDeps = { proxyForJob, onbuyTokens, browseListings };
+export const importDeps = { routeForTenant, onbuyTokens, browseListings };
 
 export type ImportState = {
   offset: number;
@@ -112,19 +112,19 @@ export async function runImport(ctx: JobCtx): Promise<RunResult> {
   ]);
   if (!account) return { ok: false, msg: "OnBuy account was removed", disable: true };
 
-  const { proxy, reason } = await importDeps.proxyForJob(tenantId);
-  if (!proxy) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 300, state };
+  const { route, reason } = await importDeps.routeForTenant(tenantId);
+  if (!route) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 300, state };
 
   const cfg = await getRepriceConfig(tenantId);
   const tenant = await one<{ plan: string }>("SELECT plan FROM tenants WHERE id = ?", [tenantId]);
   const maxSkus = planFor(tenant?.plan).maxSkus;
-  const tokens = importDeps.onbuyTokens(tenantId, proxy);
+  const tokens = importDeps.onbuyTokens(tenantId, route);
 
   while (timeLeft(ctx) > 30_000) {
     if (await ctx.shouldStop()) break;
     let page;
     try {
-      page = await importDeps.browseListings(proxy, tokens, state.offset, BROWSE_PAGE);
+      page = await importDeps.browseListings(route, tokens, state.offset, BROWSE_PAGE);
     } catch (err) {
       if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed; import paused", nextInS: 300, state };
       if (err instanceof EgressBlockedError) return { ok: false, msg: err.message, nextInS: 300, state };
@@ -163,7 +163,6 @@ export async function runImport(ctx: JobCtx): Promise<RunResult> {
   const progress = { done: Math.min(state.offset, state.total), total: state.total, note: `${state.imported} imported, ${state.skipped} skipped` };
   if (!done) return { ok: true, msg: `Importing: ${progress.done} of ${state.total} listings read`, nextInS: 2, state, progress };
 
-  await rebalanceShards(tenantId);
   await exec("UPDATE tenants SET onboarded_at = COALESCE(onboarded_at, NOW(3)) WHERE id = ?", [tenantId]);
   const limitNote = state.overLimit ? ` ${state.overLimit} not imported: your plan allows ${maxSkus} SKUs.` : "";
   await logEvent(tenantId, state.overLimit ? "warn" : "info", "import", `OnBuy import finished: ${state.imported} listings imported, ${state.skipped} skipped.${limitNote}`);

@@ -95,8 +95,8 @@ export const secretContext = {
   // One account per marketplace per workspace, so the name identifies it.
   marketplaceCredentials: (tenantId: number, marketplace: string) => `tenant:${tenantId}:market:${marketplace}:creds`,
   marketplaceToken: (tenantId: number, marketplace: string) => `tenant:${tenantId}:market:${marketplace}:token`,
-  sourceCredentials: (tenantId: number, accountId: number) => `tenant:${tenantId}:source:${accountId}:creds`,
-  sourceToken: (tenantId: number, accountId: number) => `tenant:${tenantId}:source:${accountId}:token`,
+  // SellSail's own Amazon app keys, shared by every workspace.
+  amazonAppToken: (slot: number) => `platform:amazon:${slot}:token`,
 };
 
 /** "abcd1234wxyz" -> "••••wxyz". Short values are fully hidden. */

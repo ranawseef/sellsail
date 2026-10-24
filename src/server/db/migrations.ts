@@ -394,4 +394,35 @@ export const migrations: Migration[] = [
       ) ${T}`,
     ],
   },
+  {
+    id: "007_platform_amazon",
+    statements: [
+      // Amazon prices now come from SellSail's own SP-API keys (env vars), so
+      // sellers no longer connect Amazon. This holds each key set's runtime
+      // state: cached token, next free call slot, health.
+      `CREATE TABLE IF NOT EXISTS amazon_apps (
+        slot             TINYINT UNSIGNED NOT NULL,
+        token_enc        TEXT         NULL,
+        token_expires_at DATETIME(3)  NULL,
+        rate_interval_ms INT UNSIGNED NOT NULL DEFAULT 10000,
+        next_allowed_at  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        status           VARCHAR(10)  NOT NULL DEFAULT 'untested',
+        last_error       VARCHAR(255) NULL,
+        last_ok_at       DATETIME(3)  NULL,
+        PRIMARY KEY (slot),
+        KEY ix_amazon_apps_next (next_allowed_at),
+        CONSTRAINT ck_amazon_apps_status CHECK (status IN ('untested','ok','error'))
+      ) ${T}`,
+      // Repricing now walks a whole workspace, oldest price first.
+      `ALTER TABLE products ADD INDEX IF NOT EXISTS ix_products_tenant_reprice (tenant_id, source, priced_at)`,
+      // One reprice job per workspace instead of one per seller Amazon account.
+      `DELETE FROM jobs WHERE kind = 'reprice'`,
+      `INSERT IGNORE INTO jobs (tenant_id, kind, target_id, enabled, interval_s, next_run_at)
+       SELECT id, 'reprice', 0, 1, 60, NOW(3) FROM tenants`,
+      // Seller-provided Amazon keys are no longer used: don't keep them.
+      `UPDATE products SET source_account_id = NULL WHERE source_account_id IS NOT NULL`,
+      `DELETE FROM source_accounts WHERE source = 'amazon'`,
+      `DELETE FROM oauth_states WHERE purpose = 'amazon'`,
+    ],
+  },
 ];

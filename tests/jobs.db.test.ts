@@ -1,6 +1,6 @@
 // The scheduler and the reprice / push / import jobs against a real database.
-// Only the network edge (proxy, tokens, OnBuy and Amazon calls) is faked; all
-// SQL runs for real.
+// Only the network edge (routes, tokens, OnBuy and Amazon calls) is faked; all
+// SQL runs for real, including the shared Amazon app pool's slot reservations.
 
 import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
@@ -8,31 +8,32 @@ import { resetDatabase, skipDb } from "./helpers/db.ts";
 import { closePool, exec, one, q } from "../src/server/db/pool.ts";
 import { createAccount } from "../src/server/tenants/accounts.ts";
 import { claim, dueJobs, execute } from "../src/server/jobs/scheduler.ts";
-import { ensureJob, rebalanceShards } from "../src/server/jobs/registry.ts";
+import { ensureJob, REPRICE_TARGET } from "../src/server/jobs/registry.ts";
 import { pushDeps } from "../src/server/jobs/push.ts";
 import { repriceDeps } from "../src/server/jobs/reprice.ts";
 import { importDeps, newImportState } from "../src/server/jobs/import.ts";
 import { getRepriceConfig } from "../src/server/repos/pricing.ts";
 import { marketplacePrice } from "../src/lib/pricing.ts";
-import type { EgressResponse, ProxyConfig } from "../src/server/net/egress.ts";
+import { DIRECT, type EgressResponse } from "../src/server/net/egress.ts";
 
-const PROXY: ProxyConfig = { type: "http", host: "127.0.0.1", port: 9 };
+// SellSail's own Amazon key set, as the pool reads it from env.
+process.env.SPAPI_1_CLIENT_ID = "amzn1.application-oa2-client.test";
+process.env.SPAPI_1_CLIENT_SECRET = "test-secret";
+process.env.SPAPI_1_REFRESH_TOKEN = "Atzr|test-refresh-token";
 const tokens = { get: async () => "t", renew: async () => "t2" };
 const response = (status: number, json: unknown): EgressResponse => ({ status, json, text: JSON.stringify(json), headers: new Headers() });
 
 let tenantId = 0;
 let onbuyId = 0;
-let amazonId = 0;
 let n = 0;
 
 before(async () => {
   if (skipDb) return;
   await resetDatabase();
-  pushDeps.proxyForJob = async () => ({ proxy: PROXY, reason: "" });
+  pushDeps.routeForTenant = async () => ({ route: DIRECT, reason: "" });
   pushDeps.onbuyTokens = () => tokens;
-  repriceDeps.proxyForJob = async () => ({ proxy: PROXY, reason: "" });
-  repriceDeps.amazonAccessToken = async () => "amz";
-  importDeps.proxyForJob = async () => ({ proxy: PROXY, reason: "" });
+  repriceDeps.amazonAppToken = async () => "amz";
+  importDeps.routeForTenant = async () => ({ route: DIRECT, reason: "" });
   importDeps.onbuyTokens = () => tokens;
 });
 after(async () => {
@@ -46,23 +47,21 @@ beforeEach(async () => {
   onbuyId = (
     await exec("INSERT INTO marketplace_accounts (tenant_id, marketplace, credentials_enc, status) VALUES (?, 'onbuy', 'x', 'connected')", [tenantId])
   ).insertId;
-  amazonId = (
-    await exec(
-      "INSERT INTO source_accounts (tenant_id, source, label, mode, credentials_enc, status, rate_interval_ms) VALUES (?, 'amazon', 'A', 'self', 'x', 'connected', 20)",
-      [tenantId],
-    )
-  ).insertId;
+  // A fast pace for the shared app, so tests don't wait 10 s per batch.
+  await exec(
+    `INSERT INTO amazon_apps (slot, rate_interval_ms, next_allowed_at) VALUES (1, 20, NOW(3))
+     ON DUPLICATE KEY UPDATE rate_interval_ms = 20, next_allowed_at = NOW(3), status = 'untested'`,
+  );
 });
 
 async function addProduct(sku: string, p: { price?: number | null; stock?: number | null; pushedPrice?: number | null; pushedStock?: number | null; sourcePrice?: number | null; pricedHoursAgo?: number } = {}) {
   const res = await exec(
-    `INSERT INTO products (tenant_id, marketplace, sku, source, source_ref, source_account_id, price, stock, pushed_price, pushed_stock, source_price, priced_at)
-     VALUES (?, 'onbuy', ?, 'amazon', ?, ?, ?, ?, ?, ?, ?, NOW(3) - INTERVAL ? HOUR)`,
+    `INSERT INTO products (tenant_id, marketplace, sku, source, source_ref, price, stock, pushed_price, pushed_stock, source_price, priced_at)
+     VALUES (?, 'onbuy', ?, 'amazon', ?, ?, ?, ?, ?, ?, NOW(3) - INTERVAL ? HOUR)`,
     [
       tenantId,
       sku,
       sku.replace(/^SK/, ""),
-      amazonId,
       p.price ?? null,
       p.stock ?? null,
       p.pushedPrice ?? null,
@@ -179,8 +178,12 @@ test("push takes listings with no fresh Amazon price for 24h out of stock first"
   assert.ok(await one("SELECT 1 FROM price_history WHERE tenant_id = ? AND new_stock = 0", [tenantId]));
 });
 
-test("reprice prices FBA offers, takes unknown ASINs out of stock, writes history, paces the account", { skip: skipDb }, async () => {
-  await ensureJob(tenantId, "reprice", amazonId);
+test("every new workspace gets one reprice job, with no Amazon setup", { skip: skipDb }, async () => {
+  const jobs = await q<{ target_id: number; enabled: number }>("SELECT target_id, enabled FROM jobs WHERE tenant_id = ? AND kind = 'reprice'", [tenantId]);
+  assert.deepEqual(jobs.map((j) => [j.target_id, j.enabled]), [[REPRICE_TARGET, 1]]);
+});
+
+test("reprice prices FBA offers, takes unknown ASINs out of stock, writes history, paces SellSail's app", { skip: skipDb }, async () => {
   await addProduct("SKD000000001", { pricedHoursAgo: 2 });
   await addProduct("SKD000000002", { price: 30, stock: 3, sourcePrice: 20, pricedHoursAgo: 2 });
   await addProduct("SKD000000003", { pricedHoursAgo: 2 });
@@ -201,7 +204,7 @@ test("reprice prices FBA offers, takes unknown ASINs out of stock, writes histor
       ],
     });
   };
-  const r = await runJob("reprice", amazonId);
+  const r = await runJob("reprice", REPRICE_TARGET);
   assert.equal(r.ok, true, r.msg);
   assert.equal(asked.length, 1); // the throttled ASIN is not re-read in the same run
   assert.equal(asked[0].length, 3);
@@ -222,8 +225,36 @@ test("reprice prices FBA offers, takes unknown ASINs out of stock, writes histor
 
   const hist = await q("SELECT product_id FROM price_history WHERE tenant_id = ?", [tenantId]);
   assert.equal(hist.length, 2);
-  const acc = await one<{ ahead: number }>("SELECT next_allowed_at > NOW(3) - INTERVAL 1 SECOND AS ahead FROM source_accounts WHERE id = ?", [amazonId]);
-  assert.equal(Number(acc?.ahead), 1);
+  const app = await one<{ ahead: number; status: string }>(
+    "SELECT next_allowed_at > NOW(3) - INTERVAL 1 SECOND AS ahead, status FROM amazon_apps WHERE slot = 1",
+  );
+  assert.equal(Number(app?.ahead), 1); // the call slot was reserved
+  assert.equal(app?.status, "ok");
+});
+
+test("reprice: a key set Amazon refuses sits out, and nothing is priced from it", { skip: skipDb }, async () => {
+  await addProduct("SKF000000001", { pricedHoursAgo: 2 });
+  repriceDeps.itemOffersBatch = async () => response(403, { errors: [{ code: "Unauthorized", message: "Access to requested resource is denied." }] });
+  const r = await runJob("reprice", REPRICE_TARGET);
+  assert.equal(r.ok, false);
+  const app = await one<{ status: string; backing_off: number }>(
+    "SELECT status, next_allowed_at > NOW(3) + INTERVAL 10 MINUTE AS backing_off FROM amazon_apps WHERE slot = 1",
+  );
+  assert.equal(app?.status, "error");
+  assert.equal(Number(app?.backing_off), 1);
+  assert.equal((await product("SKF000000001"))?.stock, null);
+});
+
+test("reprice without SellSail's Amazon keys sends nothing", { skip: skipDb }, async () => {
+  const saved = repriceDeps.configuredApps;
+  repriceDeps.configuredApps = () => [];
+  try {
+    const r = await runJob("reprice", REPRICE_TARGET);
+    assert.equal(r.ok, false);
+    assert.match(r.msg, /not set up/);
+  } finally {
+    repriceDeps.configuredApps = saved;
+  }
 });
 
 test("import pages by offset until total_rows, skipping non-ASIN and archived SKUs", { skip: skipDb }, async () => {
@@ -241,31 +272,13 @@ test("import pages by offset until total_rows, skipping non-ASIN and archived SK
   assert.equal(r.disable, true);
   assert.deepEqual(offsets, [0, 500]);
 
-  const rows = await q<{ sku: string; source_ref: string; pushed_price: number | null; source_account_id: number | null }>(
-    "SELECT sku, source_ref, pushed_price, source_account_id FROM products WHERE tenant_id = ? ORDER BY sku",
+  const rows = await q<{ sku: string; source_ref: string; pushed_price: number | null }>(
+    "SELECT sku, source_ref, pushed_price FROM products WHERE tenant_id = ? ORDER BY sku",
     [tenantId],
   );
   assert.deepEqual(rows.map((r) => r.sku), ["B0AAAAAAA1", "b0aaaaaaa2"]);
   assert.equal(rows[1].source_ref, "B0AAAAAAA2");
   assert.equal(Number(rows[0].pushed_price), 9.99); // what OnBuy shows now
-  assert.ok(rows.every((r) => r.source_account_id === amazonId)); // assigned to the shard
   const job = await one<{ enabled: number }>("SELECT enabled FROM jobs WHERE tenant_id = ? AND kind = 'import'", [tenantId]);
   assert.equal(job?.enabled, 0);
-});
-
-test("products are spread evenly over connected Amazon accounts", { skip: skipDb }, async () => {
-  const second = (
-    await exec("INSERT INTO source_accounts (tenant_id, source, label, mode, credentials_enc, status) VALUES (?, 'amazon', 'B', 'self', 'x', 'connected')", [tenantId])
-  ).insertId;
-  for (let i = 0; i < 10; i++) await addProduct(`SKE00000000${i}`);
-  await rebalanceShards(tenantId);
-  const split = await q<{ source_account_id: number; n: number }>(
-    "SELECT source_account_id, COUNT(*) AS n FROM products WHERE tenant_id = ? GROUP BY source_account_id ORDER BY source_account_id",
-    [tenantId],
-  );
-  assert.deepEqual(split.map((s) => [s.source_account_id, Number(s.n)]), [[amazonId, 5], [second, 5]]);
-  await exec("UPDATE source_accounts SET status = 'error' WHERE id = ?", [second]);
-  await rebalanceShards(tenantId);
-  const after = await one<{ n: number }>("SELECT COUNT(*) AS n FROM products WHERE tenant_id = ? AND source_account_id = ?", [tenantId, amazonId]);
-  assert.equal(Number(after?.n), 10);
 });

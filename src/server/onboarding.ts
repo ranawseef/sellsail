@@ -1,9 +1,12 @@
 // Where to send the seller after a connection step: back into the wizard
 // while onboarding, otherwise to the Connections page.
+//
+// Three steps. Amazon needs no step (SellSail reads Amazon prices with its
+// own keys), and a proxy is optional, offered inside the OnBuy step.
 
 import { one } from "./db/pool.ts";
 
-export const WIZARD_STEPS = ["proxy", "onbuy", "amazon", "pricing", "import"] as const;
+export const WIZARD_STEPS = ["onbuy", "pricing", "import"] as const;
 export type WizardStep = (typeof WIZARD_STEPS)[number];
 
 export async function onboardingTarget(tenantId: number, step: WizardStep): Promise<string> {

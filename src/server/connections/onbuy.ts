@@ -2,7 +2,7 @@
 // a TokenSource the jobs use.
 
 import { OnBuyError, requestToken, type OnBuyCreds, type TokenSource } from "../integrations/onbuy/client.ts";
-import type { ProxyConfig } from "../net/egress.ts";
+import type { Route } from "../net/egress.ts";
 import { decryptJson, decryptString, encryptJson, encryptString, maskSecret, secretContext } from "../crypto/secrets.ts";
 import { exec, one, tx } from "../db/pool.ts";
 import { ensureJob } from "../jobs/registry.ts";
@@ -32,11 +32,11 @@ export function parseOnBuyKeys(consumerKey: string, secretKey: string): OnBuyCre
 }
 
 /**
- * Proves the keys work by requesting a token through the proxy, then stores
+ * Proves the keys work by requesting a token on the workspace's route, then stores
  * them (and the token) encrypted. Nothing is saved when the test fails.
  */
-export async function connectOnBuy(tenantId: number, proxy: ProxyConfig, creds: OnBuyCreds): Promise<MarketplaceAccount> {
-  const token = await requestToken(proxy, creds);
+export async function connectOnBuy(tenantId: number, route: Route, creds: OnBuyCreds): Promise<MarketplaceAccount> {
+  const token = await requestToken(route, creds);
   const credsEnc = encryptJson(creds, secretContext.marketplaceCredentials(tenantId, "onbuy"));
   const tokenEnc = encryptString(token.accessToken, secretContext.marketplaceToken(tenantId, "onbuy"));
   await tx(async (t) => {
@@ -71,7 +71,7 @@ export async function markOnBuyStatus(tenantId: number, ok: boolean, error?: str
 }
 
 /** Tokens for jobs: the cached one while valid, a new one (stored) on renew. */
-export function onbuyTokens(tenantId: number, proxy: ProxyConfig): TokenSource {
+export function onbuyTokens(tenantId: number, route: Route): TokenSource {
   const renew = async () => {
     const row = await one<{ credentials_enc: string }>(
       "SELECT credentials_enc FROM marketplace_accounts WHERE tenant_id = ? AND marketplace = 'onbuy'",
@@ -84,7 +84,7 @@ export function onbuyTokens(tenantId: number, proxy: ProxyConfig): TokenSource {
     } catch {
       throw new OnBuyError("The saved OnBuy keys can't be read (was the encryption key changed?). Enter them again under Connections.", 401);
     }
-    const token = await requestToken(proxy, creds);
+    const token = await requestToken(route, creds);
     await exec("UPDATE marketplace_accounts SET token_enc = ?, token_expires_at = ? WHERE tenant_id = ? AND marketplace = 'onbuy'", [
       encryptString(token.accessToken, secretContext.marketplaceToken(tenantId, "onbuy")),
       token.expiresAt,

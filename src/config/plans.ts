@@ -1,7 +1,8 @@
-// Subscription plans. Prices match the marketing pricing page. The SKU and
-// Amazon-account limits are PLACEHOLDERS chosen for the first build: confirm
-// them before launch and put the same numbers on /pricing (it still shows
-// "[X] listings").
+// Subscription plans. Prices match the marketing pricing page. The SKU
+// limits are PLACEHOLDERS chosen for the first build: confirm them before
+// launch and put the same numbers on /pricing (it still shows "[X] listings").
+// Amazon prices come from SellSail's own keys, so plans don't limit Amazon
+// accounts any more.
 //
 // Stripe price ids come from env vars so test and live mode can differ.
 
@@ -13,7 +14,6 @@ export type Plan = {
   /** Monthly price in pence, for display. Stripe holds the real price. */
   pricePence: number;
   maxSkus: number;
-  maxAmazonAccounts: number;
   /** Seconds between push runs (how quickly OnBuy sees a new price). */
   pushIntervalS: number;
   stripePriceEnv?: string;
@@ -22,13 +22,12 @@ export type Plan = {
 export const TRIAL_DAYS = 14;
 
 export const PLANS: Record<PlanId, Plan> = {
-  trial: { id: "trial", name: "Free trial", pricePence: 0, maxSkus: 1000, maxAmazonAccounts: 1, pushIntervalS: 300 },
+  trial: { id: "trial", name: "Free trial", pricePence: 0, maxSkus: 1000, pushIntervalS: 300 },
   starter: {
     id: "starter",
     name: "Starter",
     pricePence: 2900,
     maxSkus: 2000,
-    maxAmazonAccounts: 1,
     pushIntervalS: 300,
     stripePriceEnv: "STRIPE_PRICE_STARTER",
   },
@@ -37,7 +36,6 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Growth",
     pricePence: 6900,
     maxSkus: 10000,
-    maxAmazonAccounts: 3,
     pushIntervalS: 180,
     stripePriceEnv: "STRIPE_PRICE_GROWTH",
   },
@@ -46,7 +44,6 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Pro",
     pricePence: 14900,
     maxSkus: 40000,
-    maxAmazonAccounts: 8,
     pushIntervalS: 120,
     stripePriceEnv: "STRIPE_PRICE_PRO",
   },
@@ -76,7 +73,7 @@ export function planForStripePrice(priceId: string | null | undefined): PlanId |
 export type TenantPlanState = { plan: string; planStatus: string; trialEndsAt: Date | null; paused: boolean };
 
 /**
- * May this workspace's jobs call OnBuy and Amazon right now? Paused, expired,
+ * May this workspace's jobs run right now? Paused, expired,
  * cancelled, or a trial past its end date: no.
  */
 export function canRunJobs(t: TenantPlanState, now = new Date()): boolean {

@@ -5,6 +5,7 @@ import { TRIAL_DAYS } from "../../config/plans.ts";
 import { exec, one, tx } from "../db/pool.ts";
 import { audit } from "../audit.ts";
 import { dummyPasswordHash, hashPassword, verifyPassword } from "../auth/password.ts";
+import { ensureRepriceJob } from "../jobs/registry.ts";
 
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -41,6 +42,8 @@ export async function createAccount(a: NewAccount): Promise<{ userId: number; te
       const tenantId = tn.insertId;
       await t.exec("INSERT INTO memberships (tenant_id, user_id, role) VALUES (?, ?, 'owner')", [tenantId, userId]);
       await t.exec("INSERT INTO repricer_settings (tenant_id) VALUES (?)", [tenantId]);
+      // Amazon prices come from SellSail's own keys, so repricing needs no setup.
+      await ensureRepriceJob(tenantId, t);
       for (const b of DEFAULT_BANDS) {
         await t.exec(
           "INSERT INTO pricing_bands (tenant_id, up_to, profit_pct, fixed_profit, min_profit) VALUES (?, ?, ?, ?, ?)",
