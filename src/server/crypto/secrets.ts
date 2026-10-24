@@ -92,8 +92,9 @@ export function decryptJson<T>(sealed: string, context: string): T {
 /** Context strings, in one place so writers and readers can't drift apart. */
 export const secretContext = {
   proxy: (tenantId: number) => `tenant:${tenantId}:proxy`,
-  marketplaceCredentials: (tenantId: number, accountId: number) => `tenant:${tenantId}:market:${accountId}:creds`,
-  marketplaceToken: (tenantId: number, accountId: number) => `tenant:${tenantId}:market:${accountId}:token`,
+  // One account per marketplace per workspace, so the name identifies it.
+  marketplaceCredentials: (tenantId: number, marketplace: string) => `tenant:${tenantId}:market:${marketplace}:creds`,
+  marketplaceToken: (tenantId: number, marketplace: string) => `tenant:${tenantId}:market:${marketplace}:token`,
   sourceCredentials: (tenantId: number, accountId: number) => `tenant:${tenantId}:source:${accountId}:creds`,
   sourceToken: (tenantId: number, accountId: number) => `tenant:${tenantId}:source:${accountId}:token`,
 };
