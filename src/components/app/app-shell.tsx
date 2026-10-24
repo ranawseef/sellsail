@@ -86,7 +86,7 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
   return (
     <div className="flex min-h-screen flex-1 bg-paper">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-ink px-4 py-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-ink px-4 py-5 lg:flex">
         <Brand />
         <p className="mt-1 mb-6 truncate pl-[38px] text-[13px] text-[#9fbdb1]" title={workspace}>
           {workspace}

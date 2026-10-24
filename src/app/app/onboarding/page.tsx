@@ -90,7 +90,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         </p>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[240px_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <nav aria-label="Setup steps">
           <ol className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
             {WIZARD_STEPS.map((s, i) => {

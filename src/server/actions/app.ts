@@ -204,15 +204,17 @@ export async function startAmazonOAuthAction(_prev: ActionState, form: FormData)
   return state;
 }
 
-export async function removeAmazonAction(form: FormData): Promise<void> {
-  const auth = await authForAction("admin");
-  const id = Number(form.get("accountId"));
-  if (!Number.isInteger(id) || id <= 0) return;
-  if (await removeAmazonAccount(auth.tenantId, id)) {
+export async function removeAmazonAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    const auth = await authForAction("admin");
+    const id = Number(form.get("accountId"));
+    if (!Number.isInteger(id) || id <= 0) return { error: "Unknown account." };
+    if (!(await removeAmazonAccount(auth.tenantId, id))) return { error: "That account was already removed." };
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "amazon.remove", detail: `Account #${id}`, ip });
-  }
-  refreshApp();
+    refreshApp();
+    return { ok: true, message: "Amazon account removed and its keys deleted." };
+  });
 }
 
 // ---- pricing -------------------------------------------------------------------
