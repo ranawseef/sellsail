@@ -46,13 +46,18 @@ const EASE = [0.2, 0.8, 0.2, 1] as const;
 const FEES = { marketplaceFeePct: 18, paymentFeePct: 0, paymentFixedFee: 0 };
 const gbp = (n: number) => `£${n.toFixed(2)}`;
 
-/** Animates from its previous value to the new one. */
-function Count({ value, money = false, active = true }: { value: number; money?: boolean; active?: boolean }) {
+/**
+ * Animates from its previous value to the new one. Money starts at its real
+ * value and only moves when it changes; counts start part-way up so the demo
+ * never shows an empty (zero) dashboard, even for a frame.
+ */
+function Count({ value, money = false }: { value: number; money?: boolean }) {
   const reduce = useReducedMotion();
-  const [shown, setShown] = useState(0);
-  const from = useRef(0);
+  const start = money ? value : Math.round(value * 0.7);
+  const [shown, setShown] = useState(start);
+  const from = useRef(start);
   useEffect(() => {
-    if (reduce || !active) return;
+    if (reduce) return;
     const controls = animate(from.current, value, {
       duration: 1,
       ease: EASE,
@@ -62,7 +67,7 @@ function Count({ value, money = false, active = true }: { value: number; money?:
       },
     });
     return () => controls.stop();
-  }, [value, reduce, active]);
+  }, [value, reduce]);
   const v = reduce ? value : shown;
   return <span className="tabular-nums">{money ? gbp(v) : Math.round(v).toLocaleString("en-GB")}</span>;
 }
@@ -163,16 +168,18 @@ export function InsideLook() {
               >
                 <p className="sr-only">Animated preview of the {screen.label} screen, with example data.</p>
                 <BrowserFrame title={screen.label.toLowerCase()} right={<LiveDot playing={playing} />}>
-                  <div aria-hidden="true" className="grid min-h-[430px] grid-cols-1 bg-paper text-left sm:grid-cols-[170px_minmax(0,1fr)]">
+                  <div aria-hidden="true" className="grid min-h-[400px] grid-cols-1 bg-paper text-left sm:grid-cols-[170px_minmax(0,1fr)]">
                     <Sidebar active={screen.id} />
-                    <div className="min-w-0 p-4 sm:p-6">
-                      <AnimatePresence mode="wait" initial={false}>
+                    {/* The screens crossfade in one grid cell, so the frame is never empty mid-switch. */}
+                    <div className="grid min-w-0 p-4 sm:p-6">
+                      <AnimatePresence initial={false}>
                         <motion.div
                           key={screen.id}
-                          initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                          exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-                          transition={{ duration: 0.35, ease: EASE }}
+                          className="col-start-1 row-start-1 min-w-0"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.4, ease: EASE }}
                         >
                           {screen.id === "overview" && <OverviewScreen playing={playing} />}
                           {screen.id === "pricing" && <PricingScreen playing={playing} />}
@@ -610,7 +617,8 @@ function Toasts({ playing }: { playing: boolean }) {
   }, [playing]);
   const toast = TOASTS[k];
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 -right-16 -left-16 z-10 hidden xl:block">
+    // Toasts hang off the frame's bottom edge, so they never cover the dashboard's menu or figures.
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 hidden md:block">
       <AnimatePresence mode="wait">
         {playing && (
           <motion.div
@@ -621,7 +629,7 @@ function Toasts({ playing }: { playing: boolean }) {
             transition={{ duration: 0.4, ease: EASE }}
             className={cn(
               "absolute flex w-60 items-center gap-3 rounded-2xl bg-white p-3 shadow-[0_18px_40px_-16px_rgba(16,35,28,.45)]",
-              toast.side === "left" ? "top-24 left-0" : "right-0 bottom-20",
+              toast.side === "left" ? "-bottom-8 left-6 lg:left-10" : "right-6 -bottom-8 lg:right-10",
             )}
           >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-mint text-sea-dark">
