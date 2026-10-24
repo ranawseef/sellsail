@@ -15,8 +15,13 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   experimental: {
-    // CSV uploads in the dashboard are up to 5 MB (the default limit is 1 MB).
-    serverActions: { bodySizeLimit: "6mb" },
+    serverActions: {
+      // CSV uploads in the dashboard are up to 5 MB (the default limit is 1 MB).
+      bodySizeLimit: "6mb",
+      // Next rejects a server action whose Origin doesn't match the Host it
+      // sees; name the live domains in case Hostinger's proxy rewrites Host.
+      allowedOrigins: ["sellsail.io", "www.sellsail.io"],
+    },
     // Hostinger caps the number of processes per account, so keep the build
     // to one worker and avoid Turbopack (it spawns extra Node processes for CSS).
     cpus: 1,

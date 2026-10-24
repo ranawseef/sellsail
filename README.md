@@ -1,26 +1,37 @@
 # SellSail
 
-Marketing site for SellSail (sellsail.io): OnBuy repricing and Amazon/AliExpress to OnBuy dropshipping for UK sellers.
+SellSail (sellsail.io): Amazon → OnBuy dropshipping repricer for UK sellers, multi-tenant, plus the public marketing site.
 
-Phase 1 is frontend only: Next.js (App Router) + TypeScript + Tailwind CSS v4 with shadcn/ui-style components.
+Next.js 16 (App Router, webpack build, single worker for Hostinger) + TypeScript + Tailwind CSS v4, MySQL/MariaDB via `mysql2`.
+Read `CLAUDE.md`, `AGENTS.md` and `docs/saas-plan.md` before changing anything.
 
-## Pages
+## Layout
 
-`/`, `/features`, `/dropshipping`, `/dropshipping/amazon-to-onbuy`, `/dropshipping/aliexpress-to-onbuy`,
-`/onbuy-fee-calculator`, `/pricing`, `/guides`, `/about`, `/contact`, `/beta`, `/privacy`, `/terms`, `/cookies`,
-plus `sitemap.xml`, `robots.txt` and a 404 page.
+- `src/app/(marketing)` public pages; `src/app/(auth)` login and signup; `src/app/app/*` the dashboard.
+- `src/app/api/cron/tick` (Hostinger cron), `src/app/api/stripe/webhook`, `src/app/api/amazon/callback`.
+- `src/server` everything that touches the database or the network:
+  `auth` (sessions, passwords, rate limits), `crypto` (AES-256-GCM secrets), `connections` (proxy, OnBuy, Amazon),
+  `integrations` (OnBuy and SP-API clients), `jobs` (scheduler, reprice, push, import), `billing` (Stripe),
+  `repos` (queries), `actions` (server actions).
+- `src/lib` pure code shared by server and browser (pricing formula, SKU rules, CSV parsing, formatting).
+- `src/server/net/egress.ts` is the only way an OnBuy or Amazon request leaves the app: through the workspace's proxy, or not at all.
+  `scripts/check-egress.mjs` fails the build if anything else opens a connection.
 
 ## Scripts
 
-- `npm run build`: production build (webpack, single worker, to stay under Hostinger's process limit)
+- `npm run build`: egress guard, then the production build
 - `npm start`: serve the build
-- `npm run lint`
+- `npm test`: unit tests, plus database tests when `TEST_DATABASE_URL` points at a throwaway database
+- `npm run typecheck`, `npm run lint`
+
+## Configuration
+
+All settings are environment variables; see `.env.example` (fake values). Migrations run automatically on first use.
 
 ## Before launch
 
-- Fill in `[bracketed]` placeholders (listing limits).
-- Have privacy, terms and cookie pages reviewed by a solicitor.
+- Confirm the plan limits in `src/config/plans.ts` (SKU and Amazon-account limits are placeholders) and put the same numbers on `/pricing`.
+- Review the default pricing bands in `src/lib/pricing.ts` (`DEFAULT_BANDS`), which are SellSail's suggestion.
+- Have privacy, terms and cookie pages reviewed by a solicitor (they don't yet describe the paid service or Stripe).
 - Check OnBuy fee rates in `src/lib/calc.ts` against OnBuy's current fee page.
-- The beta form does not store emails yet (no backend in phase 1).
-- Replace the example product photos in `src/content/product-images.ts` (loaded from Amazon and AliExpress listings) with your own product photos.
-- Blog covers are Unsplash photos (Unsplash licence, commercial use allowed).
+- Replace the example product photos in `src/content/product-images.ts`.
