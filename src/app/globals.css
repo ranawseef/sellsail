@@ -17,6 +17,11 @@
   --color-sky: #e3f1fb;
   --color-coral: #fde8e1;
   --color-lilac: #efe9fb;
+  /* Grey surface, and the loss/error pair (same values the fee calculator and
+     badges used as literals). */
+  --color-mist: #f3f5f4;
+  --color-danger: #9b1c1c;
+  --color-danger-soft: #fde8e8;
 
   --font-sans: var(--font-dm-sans), system-ui, sans-serif;
   --font-display: var(--font-bricolage), var(--font-dm-sans), system-ui, sans-serif;
@@ -38,6 +43,13 @@
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
+  }
+  --animate-flow: flow 2.4s linear infinite;
+  @keyframes flow {
+    from { transform: translateX(-10%); opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    to { transform: translateX(110%); opacity: 0; }
   }
   @keyframes pulse-soft {
     0%, 100% { opacity: 1; }

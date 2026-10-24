@@ -9,6 +9,7 @@ const badgeVariants = cva("inline-flex items-center gap-1.5 rounded-full font-se
       grey: "bg-[#f3f5f4] text-muted",
       sky: "bg-sky text-[#1f5f8b]",
       solid: "bg-sun text-ink",
+      danger: "bg-danger-soft text-danger",
     },
     size: { sm: "px-2.5 py-1 text-xs", md: "px-3 py-1 text-[13px]" },
   },
