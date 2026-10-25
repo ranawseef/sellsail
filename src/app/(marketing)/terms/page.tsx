@@ -33,7 +33,7 @@ export default function TermsPage() {
       </p>
 
       <h2>An independent tool</h2>
-      <p>{site.disclaimer}</p>
+      <p>OnBuy, Amazon, eBay and AliExpress are trademarks of their respective owners. SellSail is an independent service.</p>
 
       <h2>Your responsibilities</h2>
       <ul>

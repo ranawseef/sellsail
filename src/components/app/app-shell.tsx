@@ -152,7 +152,6 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
         </main>
 
         <footer className="mx-auto w-full max-w-[1200px] border-t border-line px-4 py-6 text-[13px] leading-relaxed text-muted sm:px-6">
-          <p>{site.disclaimer}</p>
           <p className="mt-1">{companyLine}</p>
           <p className="mt-1">
             © {new Date().getFullYear()} {site.company} ·{" "}

@@ -16,8 +16,6 @@ export const site = {
   address: "2 Frederick Street, Kings Cross, London, WC1X 0ND",
   /** The address split up, for structured data. */
   addressParts: { street: "2 Frederick Street, Kings Cross", city: "London", postcode: "WC1X 0ND", country: "GB" },
-  disclaimer:
-    "SellSail is an independent tool and is not affiliated with, endorsed by or sponsored by OnBuy / OnCommerce, Amazon or AliExpress. All trademarks belong to their owners.",
 };
 
 export const mainNav = [

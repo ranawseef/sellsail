@@ -32,7 +32,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </main>
         <footer className="px-6 py-6 text-xs leading-relaxed text-muted sm:px-10">
           <p className="max-w-xl">{companyLine}</p>
-          <p className="mt-1 max-w-xl">{site.disclaimer}</p>
         </footer>
       </div>
 

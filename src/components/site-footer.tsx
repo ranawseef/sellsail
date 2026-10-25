@@ -91,7 +91,6 @@ export function SiteFooter() {
               SellSail is a trading name of {site.company}, a company registered in England and Wales (company number{" "}
               {site.companyNumber}). Registered office: {site.address}, United Kingdom.
             </p>
-            <p>{site.disclaimer}</p>
           </div>
           <p className="shrink-0 font-semibold text-[#b9cfc6]">
             © {year} {site.company}. All rights reserved.

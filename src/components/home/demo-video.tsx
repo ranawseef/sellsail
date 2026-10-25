@@ -1,41 +1,29 @@
 "use client";
 
-// "Watch the demo": a 35-second, video-style walkthrough of a demo shop. It is
+// "Watch the demo": a 35-second promo of SellSail running a demo shop. It is
 // drawn in the page rather than shipped as a video file, so it stays sharp on
 // every screen and costs a few KB. One clock drives every scene: each scene
-// derives what it shows from its local time, so pause, seek and loop are exact.
-// It plays muted-video style when scrolled into view; under
+// derives what it shows from its local time, so pause, seek and loop are
+// exact. It plays muted-video style when scrolled into view; under
 // prefers-reduced-motion it waits for the play button and shows the final
 // sales screen meanwhile. All numbers are demo data and labelled as such.
+// Text sizes use container units (cqw) so nothing overflows at any width.
 
 import { useEffect, useRef, useState } from "react";
 import { useInView, useReducedMotion } from "motion/react";
-import {
-  Boxes,
-  CheckCircle2,
-  Crown,
-  LayoutDashboard,
-  Loader2,
-  Pause,
-  Play,
-  RotateCcw,
-  ShoppingBag,
-  Store,
-  Swords,
-  TrendingUp,
-} from "lucide-react";
+import { Check, CheckCircle2, Crown, Pause, Play, RotateCcw, ShieldCheck, TrendingUp, Zap } from "lucide-react";
 import { LogoMark } from "@/components/logo";
+import { productImages } from "@/content/product-images";
 import { cn } from "@/lib/utils";
 
 const SCENES = [
-  { id: "connect", label: "Connect", ms: 4500, caption: "Connect your OnBuy shop in two minutes." },
-  { id: "import", label: "Import", ms: 5500, caption: "Bring in your Amazon products in one go." },
-  { id: "price", label: "Price", ms: 6000, caption: "Every OnBuy price covers fees, VAT and your profit." },
-  { id: "compete", label: "Compete", ms: 6500, caption: "Cheaper rival? SellSail answers, never below your floor." },
-  { id: "sales", label: "Sell", ms: 8500, caption: "More buy boxes won. More orders, around the clock." },
-  { id: "end", label: "Start", ms: 4000, caption: "Your OnBuy shop, on autopilot." },
+  { id: "hook", label: "Intro", ms: 4000, text: "Your OnBuy shop, on autopilot." },
+  { id: "import", label: "Import", ms: 5000, text: "Import 1,248 Amazon products in one click." },
+  { id: "price", label: "Price", ms: 6000, text: "Every OnBuy price covers fees, VAT and your profit." },
+  { id: "compete", label: "Compete", ms: 6000, text: "Win the buy box without going below your floor." },
+  { id: "sales", label: "Sell", ms: 9000, text: "Watch the orders roll in, around the clock." },
+  { id: "end", label: "Start", ms: 5000, text: "Start your 14-day free trial. No card needed." },
 ] as const;
-type SceneId = (typeof SCENES)[number]["id"];
 
 const STARTS = SCENES.reduce<number[]>((acc, s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + SCENES[i - 1].ms], []);
 const TOTAL = STARTS[STARTS.length - 1] + SCENES[SCENES.length - 1].ms;
@@ -44,32 +32,25 @@ const SALES_DONE = STARTS[4] + SCENES[4].ms - 1;
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 /** 0 → 1 between `start` and `start + dur` (ms of scene time), eased out. */
 const p = (lt: number, start: number, dur: number) => 1 - Math.pow(1 - clamp01((lt - start) / dur), 3);
-const gbp = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const gbp = (n: number) => `£${n.toFixed(2)}`;
 const int = (n: number) => Math.round(n).toLocaleString("en-GB");
 const clock = (ms: number) => `0:${String(Math.floor(ms / 1000)).padStart(2, "0")}`;
+/** Fades and lifts in as `v` goes 0 → 1. */
+const enter = (v: number, y = 16, scale = 1): React.CSSProperties => ({
+  opacity: v,
+  transform: `translateY(${(1 - v) * y}px) scale(${scale + (1 - scale) * v})`,
+});
 
-// Demo catalogue. Prices match the worked examples in the hero (15% commission,
-// 7% for the phone stand, 20% VAT).
+// Demo catalogue: cost + OnBuy fees and VAT + profit = OnBuy price, matching
+// the worked examples in the hero (15% commission, 7% for the phone stand).
 const PRODUCTS = [
-  { name: "Yoga mat", cost: 13.89, price: 24.99, profit: 3.18, tint: "bg-lilac" },
-  { name: "LED desk lamp", cost: 16.9, price: 29.99, profit: 3.59, tint: "bg-sun-soft" },
-  { name: "Steel water bottle", cost: 10.89, price: 19.99, profit: 2.77, tint: "bg-sky" },
-  { name: "Bamboo cutlery set", cost: 13.9, price: 23.48, profit: 2.15, tint: "bg-mint" },
-  { name: "Phone stand", cost: 5.49, price: 12.99, profit: 4.42, tint: "bg-coral" },
+  { name: "Yoga mat", img: productImages.yogaMat, cost: 13.89, fees: 7.92, profit: 3.18, price: 24.99 },
+  { name: "LED desk lamp", img: productImages.deskLamp, cost: 16.9, fees: 9.5, profit: 3.59, price: 29.99 },
+  { name: "Water bottle", img: productImages.waterBottle, cost: 10.89, fees: 6.33, profit: 2.77, price: 19.99 },
+  { name: "Cutlery set", img: productImages.cutlery, cost: 13.9, fees: 7.43, profit: 2.15, price: 23.48 },
+  { name: "Phone stand", img: productImages.phoneStand, cost: 5.49, fees: 3.08, profit: 4.42, price: 12.99 },
 ];
-
-const ORDERS = [
-  ["Yoga mat", 24.99],
-  ["LED desk lamp", 29.99],
-  ["Phone stand", 12.99],
-  ["Steel water bottle", 19.99],
-  ["Bamboo cutlery set", 23.48],
-  ["Yoga mat", 24.99],
-  ["LED desk lamp", 29.99],
-  ["Phone stand", 12.99],
-] as const;
-
-// 30 days of demo revenue, rising.
+const ORDERS = [0, 1, 4, 2, 3, 0, 1, 4, 2];
 const DAYS = [520, 610, 580, 720, 760, 840, 810, 930, 1010, 980, 1120, 1190, 1240, 1210, 1380, 1460, 1420, 1560, 1640, 1710, 1690, 1820, 1910, 1980, 2050, 2010, 2190, 2280, 2360, 2480];
 
 export function DemoVideo() {
@@ -107,7 +88,8 @@ export function DemoVideo() {
   for (let i = 0; i < SCENES.length; i++) if (shown >= STARTS[i]) index = i;
   const scene = SCENES[index];
   const lt = shown - STARTS[index];
-  const fade = Math.min(p(lt, 0, 350), 1 - p(lt, scene.ms - 300, 300));
+  const fade = Math.min(p(lt, 0, 400), 1 - p(lt, scene.ms - 350, 350));
+  const drift = Math.sin(shown / 2400);
 
   const seek = (i: number) => {
     setT(STARTS[i]);
@@ -116,38 +98,52 @@ export function DemoVideo() {
 
   return (
     <div ref={ref} className="mx-auto max-w-[820px]">
-      <div className="relative overflow-hidden rounded-[28px] bg-ink p-1.5 shadow-[0_40px_80px_-30px_rgba(16,35,28,.55)] sm:rounded-[32px] sm:p-2">
+      <div className="relative overflow-hidden rounded-[28px] bg-ink p-1.5 shadow-[0_40px_80px_-30px_rgba(16,35,28,.6)] sm:rounded-[32px] sm:p-2">
         {/* The "video" */}
-        <div aria-hidden="true" className="@container relative aspect-[4/5] overflow-hidden rounded-[22px] bg-paper sm:aspect-video sm:rounded-[26px]">
-          <AppChrome scene={scene.id} />
-          <div className="absolute inset-x-0 top-11 bottom-0 @2xl:left-44" style={{ opacity: fade }}>
-            <div className="h-full p-4 pb-20 @2xl:p-5 @2xl:pb-20">
-              {scene.id === "connect" && <ConnectScene lt={lt} />}
-              {scene.id === "import" && <ImportScene lt={lt} />}
-              {scene.id === "price" && <PriceScene lt={lt} />}
-              {scene.id === "compete" && <CompeteScene lt={lt} />}
-              {scene.id === "sales" && <SalesScene lt={lt} />}
-              {scene.id === "end" && <EndScene lt={lt} />}
-            </div>
+        <div aria-hidden="true" className="@container relative aspect-[4/5] overflow-hidden rounded-[22px] bg-[#0b1a15] sm:aspect-video sm:rounded-[26px]">
+          <div
+            className="absolute -top-1/3 -left-1/4 size-[75%] rounded-full bg-sea/40 blur-[70px]"
+            style={{ transform: `translate(${drift * 30}px, ${drift * -18}px)` }}
+          />
+          <div
+            className="absolute -right-1/4 -bottom-1/3 size-[65%] rounded-full bg-sun/20 blur-[80px]"
+            style={{ transform: `translate(${drift * -24}px, ${drift * 14}px)` }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]" />
+
+          <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-3.5 @2xl:px-6 @2xl:pt-4">
+            <span className="flex items-center gap-1.5 font-display text-[13px] font-extrabold text-white">
+              <LogoMark size={20} /> SellSail
+            </span>
+            <span className="rounded-full bg-sun px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-ink uppercase">Demo data</span>
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-4 @2xl:pb-5">
-            <p
-              key={scene.id}
-              className="max-w-[92%] rounded-xl bg-ink/90 px-4 py-2.5 text-center text-[13px] leading-snug font-semibold text-white shadow-lg backdrop-blur @md:text-[15px] @2xl:text-lg"
-            >
-              {scene.caption}
-            </p>
+
+          <div
+            className="absolute inset-0 px-5 pt-12 pb-5 @2xl:px-9 @2xl:pt-14 @2xl:pb-8"
+            style={{ opacity: fade, transform: `scale(${0.985 + 0.015 * fade})` }}
+          >
+            {scene.id === "hook" && <HookScene lt={lt} />}
+            {scene.id === "import" && <ImportScene lt={lt} />}
+            {scene.id === "price" && <PriceScene lt={lt} />}
+            {scene.id === "compete" && <CompeteScene lt={lt} />}
+            {scene.id === "sales" && <SalesScene lt={lt} />}
+            {scene.id === "end" && <EndScene lt={lt} />}
           </div>
-          <span className="absolute top-2.5 right-3 rounded-full bg-sun px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-ink uppercase @md:text-[11px]">
-            Demo data
-          </span>
+
           {!playing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-ink/25">
-              <span className="flex size-16 items-center justify-center rounded-full bg-white/95 shadow-xl @2xl:size-20">
+            <div className="absolute inset-0 flex items-center justify-center bg-ink/40">
+              <span className="flex size-16 items-center justify-center rounded-full bg-sun shadow-[0_0_0_10px_rgba(255,210,63,.25)] @2xl:size-20">
                 <Play className="ml-1 size-7 fill-ink text-ink @2xl:size-9" />
               </span>
             </div>
           )}
+          {/* Warm the image cache so photos never pop in mid-scene. */}
+          <div className="hidden">
+            {PRODUCTS.map((pr) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={pr.name} src={pr.img} alt="" referrerPolicy="no-referrer" />
+            ))}
+          </div>
         </div>
         {!playing && (
           <button
@@ -211,7 +207,7 @@ export function DemoVideo() {
       </div>
       <ol className="sr-only">
         {SCENES.map((s) => (
-          <li key={s.id}>{s.caption}</li>
+          <li key={s.id}>{s.text}</li>
         ))}
       </ol>
       <p className="mt-4 text-center text-[13px] text-muted">
@@ -223,340 +219,402 @@ export function DemoVideo() {
 
 /* ------------------------------------------------------------------------ */
 
-const NAV: { id: SceneId | "none"; label: string; icon: typeof Store }[] = [
-  { id: "sales", label: "Overview", icon: LayoutDashboard },
-  { id: "import", label: "Products", icon: Boxes },
-  { id: "price", label: "Pricing", icon: TrendingUp },
-  { id: "compete", label: "Competition", icon: Swords },
-  { id: "connect", label: "Connections", icon: Store },
-];
-
-function AppChrome({ scene }: { scene: SceneId }) {
+function Photo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
   return (
-    <>
-      <div className="absolute inset-x-0 top-0 flex h-11 items-center gap-2 border-b border-line bg-white px-4 @2xl:left-44">
-        <span className="flex gap-1.5 @2xl:hidden">
-          <span className="size-2.5 rounded-full bg-[#ff6b5f]" />
-          <span className="size-2.5 rounded-full bg-sun" />
-          <span className="size-2.5 rounded-full bg-sea-mid" />
+    <span className={cn("block overflow-hidden rounded-xl bg-white", className)} style={style}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" referrerPolicy="no-referrer" className="h-full w-full object-contain p-[6%]" />
+    </span>
+  );
+}
+
+function Title({ lt, step, children, sub }: { lt: number; step: string; children: React.ReactNode; sub?: React.ReactNode }) {
+  return (
+    <div style={enter(p(lt, 100, 550), 22)}>
+      <p className="text-[11px] font-bold tracking-[0.18em] text-sun uppercase @2xl:text-xs">{step}</p>
+      <h3 className="mt-2 font-display text-[clamp(22px,4.6cqw,38px)] leading-[1.04] font-extrabold tracking-[-0.03em] text-white">
+        {children}
+      </h3>
+      {sub && <div className="mt-3 text-[13px] text-[#b9cfc6] @2xl:text-sm">{sub}</div>}
+    </div>
+  );
+}
+
+/** Title on the left and the visual on the right; stacked on narrow frames. */
+function Split({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex h-full flex-col gap-4 @2xl:flex-row @2xl:items-center @2xl:gap-8">
+      <div className="shrink-0 @2xl:w-[36%]">{title}</div>
+      <div className="relative min-h-0 min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function Hi({ children }: { children: React.ReactNode }) {
+  return <span className="text-sun">{children}</span>;
+}
+
+function HookScene({ lt }: { lt: number }) {
+  const chips = [
+    { icon: Zap, label: "Live Amazon prices" },
+    { icon: ShieldCheck, label: "Fees always covered" },
+    { icon: Crown, label: "Buy box wins" },
+  ];
+  return (
+    <div className="relative flex h-full flex-col items-center text-center">
+      <h3
+        className="mt-[4%] font-display text-[clamp(28px,7.2cqw,60px)] leading-[0.98] font-extrabold tracking-[-0.04em] text-white"
+        style={enter(p(lt, 150, 600), 26)}
+      >
+        Your OnBuy shop,
+        <br />
+        <span className="relative inline-block">
+          <span className="relative z-10 text-ink">on autopilot.</span>
+          <span
+            className="absolute inset-x-[-4%] bottom-[6%] top-[12%] origin-left rounded-lg bg-sun"
+            style={{ transform: `scaleX(${p(lt, 700, 600)})` }}
+          />
         </span>
-        <span className="ml-1 truncate text-xs font-semibold text-muted @2xl:ml-0 @2xl:text-sm">app.sellsail.io · Northfield Home Store</span>
-      </div>
-      <div className="absolute inset-y-0 left-0 hidden w-44 flex-col gap-1 bg-ink p-3 @2xl:flex">
-        <div className="mb-4 flex items-center gap-2 px-1.5 pt-1 font-display text-[15px] font-extrabold text-white">
-          <LogoMark size={22} /> SellSail
-        </div>
-        {NAV.map(({ id, label, icon: Icon }) => (
-          <div
+      </h3>
+      <div className="mt-4 flex flex-wrap justify-center gap-2 @2xl:mt-5">
+        {chips.map(({ icon: Icon, label }, i) => (
+          <span
             key={label}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-semibold transition-colors duration-300",
-              id === scene ? "bg-[#13261e] text-white" : "text-[#9fbdb1]",
-            )}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white @2xl:text-[13px]"
+            style={enter(p(lt, 1200 + i * 220, 450), 10)}
           >
-            <Icon className={cn("size-3.5", id === scene && "text-sun")} />
-            {label}
-          </div>
+            <Icon className="size-3.5 text-sun" /> {label}
+          </span>
         ))}
       </div>
-    </>
-  );
-}
-
-function Card({ className, children, style }: { className?: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div className={cn("rounded-2xl border border-line bg-white p-3.5 shadow-[0_8px_24px_-16px_rgba(16,35,28,.35)] @2xl:p-4", className)} style={style}>
-      {children}
-    </div>
-  );
-}
-
-/** Slides and fades in as `v` goes 0 → 1. */
-const enter = (v: number, y = 14): React.CSSProperties => ({ opacity: v, transform: `translateY(${(1 - v) * y}px)` });
-
-function Heading({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="mb-3">
-      <p className="font-display text-lg leading-tight font-extrabold tracking-[-0.02em] @2xl:text-2xl">{title}</p>
-      {sub && <p className="mt-0.5 text-xs text-muted @2xl:text-sm">{sub}</p>}
-    </div>
-  );
-}
-
-function ConnectScene({ lt }: { lt: number }) {
-  const rows = [
-    { name: "OnBuy Seller API", detail: "Northfield Home Store", at: 500 },
-    { name: "Amazon UK prices", detail: "Live offers, read for you", at: 1300 },
-  ];
-  const found = p(lt, 2400, 1600);
-  return (
-    <div className="mx-auto flex h-full max-w-md flex-col justify-center">
-      <Heading title="Connections" sub="Two minutes, then SellSail does the rest." />
-      <div className="flex flex-col gap-2.5">
-        {rows.map((r) => {
-          const done = lt > r.at + 900;
+      <div className="relative mt-auto h-[38%] w-full">
+        {PRODUCTS.map((pr, i) => {
+          const off = i - 2;
+          const v = p(lt, 300 + i * 130, 800);
           return (
-            <Card key={r.name} className="flex items-center gap-3" style={enter(p(lt, r.at - 400, 400))}>
-              <span className="flex size-10 items-center justify-center rounded-xl bg-mint text-sea-dark">
-                <Store className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold">{r.name}</span>
-                <span className="block truncate text-xs text-muted">{r.detail}</span>
-              </span>
-              {done ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-mint px-2.5 py-1 text-xs font-bold text-sea-dark">
-                  <CheckCircle2 className="size-3.5" /> Connected
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted">
-                  <Loader2 className="size-3.5 animate-spin" /> Connecting
-                </span>
-              )}
-            </Card>
+            <Photo
+              key={pr.name}
+              src={pr.img}
+              className="absolute bottom-0 aspect-square w-[22%] rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,.6)] @2xl:w-[17%]"
+              style={{
+                left: `${50 + off * 19}%`,
+                opacity: v,
+                transform: `translateX(-50%) translateY(${(1 - v) * 90 + Math.abs(off) * 14}px) rotate(${off * 6 * v}deg)`,
+                zIndex: 10 - Math.abs(off),
+              }}
+            />
           );
         })}
-        <Card className="mt-1 bg-ink text-white" style={enter(p(lt, 2200, 400))}>
-          <p className="text-xs text-[#9fbdb1]">Listings found on OnBuy</p>
-          <p className="font-display text-3xl font-extrabold tracking-[-0.03em] text-sun tabular-nums @2xl:text-4xl">{int(1248 * found)}</p>
-        </Card>
       </div>
     </div>
   );
 }
 
 function ImportScene({ lt }: { lt: number }) {
-  const bar = p(lt, 200, 4600);
+  const bar = p(lt, 300, 4200);
   return (
-    <div className="flex h-full flex-col">
-      <Heading title="Products" sub="Imported from Amazon UK with live prices and stock." />
-      <Card className="mb-2.5 py-3">
-        <div className="flex items-center justify-between text-xs font-semibold">
-          <span>Importing from Amazon</span>
-          <span className="text-sea-dark tabular-nums">{int(1248 * bar)} / 1,248</span>
+    <Split
+      title={
+        <Title
+          lt={lt}
+          step="01 · Import"
+          sub={
+            <>
+              <div className="flex justify-between font-semibold text-white tabular-nums">
+                <span>Importing from Amazon UK</span>
+                <span>{int(1248 * bar)}</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-gradient-to-r from-sea-mid to-sun" style={{ width: `${bar * 100}%` }} />
+              </div>
+            </>
+          }
+        >
+          1,248 products. <Hi>One click.</Hi>
+        </Title>
+      }
+    >
+      <div className="grid grid-cols-3 gap-2 @2xl:gap-3">
+        {PRODUCTS.map((pr, i) => {
+          const v = p(lt, 450 + i * 300, 450);
+          const done = lt > 900 + i * 300;
+          return (
+            <div key={pr.name} className="rounded-2xl bg-white p-1.5 shadow-[0_16px_30px_-16px_rgba(0,0,0,.7)] @2xl:p-2" style={enter(v, 18, 0.85)}>
+              <div className="relative">
+                <Photo src={pr.img} className="aspect-[4/3] bg-mist @2xl:aspect-square" />
+                <span
+                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-sea text-white transition-transform duration-300"
+                  style={{ transform: `scale(${done ? 1 : 0})` }}
+                >
+                  <Check className="size-3" strokeWidth={3} />
+                </span>
+              </div>
+              <p className="mt-1.5 truncate px-0.5 text-[11px] font-bold text-ink @2xl:text-xs">{pr.name}</p>
+              <p className="px-0.5 text-[10px] text-muted tabular-nums @2xl:text-[11px]">Amazon {gbp(pr.cost)}</p>
+            </div>
+          );
+        })}
+        <div
+          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/25 bg-white/5 p-2 text-center text-white"
+          style={enter(p(lt, 2000, 500), 18, 0.85)}
+        >
+          <span className="font-display text-[clamp(16px,3.4cqw,26px)] font-extrabold text-sun tabular-nums">+{int(1243 * bar)}</span>
+          <span className="text-[10px] text-white/70 @2xl:text-[11px]">more products</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-mist">
-          <div className="h-full rounded-full bg-gradient-to-r from-sea to-sea-mid" style={{ width: `${bar * 100}%` }} />
-        </div>
-      </Card>
-      <div className="flex flex-col gap-2">
-        {PRODUCTS.map((r, i) => (
-          <Card key={r.name} className={cn("flex items-center gap-3 py-2", i > 3 && "hidden")} style={enter(p(lt, 400 + i * 450, 450))}>
-            <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", r.tint)}>
-              <ShoppingBag className="size-4 text-ink/70" />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{r.name}</span>
-            <span className="hidden text-xs text-muted @md:inline">Amazon</span>
-            <span className="w-16 text-right text-sm font-bold tabular-nums">{gbp(r.cost)}</span>
-            <span className="hidden rounded-full bg-mint px-2 py-0.5 text-[11px] font-bold text-sea-dark @md:inline">In stock</span>
-          </Card>
-        ))}
       </div>
-    </div>
+    </Split>
   );
 }
 
 function PriceScene({ lt }: { lt: number }) {
+  const pr = PRODUCTS[0];
+  const rows = [
+    { label: "Amazon cost", value: gbp(pr.cost), at: 700 },
+    { label: "OnBuy fees + VAT", value: gbp(pr.fees), at: 1300 },
+    { label: "Your profit", value: `+${gbp(pr.profit)}`, at: 1900, good: true },
+  ];
+  const total = p(lt, 2500, 700);
   return (
-    <div className="flex h-full flex-col">
-      <Heading title="Pricing rules" sub="OnBuy commission, VAT and your minimum profit, built in." />
-      <div className="mb-3 flex flex-wrap gap-2" style={enter(p(lt, 0, 400))}>
-        {["Margin 22%", "Min profit £2.00", "Fees + VAT included"].map((c) => (
-          <span key={c} className="rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
-            {c}
+    <Split
+      title={
+        <Title lt={lt} step="02 · Price" sub="Fees, VAT and your minimum profit are built into every price.">
+          Every price <Hi>pays you.</Hi>
+        </Title>
+      }
+    >
+      <div className="rounded-3xl bg-white p-3 shadow-[0_24px_50px_-20px_rgba(0,0,0,.7)] @2xl:p-4" style={enter(p(lt, 300, 500), 20, 0.95)}>
+        <div className="flex gap-3 @2xl:gap-4">
+          <Photo src={pr.img} className="aspect-square w-[34%] shrink-0 bg-mist" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold text-ink">{pr.name}</p>
+            <ul className="mt-1.5 flex flex-col gap-1 text-[12px] @2xl:text-[13px]">
+              {rows.map((r) => (
+                <li
+                  key={r.label}
+                  className={cn("flex justify-between gap-2 rounded-lg px-2 py-1", r.good ? "bg-mint font-bold text-sea-dark" : "text-body")}
+                  style={enter(p(lt, r.at, 400), 8)}
+                >
+                  <span className="truncate">{r.label}</span>
+                  <span className="tabular-nums">{r.value}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 flex items-end justify-between gap-2 border-t-2 border-dashed border-line pt-2" style={{ opacity: total }}>
+              <span className="text-[12px] font-semibold text-muted">OnBuy price</span>
+              <span className="font-display text-[clamp(20px,4.2cqw,34px)] leading-none font-extrabold text-ink tabular-nums">
+                {gbp(pr.cost + (pr.price - pr.cost) * total)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2" style={enter(p(lt, 3300, 500), 10)}>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white @2xl:text-xs">
+          <ShieldCheck className="size-3.5 text-sun" /> Floor £21.80 · never crossed
+        </span>
+        <span className="flex items-center gap-1.5 rounded-full bg-white/10 py-1 pr-3 pl-1 text-[11px] font-semibold text-white @2xl:text-xs">
+          <span className="flex -space-x-2">
+            {PRODUCTS.slice(1).map((x) => (
+              <Photo key={x.name} src={x.img} className="size-6 rounded-full ring-2 ring-[#0b1a15]" />
+            ))}
           </span>
-        ))}
+          +1,247 priced
+        </span>
       </div>
-      <div className="flex flex-col gap-2">
-        {PRODUCTS.map((r, i) => {
-          const at = 700 + i * 650;
-          const set = lt > at;
-          const glow = set && lt < at + 900;
-          return (
-            <Card
-              key={r.name}
-              className={cn("flex items-center gap-2 py-2.5 transition-colors duration-500 @2xl:gap-3", glow && "border-sea bg-mint", i > 3 && "hidden")}
-              style={enter(p(lt, i * 120, 400), 8)}
-            >
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{r.name}</span>
-              <span className="text-xs text-muted tabular-nums">{gbp(r.cost)}</span>
-              <span className="text-xs text-muted">→</span>
-              <span className={cn("w-16 text-right text-sm font-extrabold tabular-nums", set ? "text-ink" : "text-muted/50")}>
-                {set ? gbp(r.price) : "£ —"}
-              </span>
-              <span
-                className="w-16 rounded-full bg-mint px-2 py-0.5 text-center text-[11px] font-bold text-sea-dark tabular-nums transition-opacity duration-300"
-                style={{ opacity: set ? 1 : 0 }}
-              >
-                +{gbp(r.profit)}
-              </span>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+    </Split>
   );
 }
 
 function CompeteScene({ lt }: { lt: number }) {
-  const answered = lt > 1800;
-  const won = lt > 2600;
-  const yours = answered ? 24.69 : 24.99;
-  const offers = [
-    { seller: "You", price: yours, you: true },
-    { seller: "HomeDeals UK", price: 24.79, you: false },
-    { seller: "BestBuyz", price: 26.5, you: false },
-  ].sort((a, b) => a.price - b.price);
-  const wins = p(lt, 3200, 2600);
+  const pr = PRODUCTS[0];
+  const yours = lt > 1600 ? 24.69 : 24.99;
+  const won = lt > 2300;
+  const sellers = [
+    { name: "You", price: yours, you: true },
+    { name: "HomeDeals UK", price: 24.79, you: false },
+    { name: "BestBuyz", price: 26.5, you: false },
+  ];
+  const rank = [...sellers].sort((a, b) => a.price - b.price).map((s) => s.name);
+  // Price track from £20 to £28.
+  const at = (n: number) => `${((n - 20) / 8) * 100}%`;
   return (
-    <div className="flex h-full flex-col">
-      <Heading title="Competition" sub="Checked every few minutes against every other seller." />
-      <div className="grid flex-1 content-start gap-3 @2xl:grid-cols-[1.4fr_1fr]">
-        <Card style={enter(p(lt, 0, 400))}>
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold">Yoga mat · offers on OnBuy</p>
-            <span
+    <Split
+      title={
+        <Title lt={lt} step="03 · Compete" sub="Checked every few minutes. Cheaper rival? Answered in seconds.">
+          Win the buy box. <Hi>Keep your margin.</Hi>
+        </Title>
+      }
+    >
+      <div className="relative rounded-3xl bg-white p-3 shadow-[0_24px_50px_-20px_rgba(0,0,0,.7)] @2xl:p-4" style={enter(p(lt, 300, 500), 20, 0.95)}>
+        <div className="flex items-center gap-2.5">
+          <Photo src={pr.img} className="size-10 shrink-0 bg-mist @2xl:size-12" />
+          <p className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{pr.name}</p>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all duration-500",
+              won ? "scale-105 bg-sun text-ink shadow-[0_0_0_6px_rgba(255,210,63,.3)]" : "bg-coral text-[#8a3b22]",
+            )}
+          >
+            <Crown className="size-3.5" /> {won ? "Buy box won" : "Undercut"}
+          </span>
+        </div>
+        <div className="relative mt-3 h-[108px]">
+          {sellers.map((s) => (
+            <div
+              key={s.name}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors duration-500",
-                won ? "bg-sun text-ink" : "bg-coral text-[#8a3b22]",
+                "absolute inset-x-0 flex h-8 items-center justify-between rounded-xl px-3 text-[13px] transition-transform duration-700 ease-out",
+                s.you ? "z-10 bg-mint font-bold text-sea-dark ring-2 ring-sea" : "bg-mist text-body",
               )}
+              style={{ transform: `translateY(${rank.indexOf(s.name) * 38}px)` }}
             >
-              <Crown className="size-3.5" /> {won ? "Buy box won" : "Undercut by £0.20"}
-            </span>
+              <span>
+                {rank.indexOf(s.name) + 1}. {s.name}
+              </span>
+              <span className="tabular-nums">{gbp(s.price)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 border-t border-dashed border-line pt-3">
+          <div className="relative h-2 rounded-full bg-mist">
+            <span className="absolute inset-y-0 left-0 rounded-l-full bg-danger/15" style={{ width: at(21.8) }} />
+            <span className="absolute -top-1 h-4 w-0.5 bg-danger" style={{ left: at(21.8) }} />
+            <span
+              className="absolute -top-1 size-4 -translate-x-1/2 rounded-full border-2 border-white bg-sea shadow transition-[left] duration-700"
+              style={{ left: at(yours) }}
+            />
           </div>
-          <ul className="mt-3 flex flex-col gap-1.5">
-            {offers.map((o, i) => (
-              <li
-                key={o.seller}
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-all duration-500",
-                  o.you ? "bg-mint font-bold text-sea-dark" : "bg-mist",
-                )}
-              >
-                <span>
-                  {i + 1}. {o.seller}
-                </span>
-                <span className="tabular-nums">{gbp(o.price)}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 flex items-center justify-between border-t border-dashed border-line pt-2.5 text-xs">
-            <span className="text-muted">Your floor (fees + £2.00 profit)</span>
-            <span className="font-bold tabular-nums">£21.80 · never crossed</span>
-          </p>
-        </Card>
-        <div className="flex flex-col gap-3">
-          <Card style={enter(p(lt, 3400, 500))}>
-            <p className="text-xs text-muted">LED desk lamp · rival out of stock</p>
-            <p className="mt-1 text-sm font-bold">
-              Raised to <span className="text-sea-dark">£31.49</span> <span className="text-xs font-semibold text-muted">(+£1.50 profit)</span>
-            </p>
-          </Card>
-          <Card className="bg-ink text-white" style={enter(p(lt, 2800, 500))}>
-            <p className="text-xs text-[#9fbdb1]">Buy boxes won today</p>
-            <p className="font-display text-3xl font-extrabold tracking-[-0.03em] text-sun tabular-nums">{int(312 * wins)}</p>
-          </Card>
+          <div className="mt-1.5 flex justify-between text-[10px] font-semibold text-muted @2xl:text-[11px]">
+            <span className="text-danger">Floor £21.80</span>
+            <span>Your price {gbp(yours)}</span>
+          </div>
         </div>
       </div>
-    </div>
+      <div
+        className="absolute -right-1 -bottom-3 hidden items-center gap-2 rounded-2xl bg-sun px-3 py-2 text-[12px] font-bold text-ink shadow-xl @2xl:flex"
+        style={enter(p(lt, 3600, 500), 14, 0.9)}
+      >
+        <TrendingUp className="size-4" /> Desk lamp rival sold out · raised to £31.49
+      </div>
+    </Split>
   );
 }
 
 function SalesScene({ lt }: { lt: number }) {
-  const grow = p(lt, 300, 6200);
-  const kpis = [
-    { label: "Revenue this month", value: gbp(48917.4 * grow), accent: true },
-    { label: "Orders", value: int(1932 * grow) },
-    { label: "Buy box share", value: `${Math.round(87 * grow)}%` },
-    { label: "Avg profit / order", value: gbp(3.41) },
-  ];
+  const grow = p(lt, 300, 6500);
   const max = Math.max(...DAYS);
-  const pts = DAYS.map((d, i) => [(i / (DAYS.length - 1)) * 300, 100 - (d / max) * 88] as const);
+  const pts = DAYS.map((d, i) => [(i / (DAYS.length - 1)) * 300, 96 - (d / max) * 84] as const);
   const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const area = `${line} L300,100 L0,100 Z`;
-  const shownOrders = Math.min(ORDERS.length, Math.max(0, Math.floor((lt - 1200) / 800)));
-  const recent = ORDERS.slice(0, shownOrders).slice(-3).reverse();
+  const shownCount = Math.min(ORDERS.length, Math.max(0, Math.floor((lt - 900) / 850) + 1));
+  const latest = Array.from({ length: Math.min(3, shownCount) }, (_, k) => shownCount - 1 - k);
 
   return (
-    <div className="flex h-full flex-col">
-      <Heading title="Good morning, Northfield" sub="Last 30 days · all systems running" />
-      <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-4 @2xl:gap-3">
-        {kpis.map((k, i) => (
-          <Card key={k.label} className={cn(k.accent && "bg-ink text-white")} style={enter(p(lt, i * 150, 400))}>
-            <p className={cn("text-[11px] @2xl:text-xs", k.accent ? "text-[#9fbdb1]" : "text-muted")}>{k.label}</p>
-            <p
-              className={cn(
-                "mt-0.5 font-display text-lg leading-tight font-extrabold tracking-[-0.02em] tabular-nums @md:text-xl @2xl:text-2xl",
-                k.accent && "text-sun",
-              )}
-            >
-              {k.value}
-            </p>
-          </Card>
-        ))}
-      </div>
-      <div className="mt-3 grid min-h-0 flex-1 gap-3 @2xl:grid-cols-[1.6fr_1fr]">
-        <Card className="flex min-h-0 flex-col">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold">Daily revenue</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-mint px-2 py-0.5 font-bold text-sea-dark">
+    <Split
+      title={
+        <Title lt={lt} step="04 · Sell" sub="More buy boxes, more orders. Day and night.">
+          Watch the <Hi>orders roll in.</Hi>
+        </Title>
+      }
+    >
+      <div className="flex h-full flex-col gap-3 @2xl:h-auto">
+        <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-3.5 text-white backdrop-blur @2xl:p-4" style={enter(p(lt, 200, 500), 18)}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-[#b9cfc6] @2xl:text-xs">Revenue this month</p>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sea px-2 py-0.5 text-[11px] font-bold">
               <TrendingUp className="size-3" /> +377%
             </span>
           </div>
-          <svg viewBox="0 0 300 100" preserveAspectRatio="none" className="mt-2 min-h-[70px] w-full flex-1">
+          <p className="mt-0.5 font-display text-[clamp(28px,6.4cqw,48px)] leading-none font-extrabold tracking-[-0.03em] whitespace-nowrap text-sun tabular-nums">
+            £{int(48917 * grow)}
+          </p>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none" className="mt-2 h-[clamp(44px,11cqw,80px)] w-full">
             <defs>
               <linearGradient id="demo-area" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#2a9c84" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#2a9c84" stopOpacity="0" />
+                <stop offset="0%" stopColor="#ffd23f" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#ffd23f" stopOpacity="0" />
               </linearGradient>
               <clipPath id="demo-clip">
                 <rect x="0" y="0" height="100" width={300 * grow} />
               </clipPath>
             </defs>
             <g clipPath="url(#demo-clip)">
-              <path d={area} fill="url(#demo-area)" />
-              <path d={line} fill="none" stroke="#0e7c66" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
+              <path d={`${line} L300,100 L0,100 Z`} fill="url(#demo-area)" />
+              <path d={line} fill="none" stroke="#ffd23f" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
             </g>
           </svg>
-        </Card>
-        <Card className="hidden @2xl:block">
-          <p className="text-xs font-bold">Latest orders</p>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {recent.map(([name, price], i) => (
-              <li
-                key={`${shownOrders - i}`}
-                className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs", i === 0 ? "animate-rise bg-sun-soft" : "bg-mist")}
-              >
-                <span className="truncate font-semibold">{name}</span>
-                <span className="font-bold tabular-nums">{gbp(price)}</span>
-              </li>
+          <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+            {[
+              [int(1932 * grow), "orders"],
+              [`${Math.round(87 * grow)}%`, "buy box"],
+              ["£3.41", "avg profit"],
+            ].map(([v, l]) => (
+              <div key={l} className="min-w-0 rounded-xl bg-white/10 px-1 py-1.5">
+                <p className="truncate font-display text-[clamp(13px,2.6cqw,18px)] font-extrabold tabular-nums">{v}</p>
+                <p className="text-[10px] text-white/60">{l}</p>
+              </div>
             ))}
-          </ul>
-        </Card>
-      </div>
-      {recent[0] && (
-        <div
-          key={shownOrders}
-          className="absolute top-14 right-3 flex animate-rise items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs shadow-[0_12px_30px_-10px_rgba(16,35,28,.4)] @2xl:hidden"
-        >
-          <span className="size-2 rounded-full bg-sea-mid" />
-          New order · <b className="tabular-nums">{gbp(recent[0][1])}</b>
+          </div>
         </div>
-      )}
-    </div>
+        <ul className="grid gap-2 @2xl:grid-cols-2">
+          {latest.slice(0, 2).map((k, i) => {
+            const pr = PRODUCTS[ORDERS[k]];
+            const v = p(lt, 900 + k * 850, 450);
+            return (
+              <li
+                key={k}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-2xl bg-white p-2 pr-3 text-ink shadow-[0_18px_40px_-14px_rgba(0,0,0,.7)]",
+                  i > 0 && "hidden @2xl:flex",
+                )}
+                style={{ ...enter(v, 0, 0.9), transform: `translateX(${(1 - v) * 40}px) scale(${0.9 + 0.1 * v})` }}
+              >
+                <Photo src={pr.img} className="size-9 shrink-0 bg-mist" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-sea-dark">
+                    <CheckCircle2 className="size-3.5" /> New order
+                  </span>
+                  <span className="block truncate text-[12px] font-semibold">{pr.name}</span>
+                </span>
+                <span className="font-display text-sm font-extrabold tabular-nums">{gbp(pr.price)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </Split>
   );
 }
 
 function EndScene({ lt }: { lt: number }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center text-center" style={enter(p(lt, 0, 600), 20)}>
-      <LogoMark size={56} />
-      <p className="mt-4 font-display text-2xl leading-tight font-extrabold tracking-[-0.03em] @2xl:text-4xl">
+    <div className="flex h-full flex-col items-center justify-center text-center">
+      <div style={enter(p(lt, 0, 500), 20, 0.8)}>
+        <LogoMark size={52} />
+      </div>
+      <h3
+        className="mt-4 font-display text-[clamp(26px,6.4cqw,54px)] leading-[1] font-extrabold tracking-[-0.04em] text-white"
+        style={enter(p(lt, 200, 600), 22)}
+      >
         Sell more on OnBuy,
         <br />
-        <span className="highlight px-1">never at a loss</span>
+        <Hi>never at a loss.</Hi>
+      </h3>
+      <p className="mt-4 rounded-full bg-sun px-5 py-2 text-[13px] font-bold text-ink @2xl:text-base" style={enter(p(lt, 700, 500), 12, 0.9)}>
+        Start your 14-day free trial
       </p>
-      <p className="mt-3 text-sm text-muted @2xl:text-base">14-day free trial · No card needed · Cancel any time</p>
+      <p className="mt-2 text-[12px] text-white/70 @2xl:text-sm" style={enter(p(lt, 900, 500), 10)}>
+        No card needed · Cancel any time
+      </p>
+      <div className="mt-5 flex gap-2">
+        {PRODUCTS.map((pr, i) => (
+          <Photo
+            key={pr.name}
+            src={pr.img}
+            className="size-[clamp(36px,8cqw,56px)] rounded-2xl shadow-lg"
+            style={enter(p(lt, 1100 + i * 120, 450), 16, 0.7)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
