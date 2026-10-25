@@ -16,7 +16,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Demo presenter clips never change in place (a new clip gets a new name).
+      { source: "/videos/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
+    ];
   },
   experimental: {
     serverActions: {
@@ -24,7 +28,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
       // Next rejects a server action whose Origin doesn't match the Host it
       // sees; name the live domains in case Hostinger's proxy rewrites Host.
-      allowedOrigins: ["sellsail.io", "www.sellsail.io"],
+      allowedOrigins: ["sellsail.io", "www.sellsail.io", "app.sellsail.io"],
     },
     // Hostinger caps the number of processes per account, so keep the build
     // to one worker and avoid Turbopack (it spawns extra Node processes for CSS).

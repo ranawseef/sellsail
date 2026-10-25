@@ -45,7 +45,7 @@ export function Hero() {
           <span className="flex size-8 items-center justify-center rounded-full bg-sea text-white">
             <Play aria-hidden="true" className="ml-0.5 size-3.5 fill-white" />
           </span>
-          Watch the 35-second demo
+          Watch the 30-second demo
         </a>
         <ul className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-body">
           {["No Amazon keys needed", "Never below your floor", "No card needed"].map((t) => (

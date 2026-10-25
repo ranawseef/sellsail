@@ -44,7 +44,7 @@ export default function HomePage() {
       <TrustMarquee />
 
       <section id="demo" className="scroll-mt-20 bg-gradient-to-b from-white to-paper px-4 py-14 sm:px-6 sm:py-16">
-        <SectionHeading eyebrow="Watch the demo" title="See SellSail sell, in 35 seconds" intro="Connect, import, price, compete and sell: a demo shop running on autopilot." />
+        <SectionHeading eyebrow="Watch the demo" title="See SellSail sell, in 30 seconds" intro="Connect, import, price, compete and sell: a demo shop running on autopilot." />
         <div className="mt-10 sm:mt-12">
           <DemoVideo />
         </div>

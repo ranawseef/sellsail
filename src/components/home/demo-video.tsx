@@ -1,6 +1,6 @@
 "use client";
 
-// "Watch the demo": a 35-second promo of SellSail running a demo shop. It is
+// "Watch the demo": a 30-second promo of SellSail running a demo shop. It is
 // drawn in the page rather than shipped as a video file, so it stays sharp on
 // every screen and costs a few KB. One clock drives every scene: each scene
 // derives what it shows from its local time, so pause, seek and loop are
@@ -8,26 +8,38 @@
 // prefers-reduced-motion it waits for the play button and shows the final
 // sales screen meanwhile. All numbers are demo data and labelled as such.
 // Text sizes use container units (cqw) so nothing overflows at any width.
+//
+// A presenter (two short clips, voiced) sits in a round picture-in-picture
+// bubble. The clips follow the same clock: they play, pause and seek with the
+// scenes, start muted (browsers block sound on autoplay) and get sound from
+// the "Tap for sound" button. Scene lengths are timed to the voice-over.
 
 import { useEffect, useRef, useState } from "react";
 import { useInView, useReducedMotion } from "motion/react";
-import { Check, CheckCircle2, Crown, Pause, Play, RotateCcw, ShieldCheck, TrendingUp, Zap } from "lucide-react";
+import { Check, CheckCircle2, Crown, Pause, Play, RotateCcw, ShieldCheck, TrendingUp, Volume2, VolumeX, Zap } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { productImages } from "@/content/product-images";
 import { cn } from "@/lib/utils";
 
 const SCENES = [
   { id: "hook", label: "Intro", ms: 4000, text: "Your OnBuy shop, on autopilot." },
-  { id: "import", label: "Import", ms: 5000, text: "Import 1,248 Amazon products in one click." },
-  { id: "price", label: "Price", ms: 6000, text: "Every OnBuy price covers fees, VAT and your profit." },
-  { id: "compete", label: "Compete", ms: 6000, text: "Win the buy box without going below your floor." },
-  { id: "sales", label: "Sell", ms: 9000, text: "Watch the orders roll in, around the clock." },
-  { id: "end", label: "Start", ms: 5000, text: "Start your 14-day free trial. No card needed." },
+  { id: "import", label: "Import", ms: 4500, text: "Import 1,248 Amazon products in one click." },
+  { id: "price", label: "Price", ms: 5000, text: "Every OnBuy price covers fees, VAT and your profit." },
+  { id: "compete", label: "Compete", ms: 4800, text: "Win the buy box without going below your floor." },
+  { id: "sales", label: "Sell", ms: 5000, text: "Watch the orders roll in, around the clock." },
+  { id: "end", label: "Start", ms: 6000, text: "Start your 14-day free trial. No card needed." },
 ] as const;
 
 const STARTS = SCENES.reduce<number[]>((acc, s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + SCENES[i - 1].ms], []);
 const TOTAL = STARTS[STARTS.length - 1] + SCENES[SCENES.length - 1].ms;
 const SALES_DONE = STARTS[4] + SCENES[4].ms - 1;
+
+// Presenter clips: the first covers intro to price, the second starts with
+// the Compete scene. `ms` is each clip's length.
+const CLIPS = [
+  { src: "/videos/presenter-1.mp4", at: 0, ms: 12680 },
+  { src: "/videos/presenter-2.mp4", at: STARTS[3], ms: 13250 },
+];
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 /** 0 → 1 between `start` and `start + dur` (ms of scene time), eased out. */
@@ -59,6 +71,8 @@ export function DemoVideo() {
   const reduce = useReducedMotion();
   const [mode, setMode] = useState<"auto" | "playing" | "paused">("auto");
   const [t, setT] = useState(0);
+  const [muted, setMuted] = useState(true);
+  const clipRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const playing = mode === "playing" || (mode === "auto" && !reduce);
   const running = playing && inView;
@@ -90,6 +104,26 @@ export function DemoVideo() {
   const lt = shown - STARTS[index];
   const fade = Math.min(p(lt, 0, 400), 1 - p(lt, scene.ms - 350, 350));
   const drift = Math.sin(shown / 2400);
+
+  const activeClip = CLIPS.findIndex((c) => shown >= c.at && shown < c.at + c.ms);
+
+  // Keep the presenter in step with the scene clock.
+  useEffect(() => {
+    CLIPS.forEach((c, i) => {
+      const v = clipRefs.current[i];
+      if (!v) return;
+      v.muted = muted;
+      const local = (shown - c.at) / 1000;
+      if (i === activeClip) {
+        if (Math.abs(v.currentTime - local) > (running ? 0.35 : 0.05)) v.currentTime = local;
+        if (running && v.paused) v.play().catch(() => {});
+        if (!running && !v.paused) v.pause();
+      } else {
+        if (!v.paused) v.pause();
+        if (local < 0 && v.currentTime > 0) v.currentTime = 0;
+      }
+    });
+  }, [shown, running, muted, activeClip]);
 
   const seek = (i: number) => {
     setT(STARTS[i]);
@@ -130,8 +164,31 @@ export function DemoVideo() {
             {scene.id === "end" && <EndScene lt={lt} />}
           </div>
 
+          <div
+            className="absolute bottom-3 left-3 z-10 aspect-square w-[24%] transition-all duration-500 @2xl:bottom-6 @2xl:left-6 @2xl:w-[17%]"
+            style={{ opacity: activeClip >= 0 ? 1 : 0, transform: `scale(${activeClip >= 0 ? 1 : 0.6})`, transformOrigin: "bottom left" }}
+          >
+            {activeClip >= 0 && running && <span className="absolute -inset-1.5 animate-pulse-soft rounded-full border-2 border-sun/70" />}
+            <div className="relative h-full w-full overflow-hidden rounded-full bg-ink shadow-[0_20px_40px_-10px_rgba(0,0,0,.7)] ring-[3px] ring-sun">
+              {CLIPS.map((c, i) => (
+                <video
+                  key={c.src}
+                  ref={(el) => {
+                    clipRefs.current[i] = el;
+                  }}
+                  src={c.src}
+                  muted
+                  playsInline
+                  preload={inView || shown > 0 ? "auto" : "none"}
+                  className="absolute inset-0 h-full w-full object-cover object-[50%_22%] transition-opacity duration-300"
+                  style={{ opacity: i === Math.max(activeClip, 0) ? 1 : 0 }}
+                />
+              ))}
+            </div>
+          </div>
+
           {!playing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-ink/40">
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/40">
               <span className="flex size-16 items-center justify-center rounded-full bg-sun shadow-[0_0_0_10px_rgba(255,210,63,.25)] @2xl:size-20">
                 <Play className="ml-1 size-7 fill-ink text-ink @2xl:size-9" />
               </span>
@@ -154,6 +211,16 @@ export function DemoVideo() {
           />
         )}
 
+        {muted && playing && (
+          <button
+            type="button"
+            onClick={() => setMuted(false)}
+            className="absolute top-3 left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-ink shadow-lg hover:bg-sun sm:top-4"
+          >
+            <Volume2 aria-hidden="true" className="size-4" /> Tap for sound
+          </button>
+        )}
+
         {/* Controls */}
         <div className="flex items-center gap-3 px-2 pt-2.5 pb-1.5 sm:px-3">
           <button
@@ -163,6 +230,15 @@ export function DemoVideo() {
             className="relative z-10 inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             {playing ? <Pause aria-hidden="true" className="size-4 fill-white" /> : <Play aria-hidden="true" className="ml-0.5 size-4 fill-white" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? "Turn sound on" : "Turn sound off"}
+            aria-pressed={!muted}
+            className="relative z-10 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            {muted ? <VolumeX aria-hidden="true" className="size-4" /> : <Volume2 aria-hidden="true" className="size-4" />}
           </button>
           <ol className="relative z-10 flex flex-1 gap-1.5" aria-label="Chapters">
             {SCENES.map((s, i) => {
@@ -244,7 +320,7 @@ function Title({ lt, step, children, sub }: { lt: number; step: string; children
 function Split({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col gap-4 @2xl:flex-row @2xl:items-center @2xl:gap-8">
-      <div className="shrink-0 @2xl:w-[36%]">{title}</div>
+      <div className="shrink-0 @2xl:w-[36%] @2xl:self-start @2xl:pt-[3%]">{title}</div>
       <div className="relative min-h-0 min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -287,7 +363,7 @@ function HookScene({ lt }: { lt: number }) {
           </span>
         ))}
       </div>
-      <div className="relative mt-auto h-[42%] w-full">
+      <div className="relative mt-auto h-[42%] w-full @2xl:ml-[16%] @2xl:w-[84%]">
         {PRODUCTS.map((pr, i) => {
           const off = i - 2;
           const v = p(lt, 300 + i * 130, 800);
@@ -311,7 +387,7 @@ function HookScene({ lt }: { lt: number }) {
 }
 
 function ImportScene({ lt }: { lt: number }) {
-  const bar = p(lt, 300, 4200);
+  const bar = p(lt, 300, 3600);
   return (
     <Split
       title={
@@ -492,7 +568,7 @@ function CompeteScene({ lt }: { lt: number }) {
       </div>
       <div
         className="absolute -right-1 -bottom-10 hidden items-center gap-2 rounded-2xl bg-sun px-3 py-2 text-[12px] font-bold text-ink shadow-xl @2xl:flex"
-        style={enter(p(lt, 3600, 500), 14, 0.9)}
+        style={enter(p(lt, 3300, 500), 14, 0.9)}
       >
         <TrendingUp className="size-4" /> Desk lamp rival sold out · raised to £31.49
       </div>
@@ -501,11 +577,11 @@ function CompeteScene({ lt }: { lt: number }) {
 }
 
 function SalesScene({ lt }: { lt: number }) {
-  const grow = p(lt, 300, 6500);
+  const grow = p(lt, 200, 4200);
   const max = Math.max(...DAYS);
   const pts = DAYS.map((d, i) => [(i / (DAYS.length - 1)) * 300, 96 - (d / max) * 84] as const);
   const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const shownCount = Math.min(ORDERS.length, Math.max(0, Math.floor((lt - 900) / 850) + 1));
+  const shownCount = Math.min(ORDERS.length, Math.max(0, Math.floor((lt - 600) / 700) + 1));
   const latest = Array.from({ length: Math.min(3, shownCount) }, (_, k) => shownCount - 1 - k);
 
   return (
@@ -558,7 +634,7 @@ function SalesScene({ lt }: { lt: number }) {
         <ul className="grid gap-2 @2xl:grid-cols-2">
           {latest.slice(0, 2).map((k, i) => {
             const pr = PRODUCTS[ORDERS[k]];
-            const v = p(lt, 900 + k * 850, 450);
+            const v = p(lt, 600 + k * 700, 450);
             return (
               <li
                 key={k}
