@@ -4,18 +4,16 @@
 // drawn in the page rather than shipped as a video file, so it stays sharp on
 // every screen and costs a few KB. One clock drives every scene: each scene
 // derives what it shows from its local time, so pause, seek and loop are
-// exact. It plays muted-video style when scrolled into view; under
-// prefers-reduced-motion it waits for the play button and shows the final
-// sales screen meanwhile. All numbers are from a demo shop.
+// exact. Nothing plays or downloads until the visitor presses play (page
+// speed): until then it shows a still cover frame. All numbers are from a demo shop.
 // Text sizes use container units (cqw) so nothing overflows at any width.
 //
 // A presenter (two short clips, voiced) sits in a round picture-in-picture
 // bubble. The clips follow the same clock: they play, pause and seek with the
-// scenes, start muted (browsers block sound on autoplay) and get sound from
-// the "Tap for sound" button. Scene lengths are timed to the voice-over.
+// scenes, and start with sound because playback always begins with a click. Scene lengths are timed to the voice-over.
 
 import { useEffect, useRef, useState } from "react";
-import { useInView, useReducedMotion } from "motion/react";
+import { useInView } from "motion/react";
 import { Check, CheckCircle2, Crown, Pause, Play, RotateCcw, ShieldCheck, TrendingUp, Volume2, VolumeX, Zap } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { productImages } from "@/content/product-images";
@@ -32,7 +30,8 @@ const SCENES = [
 
 const STARTS = SCENES.reduce<number[]>((acc, s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + SCENES[i - 1].ms], []);
 const TOTAL = STARTS[STARTS.length - 1] + SCENES[SCENES.length - 1].ms;
-const SALES_DONE = STARTS[4] + SCENES[4].ms - 1;
+/** The still frame shown before the first play: the intro, fully drawn. */
+const POSTER = 3600;
 
 // Presenter clips: the first covers intro to price, the second starts with
 // the Compete scene. `ms` is each clip's length.
@@ -68,13 +67,12 @@ const DAYS = [520, 610, 580, 720, 760, 840, 810, 930, 1010, 980, 1120, 1190, 124
 export function DemoVideo() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { amount: 0.35 });
-  const reduce = useReducedMotion();
-  const [mode, setMode] = useState<"auto" | "playing" | "paused">("auto");
+  const [mode, setMode] = useState<"idle" | "playing" | "paused">("idle");
   const [t, setT] = useState(0);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const clipRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  const playing = mode === "playing" || (mode === "auto" && !reduce);
+  const playing = mode === "playing";
   const running = playing && inView;
 
   useEffect(() => {
@@ -97,7 +95,7 @@ export function DemoVideo() {
     return () => cancelAnimationFrame(raf);
   }, [running]);
 
-  const shown = mode === "auto" && reduce ? SALES_DONE : t;
+  const shown = mode === "idle" ? POSTER : t;
   let index = 0;
   for (let i = 0; i < SCENES.length; i++) if (shown >= STARTS[i]) index = i;
   const scene = SCENES[index];
@@ -109,6 +107,9 @@ export function DemoVideo() {
 
   // Keep the presenter in step with the scene clock.
   useEffect(() => {
+    // Touching currentTime would start a download, so leave the clips alone
+    // until the first play.
+    if (mode === "idle") return;
     CLIPS.forEach((c, i) => {
       const v = clipRefs.current[i];
       if (!v) return;
@@ -123,7 +124,12 @@ export function DemoVideo() {
         if (local < 0 && v.currentTime > 0) v.currentTime = 0;
       }
     });
-  }, [shown, running, muted, activeClip]);
+  }, [shown, running, muted, activeClip, mode]);
+
+  const play = () => {
+    if (mode === "idle") setT(0);
+    setMode("playing");
+  };
 
   const seek = (i: number) => {
     setT(STARTS[i]);
@@ -165,7 +171,7 @@ export function DemoVideo() {
 
           <div
             className="absolute bottom-3 left-3 z-10 aspect-square w-[24%] transition-all duration-500 @2xl:bottom-6 @2xl:left-6 @2xl:w-[17%]"
-            style={{ opacity: activeClip >= 0 ? 1 : 0, transform: `scale(${activeClip >= 0 ? 1 : 0.6})`, transformOrigin: "bottom left" }}
+            style={{ opacity: activeClip >= 0 && mode !== "idle" ? 1 : 0, transform: `scale(${activeClip >= 0 && mode !== "idle" ? 1 : 0.6})`, transformOrigin: "bottom left" }}
           >
             {activeClip >= 0 && running && <span className="absolute -inset-1.5 animate-pulse-soft rounded-full border-2 border-sun/70" />}
             <div className="relative h-full w-full overflow-hidden rounded-full bg-ink shadow-[0_20px_40px_-10px_rgba(0,0,0,.7)] ring-[3px] ring-sun">
@@ -178,7 +184,7 @@ export function DemoVideo() {
                   src={c.src}
                   muted
                   playsInline
-                  preload={inView || shown > 0 ? "auto" : "none"}
+                  preload={mode === "idle" ? "none" : "auto"}
                   className="absolute inset-0 h-full w-full object-cover object-[50%_6%] transition-opacity duration-300"
                   style={{ opacity: i === Math.max(activeClip, 0) ? 1 : 0 }}
                 />
@@ -187,24 +193,22 @@ export function DemoVideo() {
           </div>
 
           {!playing && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/40">
+            <div className={cn("absolute inset-0 z-20 flex flex-col items-center justify-center gap-3", mode === "idle" ? "bg-ink/20" : "bg-ink/40")}>
               <span className="flex size-16 items-center justify-center rounded-full bg-sun shadow-[0_0_0_10px_rgba(255,210,63,.25)] @2xl:size-20">
                 <Play className="ml-1 size-7 fill-ink text-ink @2xl:size-9" />
               </span>
+              {mode === "idle" && (
+                <span className="rounded-full bg-ink/80 px-3.5 py-1.5 text-xs font-bold text-white backdrop-blur @2xl:text-sm">
+                  Watch the demo · {clock(TOTAL)}
+                </span>
+              )}
             </div>
           )}
-          {/* Warm the image cache so photos never pop in mid-scene. */}
-          <div className="hidden">
-            {PRODUCTS.map((pr) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={pr.name} src={pr.img} alt="" referrerPolicy="no-referrer" />
-            ))}
-          </div>
         </div>
         {!playing && (
           <button
             type="button"
-            onClick={() => setMode("playing")}
+            onClick={play}
             className="absolute inset-0 cursor-pointer rounded-[28px] sm:rounded-[32px]"
             aria-label="Play the demo"
           />
@@ -224,7 +228,7 @@ export function DemoVideo() {
         <div className="flex items-center gap-3 px-2 pt-2.5 pb-1.5 sm:px-3">
           <button
             type="button"
-            onClick={() => setMode(playing ? "paused" : "playing")}
+            onClick={() => (playing ? setMode("paused") : play())}
             aria-label={playing ? "Pause the demo" : "Play the demo"}
             className="relative z-10 inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
@@ -295,7 +299,7 @@ function Photo({ src, className, style }: { src: string; className?: string; sty
   return (
     <span className={cn("block overflow-hidden rounded-xl bg-white", className)} style={style}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" referrerPolicy="no-referrer" className="h-full w-full object-contain p-[6%]" />
+      <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" className="h-full w-full object-contain p-[6%]" />
     </span>
   );
 }
