@@ -287,7 +287,7 @@ function HookScene({ lt }: { lt: number }) {
           </span>
         ))}
       </div>
-      <div className="relative mt-auto h-[38%] w-full">
+      <div className="relative mt-auto h-[42%] w-full">
         {PRODUCTS.map((pr, i) => {
           const off = i - 2;
           const v = p(lt, 300 + i * 130, 800);
@@ -295,7 +295,7 @@ function HookScene({ lt }: { lt: number }) {
             <Photo
               key={pr.name}
               src={pr.img}
-              className="absolute bottom-0 aspect-square w-[22%] rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,.6)] @2xl:w-[17%]"
+              className="absolute bottom-[14%] aspect-square w-[22%] rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,.6)] @2xl:w-[17%]"
               style={{
                 left: `${50 + off * 19}%`,
                 opacity: v,
@@ -334,14 +334,14 @@ function ImportScene({ lt }: { lt: number }) {
         </Title>
       }
     >
-      <div className="grid grid-cols-3 gap-2 @2xl:gap-3">
+      <div className="mx-auto grid grid-cols-3 gap-2 @2xl:max-w-[86%] @2xl:gap-2.5">
         {PRODUCTS.map((pr, i) => {
           const v = p(lt, 450 + i * 300, 450);
           const done = lt > 900 + i * 300;
           return (
             <div key={pr.name} className="rounded-2xl bg-white p-1.5 shadow-[0_16px_30px_-16px_rgba(0,0,0,.7)] @2xl:p-2" style={enter(v, 18, 0.85)}>
               <div className="relative">
-                <Photo src={pr.img} className="aspect-[4/3] bg-mist @2xl:aspect-square" />
+                <Photo src={pr.img} className="aspect-[5/4] bg-mist" />
                 <span
                   className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-sea text-white transition-transform duration-300"
                   style={{ transform: `scale(${done ? 1 : 0})` }}
@@ -491,7 +491,7 @@ function CompeteScene({ lt }: { lt: number }) {
         </div>
       </div>
       <div
-        className="absolute -right-1 -bottom-3 hidden items-center gap-2 rounded-2xl bg-sun px-3 py-2 text-[12px] font-bold text-ink shadow-xl @2xl:flex"
+        className="absolute -right-1 -bottom-10 hidden items-center gap-2 rounded-2xl bg-sun px-3 py-2 text-[12px] font-bold text-ink shadow-xl @2xl:flex"
         style={enter(p(lt, 3600, 500), 14, 0.9)}
       >
         <TrendingUp className="size-4" /> Desk lamp rival sold out · raised to £31.49
