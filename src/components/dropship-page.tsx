@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { CheckList, CtaBand, Faq, FaqJsonLd, PageHero, SectionHeading } from "@/components/sections";
 import { Comparison } from "@/components/home/comparison";
+import { portal } from "@/lib/site";
 
 type Props = {
   eyebrow: string;
@@ -26,7 +27,7 @@ export function DropshipPage({ eyebrow, title, intro, source, points, steps, faq
           </p>
         )}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
+          <Link href={portal("/signup")} className={buttonVariants({ variant: "ink", size: "lg" })}>
             Start your free trial <span aria-hidden="true">→</span>
           </Link>
           <Link href="/onbuy-fee-calculator" className={buttonVariants({ variant: "sun", size: "lg" })}>

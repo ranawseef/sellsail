@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { buttonVariants } from "@/components/ui/button";
-import { mainNav } from "@/lib/site";
+import { mainNav, portal } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -32,10 +32,10 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto hidden items-center gap-3 lg:flex">
-          <Link href="/login" className="text-[15px] font-semibold text-body no-underline hover:text-sea">
+          <Link href={portal("/login")} className="text-[15px] font-semibold text-body no-underline hover:text-sea">
             Log in
           </Link>
-          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "sm" })}>
+          <Link href={portal("/signup")} className={buttonVariants({ variant: "ink", size: "sm" })}>
             Start free trial
           </Link>
         </div>
@@ -66,10 +66,10 @@ export function SiteHeader() {
             ))}
           </ul>
           <div className="flex flex-col gap-2.5">
-            <Link href="/signup" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ink" }), "w-full")}>
+            <Link href={portal("/signup")} onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ink" }), "w-full")}>
               Start free trial
             </Link>
-            <Link href="/login" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+            <Link href={portal("/login")} onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
               Log in
             </Link>
           </div>

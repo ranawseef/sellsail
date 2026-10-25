@@ -111,7 +111,7 @@ export function Markdown({ source, linkCheck }: { source: string; linkCheck?: Li
       while (i < lines.length && lines[i].startsWith("|")) rows.push(lines[i++]);
       const [head, , ...body] = rows;
       blocks.push(
-        <div key={key} className="my-6 overflow-x-auto rounded-2xl border border-line">
+        <div key={key} className="relative my-6 overflow-x-auto rounded-2xl border border-line">
           <table className="w-full min-w-[520px] text-left text-[15px]">
             <thead className="bg-mist">
               <tr>

@@ -49,7 +49,7 @@ export default function DataProcessingPage() {
       </p>
 
       <h2>Sub-processors</h2>
-      <div className="not-prose overflow-x-auto">
+      <div className="not-prose relative overflow-x-auto">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
             <tr className="border-b border-line">

@@ -25,10 +25,10 @@ export function HowItWorks() {
 export function CalculatorBand() {
   return (
     <section id="calculator" className="mx-auto max-w-[1200px] px-6 py-12">
-      <div className="flex flex-wrap items-center gap-9 rounded-[36px] bg-sea p-8 text-white sm:p-12">
+      <div className="flex flex-wrap items-center gap-8 rounded-[28px] bg-sea p-5 text-white sm:gap-9 sm:rounded-[36px] sm:p-12">
         <div className="min-w-0 flex-[1_1_380px]">
           <p className="inline-block rounded-full bg-sun px-3 py-1 text-[13px] font-bold text-ink">Free tool · try it here</p>
-          <h2 className="mt-3.5 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
+          <h2 className="mt-3.5 font-display text-[34px] leading-none sm:text-[44px] font-extrabold tracking-[-0.04em]">
             How much do you really make on OnBuy?
           </h2>
           <p className="mt-3.5 text-lg leading-relaxed text-[#d9efe8]">

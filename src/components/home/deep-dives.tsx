@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { BrowserFrame, CheckList, Eyebrow } from "@/components/sections";
+import { portal } from "@/lib/site";
 
 function Callout({ text, side }: { text: string; side: "left" | "right" }) {
   // Hand-drawn style note pointing at the app mock. Decorative only.
@@ -29,10 +30,10 @@ function Callout({ text, side }: { text: string; side: "left" | "right" }) {
 
 export function FloorsDive() {
   return (
-    <div id="floors" className="flex flex-wrap items-center gap-12 rounded-[36px] bg-mint p-8 sm:p-12">
+    <div id="floors" className="flex flex-wrap items-center gap-8 rounded-[28px] bg-mint p-5 sm:gap-12 sm:rounded-[36px] sm:p-12">
       <div className="min-w-0 flex-[1_1_380px]">
         <Eyebrow>Fee-aware pricing</Eyebrow>
-        <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
+        <h3 className="mt-3 font-display text-[34px] leading-none sm:text-[44px] font-extrabold tracking-[-0.04em]">
           Know your real break-even on every listing
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-body">
@@ -46,7 +47,7 @@ export function FloorsDive() {
             "Prices move when Amazon's do, within minutes",
           ]}
         />
-        <Link href="/signup" className={`${buttonVariants({ variant: "sea" })} mt-7`}>
+        <Link href={portal("/signup")} className={`${buttonVariants({ variant: "sea" })} mt-7`}>
           Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>
@@ -88,7 +89,7 @@ export function BuyBoxDive() {
     ["LED desk lamp", "£24.73", "Held at floor", "sun"],
   ];
   return (
-    <div id="buybox" className="flex flex-wrap-reverse items-center gap-12 rounded-[36px] bg-sun-soft p-8 sm:p-12">
+    <div id="buybox" className="flex flex-wrap-reverse items-center gap-8 rounded-[28px] bg-sun-soft p-5 sm:gap-12 sm:rounded-[36px] sm:p-12">
       <div className="relative min-w-0 flex-[1_1_420px]">
         <BrowserFrame
           title="Competition"
@@ -114,7 +115,7 @@ export function BuyBoxDive() {
       </div>
       <div className="min-w-0 flex-[1_1_380px]">
         <Eyebrow className="text-[#6b5300]">Competition</Eyebrow>
-        <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
+        <h3 className="mt-3 font-display text-[34px] leading-none sm:text-[44px] font-extrabold tracking-[-0.04em]">
           Win the sales worth winning
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-sun-ink">
@@ -128,7 +129,7 @@ export function BuyBoxDive() {
             "Tries your full price again when the rival is gone",
           ]}
         />
-        <Link href="/signup" className={`${buttonVariants({ variant: "ink" })} mt-7`}>
+        <Link href={portal("/signup")} className={`${buttonVariants({ variant: "ink" })} mt-7`}>
           Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>
@@ -138,10 +139,10 @@ export function BuyBoxDive() {
 
 export function SyncDive() {
   return (
-    <div id="sync" className="flex flex-wrap items-center gap-12 rounded-[36px] bg-ink p-8 text-white sm:p-12">
+    <div id="sync" className="flex flex-wrap items-center gap-8 rounded-[28px] bg-ink p-5 sm:gap-12 sm:rounded-[36px] text-white sm:p-12">
       <div className="min-w-0 flex-[1_1_380px]">
         <Eyebrow className="text-sun">Stock sync and safety</Eyebrow>
-        <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
+        <h3 className="mt-3 font-display text-[34px] leading-none sm:text-[44px] font-extrabold tracking-[-0.04em]">
           Amazon changes. Your listings keep up.
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-[#c9ddd5]">
@@ -156,7 +157,7 @@ export function SyncDive() {
             "Sudden price drops confirmed before they're used",
           ]}
         />
-        <Link href="/signup" className={`${buttonVariants({ variant: "sun" })} mt-7`}>
+        <Link href={portal("/signup")} className={`${buttonVariants({ variant: "sun" })} mt-7`}>
           Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>

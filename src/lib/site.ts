@@ -2,6 +2,9 @@
 export const site = {
   name: "SellSail",
   url: "https://sellsail.io",
+  /** The seller dashboard and admin panel live on their own host. */
+  appUrl: "https://app.sellsail.io",
+  appHost: "app.sellsail.io",
   description:
     "The Amazon to OnBuy repricer for UK sellers. Live Amazon prices, fee-aware OnBuy pricing, competition that never goes below your floor, and stock sync every few minutes.",
   email: "hello@sellsail.io",
@@ -25,6 +28,9 @@ export const mainNav = [
   { href: "/blog", label: "Blog" },
 ];
 
+/** A link into the dashboard (login, signup, the app itself). */
+export const portal = (path: string) => `${site.appUrl}${path}`;
+
 export const footerNav = [
   {
     title: "Product",
@@ -32,26 +38,35 @@ export const footerNav = [
       { href: "/features", label: "Features" },
       { href: "/pricing", label: "Pricing" },
       { href: "/onbuy-fee-calculator", label: "OnBuy fee calculator" },
-      { href: "/signup", label: "Start free trial" },
-      { href: "/login", label: "Log in" },
+      { href: "/security", label: "Security" },
+      { href: portal("/signup"), label: "Start free trial" },
     ],
   },
   {
-    title: "Dropshipping",
+    title: "Solutions",
     links: [
       { href: "/dropshipping", label: "Dropshipping to OnBuy" },
       { href: "/dropshipping/amazon-to-onbuy", label: "Amazon to OnBuy" },
       { href: "/dropshipping/aliexpress-to-onbuy", label: "AliExpress to OnBuy" },
+      { href: "/blog/onbuy-repricer-guide", label: "OnBuy repricing" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
       { href: "/blog", label: "Blog" },
+      { href: "/blog?topic=Selling%20on%20OnBuy", label: "Selling on OnBuy" },
+      { href: "/blog?topic=Fees%20and%20profit", label: "Fees and profit" },
+      { href: "/blog?topic=Dropshipping", label: "Dropshipping guides" },
     ],
   },
   {
     title: "Company",
     links: [
-      { href: "/about", label: "About" },
+      { href: "/about", label: "About us" },
       { href: "/contact", label: "Contact" },
-      { href: "/security", label: "Security" },
-      { href: "/legal", label: "Legal information" },
+      { href: "/legal", label: "Company information" },
+      { href: "/delivery", label: "Service delivery" },
     ],
   },
   {
@@ -60,7 +75,7 @@ export const footerNav = [
       { href: "/terms", label: "Terms of service" },
       { href: "/privacy", label: "Privacy policy" },
       { href: "/cookies", label: "Cookie notice" },
-      { href: "/refunds", label: "Refunds and cancellation" },
+      { href: "/refunds", label: "Refunds" },
       { href: "/acceptable-use", label: "Acceptable use" },
       { href: "/data-processing", label: "Data processing" },
     ],

@@ -63,7 +63,7 @@ export default function CalculatorPage() {
       </section>
       <section className="mx-auto max-w-[820px] px-6 pb-16">
         <SectionHeading title="OnBuy commission rates by category" intro="Commission is charged on the delivered total the buyer pays, including VAT and delivery." />
-        <div className="mt-8 overflow-x-auto rounded-3xl border border-line bg-white">
+        <div className="relative mt-8 overflow-x-auto rounded-3xl border border-line bg-white">
           <table className="w-full text-left">
             <caption className="sr-only">OnBuy commission rate for each category</caption>
             <thead>

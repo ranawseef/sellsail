@@ -145,3 +145,10 @@ details[open] .faq-icon { transform: rotate(45deg); }
     display: none;
   }
 }
+
+/* Phones: the hero cards sit in a swipeable row, so keep them upright, and
+   never let a stray wide element scroll the whole page sideways. */
+@media (max-width: 639px) {
+  .fan-card { --r: 0deg !important; --y: 0px !important; }
+}
+html, body { overflow-x: clip; }

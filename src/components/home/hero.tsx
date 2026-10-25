@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { productImages } from "@/content/product-images";
 import { TRIAL_DAYS } from "@/config/plans";
-import { MessageCircle } from "lucide-react";
-import { site } from "@/lib/site";
+import { MessageCircle, Play } from "lucide-react";
+import { portal, site } from "@/lib/site";
 
 // Worked examples at 15% commission (7% for the phone stand) and 20% VAT.
 // Supplier cost includes the supplier's delivery charge.
@@ -20,27 +20,34 @@ export function Hero() {
   return (
     <section className="bg-dots">
       <div className="relative mx-auto max-w-[1200px] px-6 pt-16 text-center">
-        <p className="mx-auto mb-6 inline-flex animate-rise items-center gap-2.5 rounded-full border border-line bg-white py-2 pr-4 pl-2 text-sm font-semibold">
-          <Badge>{TRIAL_DAYS}-day free trial</Badge>
-          The Amazon to OnBuy repricer for UK sellers
+        <p className="mx-auto mb-6 inline-flex animate-rise items-center gap-2.5 rounded-full border border-line bg-white py-1.5 pr-4 pl-1.5 text-[13px] font-semibold sm:py-2 sm:pl-2 sm:text-sm">
+          <Badge className="shrink-0">{TRIAL_DAYS}-day free trial</Badge>
+          <span className="sm:hidden">Amazon to OnBuy repricer</span>
+          <span className="hidden sm:inline">The Amazon to OnBuy repricer for UK sellers</span>
         </p>
-        <h1 className="mx-auto max-w-[1000px] animate-rise font-display text-[clamp(44px,7vw,92px)] leading-none font-extrabold tracking-[-0.045em]">
+        <h1 className="mx-auto max-w-[1000px] animate-rise font-display text-[clamp(40px,7vw,92px)] leading-none font-extrabold tracking-[-0.045em]">
           Reprice OnBuy from Amazon, <span className="highlight px-1.5">never at a loss</span>
         </h1>
-        <p className="mx-auto mt-7 max-w-2xl animate-rise text-xl leading-relaxed text-body">
+        <p className="mx-auto mt-6 max-w-2xl animate-rise text-lg leading-relaxed text-body sm:mt-7 sm:text-xl">
           SellSail <strong className="text-ink">reads live Amazon UK prices</strong>, sets an OnBuy price that{" "}
           <strong className="text-ink">covers every fee and your profit</strong>, answers cheaper sellers, and{" "}
           <strong className="text-ink">keeps stock in sync</strong> around the clock.
         </p>
-        <div className="mt-8 flex animate-rise flex-wrap justify-center gap-3">
-          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
+        <div className="mt-8 flex animate-rise flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
+          <Link href={portal("/signup")} className={buttonVariants({ variant: "ink", size: "lg" })}>
             Start your free trial <span aria-hidden="true">→</span>
           </Link>
           <a href={site.whatsapp} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "sun", size: "lg" })}>
             <MessageCircle aria-hidden="true" className="size-5" /> Book a demo
           </a>
         </div>
-        <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-body">
+        <a href="#demo" className="mt-5 inline-flex items-center gap-2 text-[15px] font-bold text-sea-dark no-underline hover:underline">
+          <span className="flex size-8 items-center justify-center rounded-full bg-sea text-white">
+            <Play aria-hidden="true" className="ml-0.5 size-3.5 fill-white" />
+          </span>
+          Watch the 35-second demo
+        </a>
+        <ul className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-body">
           {["No Amazon keys needed", "Never below your floor", "No card needed"].map((t) => (
             <li key={t} className="flex items-center gap-1.5">
               <span aria-hidden="true" className="text-sea">✓</span>
@@ -67,15 +74,15 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1240px] px-6 pt-14 pb-10">
-        <p className="mb-5 text-center text-sm font-semibold tracking-wide text-sea-dark">
+      <div className="mx-auto max-w-[1240px] pt-12 pb-10 sm:px-6 sm:pt-14">
+        <p className="mb-5 px-6 text-center text-sm font-semibold tracking-wide text-sea-dark">
           Illustrative examples, with OnBuy commission and VAT ↓
         </p>
-        <ul className="flex flex-wrap justify-center gap-4">
+        <ul className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pt-2 pb-6 scrollbar-none sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pt-0 sm:pb-0">
           {examples.map((e, i) => (
             <li
               key={e.name}
-              className={`fan-card flex-[0_1_200px] rounded-2xl bg-white p-4 text-left shadow-[0_14px_34px_rgba(16,35,28,.12)] ${e.featured ? "outline-2 outline-sea" : ""}`}
+              className={`fan-card w-[200px] shrink-0 snap-center rounded-2xl sm:w-auto sm:flex-[0_1_200px] bg-white p-4 text-left shadow-[0_14px_34px_rgba(16,35,28,.12)] ${e.featured ? "outline-2 outline-sea" : ""}`}
               style={{ "--r": e.r, "--y": e.y, animationDelay: `${0.05 + i * 0.1}s` } as React.CSSProperties}
             >
               <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl bg-white">

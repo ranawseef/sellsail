@@ -7,7 +7,7 @@ import { CtaBand, Faq } from "@/components/sections";
 import { PostCover } from "@/components/post-cover";
 import { getPost, isPublished, publishedPosts, relatedPosts, unsplash } from "@/content/posts";
 import { headings, Markdown } from "@/lib/markdown";
-import { site } from "@/lib/site";
+import { portal, site } from "@/lib/site";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -177,7 +177,7 @@ export default async function PostPage({ params }: Params) {
               SellSail prices every OnBuy listing from Amazon with your fees and profit built in, answers cheaper sellers and keeps
               stock in sync, so you never sell at a loss.
             </p>
-            <Link href="/signup" className="mt-4 inline-block font-bold text-sea-dark underline underline-offset-4">
+            <Link href={portal("/signup")} className="mt-4 inline-block font-bold text-sea-dark underline underline-offset-4">
               Start your 14-day free trial →
             </Link>
           </aside>

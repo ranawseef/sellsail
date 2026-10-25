@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { type Post } from "./types";
+import { portal } from "@/lib/site";
 
 function Body() {
   return (
@@ -77,7 +78,7 @@ function Body() {
         <li>Dispatch quickly.</li>
       </ol>
       <p>
-        Ready to automate it? <Link href="/signup">Start a 14-day free trial</Link> of SellSail. No card needed.
+        Ready to automate it? <Link href={portal("/signup")}>Start a 14-day free trial</Link> of SellSail. No card needed.
       </p>
     </>
   );

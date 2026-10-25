@@ -117,7 +117,7 @@ export function InsideLook() {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setHold(false);
             }}
           >
-            <div role="tablist" aria-label="Dashboard screens" className="mx-auto flex max-w-full gap-1 overflow-x-auto rounded-full bg-white p-1.5 shadow-[0_10px_30px_-18px_rgba(16,35,28,.45)] sm:w-fit">
+            <div role="tablist" aria-label="Dashboard screens" className="relative mx-auto flex max-w-full gap-1 overflow-x-auto rounded-full bg-white p-1.5 shadow-[0_10px_30px_-18px_rgba(16,35,28,.45)] sm:w-fit">
               {SCREENS.map((s, i) => {
                 const active = i === index;
                 const Icon = s.icon;

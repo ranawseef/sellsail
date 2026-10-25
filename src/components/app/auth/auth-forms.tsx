@@ -14,6 +14,7 @@ import {
   type FormState,
 } from "@/server/actions/auth";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { site } from "@/lib/site";
 
 function FormNotice({ text }: { text?: string }) {
   if (!text) return null;
@@ -236,11 +237,11 @@ export function SignupForm() {
         label={
           <>
             I agree to the{" "}
-            <Link href="/terms" className="text-sea-dark underline underline-offset-4">
+            <Link href={`${site.url}/terms`} className="text-sea-dark underline underline-offset-4">
               terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-sea-dark underline underline-offset-4">
+            <Link href={`${site.url}/privacy`} className="text-sea-dark underline underline-offset-4">
               privacy policy
             </Link>
           </>

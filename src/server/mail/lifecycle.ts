@@ -8,6 +8,7 @@
 
 import { exec, q } from "../db/pool.ts";
 import { sendMessageEmail, mailConfigured, type MessageEmail } from "./send.ts";
+import { site } from "../../lib/site.ts";
 
 type Kind = "welcome" | "trial_4d" | "trial_1d";
 type Target = { tenant_id: number; email: string; name: string; trial_ends_at: Date | null };
@@ -19,7 +20,7 @@ const OWNER = `SELECT t.id AS tenant_id, u.email, u.name, t.trial_ends_at
 
 const NOT_SENT = (kind: Kind) => `NOT EXISTS (SELECT 1 FROM lifecycle_emails le WHERE le.tenant_id = t.id AND le.kind = '${kind}')`;
 
-const appUrl = () => (process.env.APP_URL || "https://sellsail.io").replace(/\/+$/, "");
+const appUrl = () => (process.env.APP_URL || site.appUrl).replace(/\/+$/, "");
 
 function message(kind: Kind, t: Target): MessageEmail {
   const first = t.name.split(" ")[0] || "there";

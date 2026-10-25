@@ -40,9 +40,9 @@ export function Sourcing() {
         ))}
       </ol>
 
-      <div className="mt-12 flex flex-wrap items-center gap-12 rounded-[36px] bg-sky p-8 sm:p-12">
+      <div className="mt-12 flex flex-wrap items-center gap-8 rounded-[28px] bg-sky p-5 sm:gap-12 sm:rounded-[36px] sm:p-12">
         <div className="min-w-0 flex-[1_1_380px]">
-          <h3 className="font-display text-[40px] leading-none font-extrabold tracking-[-0.04em]">
+          <h3 className="font-display text-[32px] leading-none sm:text-[40px] font-extrabold tracking-[-0.04em]">
             Every listing, priced from Amazon
           </h3>
           <p className="mt-4 text-lg leading-relaxed text-body">

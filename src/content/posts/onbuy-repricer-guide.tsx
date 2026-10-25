@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { type Post } from "./types";
+import { portal } from "@/lib/site";
 
 function Body() {
   return (
@@ -96,7 +97,7 @@ function Body() {
         are used.
       </p>
       <p>
-        You can try it free for 14 days, no card needed: <Link href="/signup">start your free trial</Link>, or see{" "}
+        You can try it free for 14 days, no card needed: <Link href={portal("/signup")}>start your free trial</Link>, or see{" "}
         <Link href="/features">all features</Link>.
       </p>
     </>

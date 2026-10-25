@@ -6,6 +6,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { lookupSession, roleAtLeast, SESSION_MAX_DAYS, type Role, type SessionInfo } from "./sessions.ts";
+import { site } from "../../lib/site.ts";
 
 const PROD = process.env.NODE_ENV === "production";
 // __Host- makes the browser refuse the cookie unless it is Secure, path=/ and
@@ -80,5 +81,5 @@ export async function requestInfo(): Promise<{ ip: string; userAgent: string }> 
 
 /** Base URL of this site, for links we hand to Stripe and Amazon. */
 export function appUrl(): string {
-  return (process.env.APP_URL || "https://sellsail.io").replace(/\/+$/, "");
+  return (process.env.APP_URL || site.appUrl).replace(/\/+$/, "");
 }

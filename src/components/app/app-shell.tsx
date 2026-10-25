@@ -156,11 +156,11 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
           <p className="mt-1">{companyLine}</p>
           <p className="mt-1">
             © {new Date().getFullYear()} {site.company} ·{" "}
-            <Link href="/terms" className="text-muted underline-offset-4 hover:underline">
+            <Link href={`${site.url}/terms`} className="text-muted underline-offset-4 hover:underline">
               Terms
             </Link>{" "}
             ·{" "}
-            <Link href="/privacy" className="text-muted underline-offset-4 hover:underline">
+            <Link href={`${site.url}/privacy`} className="text-muted underline-offset-4 hover:underline">
               Privacy
             </Link>
           </p>

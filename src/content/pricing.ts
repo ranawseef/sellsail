@@ -1,6 +1,7 @@
 // Public plans, built from src/config/plans.ts so the website and the app
 // can never disagree on prices, limits or sync speeds.
 import { PLANS, TRIAL_DAYS, YEARLY_MONTHS, yearlyPence, type PlanId } from "@/config/plans";
+import { portal } from "@/lib/site";
 
 const mins = (s: number) => `${Math.round(s / 60)} min`;
 const n = (v: number) => v.toLocaleString("en-GB");
@@ -32,7 +33,7 @@ const paid = (id: "starter" | "growth" | "pro", tagline: string, extra: string, 
     extra,
   ],
   cta: "Start free trial",
-  href: "/signup",
+  href: portal("/signup"),
   featured,
 });
 

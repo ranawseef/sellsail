@@ -192,7 +192,7 @@ export function Comparison() {
         <PriceCard dark label="SellSail" price={ss.price} good note={ss.note} />
       </div>
 
-      <div className="mt-14 overflow-x-auto rounded-[28px] border border-line bg-white">
+      <div className="relative mt-14 overflow-x-auto rounded-[28px] border border-line bg-white">
         <table className="w-full min-w-[640px] text-left text-[15px]">
           <caption className="sr-only">SellSail compared with a typical repricer and with spreadsheets</caption>
           <thead>

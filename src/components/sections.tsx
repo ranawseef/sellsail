@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MessageCircle, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { site } from "@/lib/site";
+import { portal, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -43,12 +43,12 @@ export function PageHero({
 }) {
   return (
     <section className="bg-dots border-b border-line">
-      <div className="mx-auto max-w-[1200px] px-6 pt-20 pb-16 text-center">
+      <div className="mx-auto max-w-[1200px] px-6 pt-14 pb-12 text-center sm:pt-20 sm:pb-16">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="mx-auto mt-4 max-w-4xl font-display text-[clamp(40px,6vw,76px)] leading-none font-extrabold tracking-[-0.045em]">
+        <h1 className="mx-auto mt-4 max-w-4xl font-display text-[clamp(36px,6vw,76px)] leading-none font-extrabold tracking-[-0.045em]">
           {title}
         </h1>
-        {intro && <p className="mx-auto mt-6 max-w-2xl text-xl leading-relaxed text-body">{intro}</p>}
+        {intro && <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-body sm:mt-6 sm:text-xl">{intro}</p>}
         {children}
       </div>
     </section>
@@ -140,18 +140,18 @@ export function CtaBand({
   intro?: string;
 }) {
   return (
-    <section className="mx-auto max-w-[1200px] px-6 pb-24">
-      <div className="relative overflow-hidden rounded-[36px] bg-sun px-8 py-16 text-center">
-        <h2 className="font-display text-[clamp(38px,5.4vw,68px)] leading-none font-extrabold tracking-[-0.045em]">
+    <section className="mx-auto max-w-[1200px] px-4 pb-16 sm:px-6 sm:pb-24">
+      <div className="relative overflow-hidden rounded-[28px] bg-sun px-5 py-12 text-center sm:rounded-[36px] sm:px-8 sm:py-16">
+        <h2 className="font-display text-[clamp(34px,5.4vw,68px)] leading-none font-extrabold tracking-[-0.045em]">
           {title}
         </h2>
         <p className="mx-auto mt-3.5 mb-7 max-w-lg text-lg text-sun-ink">{intro}</p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
+        <div className="flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
+          <Link href={portal("/signup")} className={buttonVariants({ variant: "ink", size: "lg" })}>
             Start your free trial <span aria-hidden="true">→</span>
           </Link>
           <a href={site.whatsapp} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "white", size: "lg" })}>
-            <MessageCircle aria-hidden="true" className="size-5" /> Book a demo on WhatsApp
+            <MessageCircle aria-hidden="true" className="size-5" /> Book a demo<span className="hidden sm:inline"> on WhatsApp</span>
           </a>
         </div>
         <div className="pointer-events-none absolute right-10 bottom-8 hidden h-16 w-72 xl:block" aria-hidden="true">

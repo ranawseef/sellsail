@@ -11,10 +11,10 @@ export function LogoMark({ size = 32 }: { size?: number }) {
   );
 }
 
-export function Logo({ className = "" }: { className?: string }) {
+export function Logo({ className = "", href = "/" }: { className?: string; href?: string }) {
   return (
     <Link
-      href="/"
+      href={href}
       className={`flex items-center gap-2.5 font-display text-2xl font-extrabold tracking-[-0.03em] text-ink no-underline ${className}`}
     >
       <LogoMark />
