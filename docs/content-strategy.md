@@ -71,7 +71,8 @@ Takeaways:
 
 ## Publishing calendar
 
-All 50 posts published on 25 Oct 2026. New posts can still be dated ahead and
+All 50 posts published on 25 Oct 2026. From 26 Oct, new posts go out Mon/Wed/Fri
+(batch11 onwards), dated ahead; they
 will appear on their date
 automatically (`isPublished`), so the cadence needs no manual work.
 

@@ -13,6 +13,7 @@ import { batch07 } from "./md/batch07";
 import { batch08 } from "./md/batch08";
 import { batch09 } from "./md/batch09";
 import { batch10 } from "./md/batch10";
+import { batch11 } from "./md/batch11";
 import type { Post } from "./types";
 
 export type { Post } from "./types";
@@ -37,6 +38,7 @@ export const posts: Post[] = [
   ...batch08,
   ...batch09,
   ...batch10,
+  ...batch11,
 ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
 /** Scheduled posts go live at 7am UK time on their date. */
