@@ -32,9 +32,11 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto hidden items-center gap-3 lg:flex">
-          <span className="text-sm font-semibold text-body">GBP £</span>
-          <Link href="/beta" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Join the beta
+          <Link href="/login" className="text-[15px] font-semibold text-body no-underline hover:text-sea">
+            Log in
+          </Link>
+          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "sm" })}>
+            Start free trial
           </Link>
         </div>
         <button
@@ -63,9 +65,14 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <Link href="/beta" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ink" }), "w-full")}>
-            Join the beta
-          </Link>
+          <div className="flex flex-col gap-2.5">
+            <Link href="/signup" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ink" }), "w-full")}>
+              Start free trial
+            </Link>
+            <Link href="/login" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+              Log in
+            </Link>
+          </div>
         </nav>
       )}
     </header>

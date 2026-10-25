@@ -11,15 +11,23 @@ type Props = {
   points: string[];
   steps: [string, string][];
   faq: { q: string; a: string }[];
+  /** Not available yet: shows a "Coming soon" note and points to what works today. */
+  soon?: boolean;
 };
 
-export function DropshipPage({ eyebrow, title, intro, source, points, steps, faq }: Props) {
+export function DropshipPage({ eyebrow, title, intro, source, points, steps, faq, soon = false }: Props) {
   return (
     <>
       <PageHero eyebrow={eyebrow} title={title} intro={intro}>
+        {soon && (
+          <p className="mx-auto mt-6 max-w-xl rounded-2xl bg-sun-soft px-5 py-3 text-[15px] font-semibold text-sun-ink">
+            {source} support is coming soon. Today SellSail reprices OnBuy listings from Amazon UK; you can start with that
+            now and add {source} when it arrives.
+          </p>
+        )}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/beta" className={buttonVariants({ variant: "ink", size: "lg" })}>
-            Join the free beta <span aria-hidden="true">→</span>
+          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
+            Start your free trial <span aria-hidden="true">→</span>
           </Link>
           <Link href="/onbuy-fee-calculator" className={buttonVariants({ variant: "sun", size: "lg" })}>
             Check your margins
@@ -31,7 +39,7 @@ export function DropshipPage({ eyebrow, title, intro, source, points, steps, faq
         <div className="flex flex-wrap items-start gap-12">
           <div className="min-w-0 flex-[1_1_380px]">
             <h2 className="font-display text-[40px] leading-none font-extrabold tracking-[-0.04em]">
-              What SellSail does for {source} sellers
+              {soon ? `What SellSail will do for ${source} sellers` : `What SellSail does for ${source} sellers`}
             </h2>
             <CheckList items={points} />
           </div>

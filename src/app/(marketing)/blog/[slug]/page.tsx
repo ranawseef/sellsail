@@ -103,10 +103,10 @@ export default async function PostPage({ params }: Params) {
           <aside className="mt-12 rounded-3xl bg-mint p-7">
             <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em]">Let SellSail do the maths</h2>
             <p className="mt-2 leading-relaxed text-body">
-              SellSail works out a fee-aware floor for every OnBuy listing and reprices inside it, so you never sell at a loss.
+              SellSail prices every OnBuy listing from Amazon with your fees and profit built in, so you never sell at a loss.
             </p>
-            <Link href="/beta" className="mt-4 inline-block font-bold text-sea-dark underline underline-offset-4">
-              Join the free beta →
+            <Link href="/signup" className="mt-4 inline-block font-bold text-sea-dark underline underline-offset-4">
+              Start your 14-day free trial →
             </Link>
           </aside>
           <Link href="/blog" className="mt-10 inline-flex items-center gap-2 font-bold text-ink no-underline hover:text-sea">

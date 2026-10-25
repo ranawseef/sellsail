@@ -2,13 +2,14 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { FeeCalculator } from "@/components/fee-calculator";
 import { plans, planIncludes } from "@/content/pricing";
+import { TRIAL_DAYS } from "@/config/plans";
 import { cn } from "@/lib/utils";
 
 export function HowItWorks() {
   const steps = [
-    ["Connect OnBuy", "Add your OnBuy API keys. Nothing changes until you switch repricing on."],
-    ["Add your sources", "Import products from Amazon or AliExpress, or link a CSV or XML supplier feed."],
-    ["Pick a margin and go", "Choose your target margin. SellSail sets every floor and starts watching."],
+    ["Connect OnBuy", "Add your OnBuy API keys. They're stored encrypted, and you don't need Amazon keys at all."],
+    ["Import your listings", "Bring in your OnBuy listings, or upload a CSV of SKUs and ASINs."],
+    ["Check your margins and go", "Review the suggested margin bands. SellSail prices every listing and keeps it in sync."],
   ];
   return (
     <ol className="grid gap-4 md:grid-cols-3">
@@ -47,6 +48,7 @@ export function CalculatorBand() {
 
 export function Included() {
   const rows = [
+    ["Amazon UK prices", "read for you, no Amazon account needed"],
     ["OnBuy selling guides", "fees, pricing, dropshipping"],
     ["Fee and profit calculator", "free for everyone"],
     ["UK support", "by email, from people who sell online"],
@@ -59,7 +61,8 @@ export function Included() {
             More than just a repricer
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-body">
-            Every plan comes with free guides on OnBuy selling and pricing, the fee calculator, and help from a UK team.
+            Every plan includes Amazon price data, free guides on OnBuy selling and pricing, the fee calculator, and help
+            from a UK team.
           </p>
         </div>
         <div className="min-w-0 flex-[1_1_400px] rounded-3xl bg-white p-6 shadow-[0_18px_40px_-16px_rgba(16,35,28,.2)]">
@@ -122,7 +125,8 @@ export function PricingCards() {
         ))}
       </ul>
       <p className="mt-6 text-center text-muted">
-        Monthly, excluding VAT. Every plan includes {planIncludes.slice(0, 4).join(", ").toLowerCase()}.
+        Monthly, excluding VAT. {TRIAL_DAYS}-day free trial, no card needed. Every plan includes{" "}
+        {planIncludes.slice(0, 4).join(", ").toLowerCase()}.
       </p>
     </>
   );

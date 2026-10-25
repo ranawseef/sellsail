@@ -10,20 +10,36 @@ const caveat = Caveat({ variable: "--font-caveat", subsets: ["latin"], weight: "
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: "SellSail | OnBuy repricer and dropshipping tool for UK sellers",
+    default: "SellSail | Amazon to OnBuy repricer for UK sellers",
     template: "%s | SellSail",
   },
   description: site.description,
+  applicationName: site.name,
+  publisher: site.company,
   openGraph: { siteName: site.name, locale: "en_GB", type: "website" },
+  twitter: { card: "summary_large_image" },
+  formatDetection: { telephone: false, address: false, email: false },
 };
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${site.url}/#organization`,
   name: site.name,
+  legalName: site.company,
   url: site.url,
+  logo: `${site.url}/logo.png`,
   description: site.description,
   email: site.email,
+  identifier: { "@type": "PropertyValue", propertyID: "Companies House", value: site.companyNumber },
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "2nd Floor College House, 17 King Edwards Road",
+    addressLocality: "Ruislip",
+    addressRegion: "London",
+    postalCode: "HA4 7AE",
+    addressCountry: "GB",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

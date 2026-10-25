@@ -2,36 +2,25 @@ import type { Metadata } from "next";
 import { CtaBand, PageHero, SectionHeading } from "@/components/sections";
 import { BuyBoxDive, FloorsDive, SyncDive } from "@/components/home/deep-dives";
 import { HowItWorks } from "@/components/home/misc";
-import { features } from "@/content/features";
+import { comingSoon, features } from "@/content/features";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Features: OnBuy repricing and dropshipping automation",
+  title: "Features: Amazon to OnBuy repricing and competition",
   description:
-    "Import products from Amazon and AliExpress, list them on OnBuy, and reprice with fee-aware floors, Buy Box watch, stock sync and safety brakes.",
+    "Live Amazon UK prices, fee-aware OnBuy pricing, competition that never goes below your floor, stock sync every few minutes and safety brakes.",
   alternates: { canonical: "/features" },
 };
 
-const details: Record<string, string> = {
-  "product-import": "Paste an Amazon or AliExpress product link and SellSail reads the title, images, supplier price and delivery, ready to turn into an OnBuy listing.",
-  "onbuy-listing": "Review the imported product, set your margin, and publish it to OnBuy. You see the floor, the price and the profit before anything goes live.",
-  "fee-aware-floors": "Every floor is built from supplier cost and delivery plus VAT and OnBuy commission, charged the way OnBuy charges it: on the VAT- and delivery-inclusive price.",
-  "buy-box-watch": "See which listings are winning. SellSail reprices the rest inside your floor and ceiling, paced to stay within OnBuy's API rate limits.",
-  "stock-price-sync": "On every sync SellSail checks your supplier. Cost changes move your floor and price; stock changes reach OnBuy so you don't oversell.",
-  "out-of-stock-pause": "When your supplier runs out, the OnBuy listing pauses. When stock is back, it returns at the right price.",
-  orders: "Every OnBuy order in one place, with the supplier link, the price it sold at and the profit after fees, so fulfilling is quick.",
-  "safety-brakes": "An empty supplier response or a sudden jump across many prices stops the run before anything reaches OnBuy. One switch pauses everything.",
-  "price-history": "Each price change is logged with what moved, when and why, so you can always see what SellSail did and undo a rule.",
-  "fee-calculator": "Our free OnBuy fee calculator works out commission, VAT, profit and break-even price. No account needed.",
-};
 
 export default function FeaturesPage() {
   return (
     <>
       <PageHero
         eyebrow="Features"
-        title={<>Everything you need to dropship and reprice on <span className="highlight px-1">OnBuy</span></>}
-        intro="From importing a product to winning the Buy Box without selling at a loss, SellSail handles the busywork so you can grow your shop."
+        title={<>Everything you need to reprice on <span className="highlight px-1">OnBuy</span> from Amazon</>}
+        intro="SellSail reads Amazon prices, works out an OnBuy price that covers every fee, answers cheaper sellers and keeps your listings in sync, around the clock."
       />
       <section className="mx-auto max-w-[1200px] px-6 py-20">
         <ul className="grid gap-5 md:grid-cols-2">
@@ -41,7 +30,19 @@ export default function FeaturesPage() {
                 <f.icon aria-hidden={true} className="size-6" />
               </span>
               <h2 className="mt-4 font-display text-2xl font-bold tracking-[-0.02em]">{f.title}</h2>
-              <p className="mt-2 leading-relaxed text-body">{details[f.slug]}</p>
+              <p className="mt-2 leading-relaxed text-body">{f.detail}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby="soon-title" className="mx-auto max-w-[1200px] px-6 pb-16">
+        <h2 id="soon-title" className="font-display text-3xl font-bold tracking-[-0.02em]">Coming soon</h2>
+        <ul className="mt-6 grid gap-4 md:grid-cols-3">
+          {comingSoon.map((c) => (
+            <li key={c.title} className="rounded-3xl border-2 border-dashed border-line bg-white/60 p-6">
+              <Badge variant="solid" size="sm">Coming soon</Badge>
+              <h3 className="mt-3 text-lg font-bold">{c.title}</h3>
+              <p className="mt-1.5 leading-relaxed text-muted">{c.text}</p>
             </li>
           ))}
         </ul>

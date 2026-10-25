@@ -14,11 +14,7 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy policy" updated="25 October 2026">
       <p>
         This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
-        {site.company}, registered in England and Wales, company number{" "}
-        <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer">
-          {site.companyNumber}
-        </a>
-        , registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
+        {site.company}, registered in England and Wales, company number {site.companyNumber}, registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
         <a href={`mailto:${site.email}`}>{site.email}</a>.
       </p>
 
@@ -41,7 +37,7 @@ export default function PrivacyPage() {
           secure.
         </li>
         <li>
-          <strong>Messages</strong> you send us, and your email if you join the beta list.
+          <strong>Messages</strong> you send us.
         </li>
       </ul>
       <p>The fee calculator runs in your browser. Nothing you type into it is sent to us.</p>
@@ -51,7 +47,6 @@ export default function PrivacyPage() {
         <li>To provide the service you signed up for: pricing your listings and sending updates to OnBuy (contract).</li>
         <li>To send account emails such as sign-up codes, password resets and payment problems (contract).</li>
         <li>To keep the service secure, prevent abuse and give support (legitimate interests).</li>
-        <li>To send beta updates when you ask for them (consent, which you can withdraw at any time).</li>
         <li>To keep accounting and tax records (legal obligation).</li>
       </ul>
 
@@ -90,7 +85,6 @@ export default function PrivacyPage() {
         <li>Account and store data: while your workspace is open. When it is closed, it is deleted straight away.</li>
         <li>Price history and activity logs: 30 days. Background job logs: 14 days.</li>
         <li>Invoices and billing records: 6 years, as UK tax law requires.</li>
-        <li>Beta list emails: until you unsubscribe or the beta ends.</li>
       </ul>
 
       <h2>Security</h2>

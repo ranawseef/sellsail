@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/logo";
-import { footerNav, site } from "@/lib/site";
+import { companyLine, footerNav, site } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -37,13 +37,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-[1200px] flex-col gap-2 border-t border-[#2a4038] px-6 py-6 text-sm leading-relaxed sm:flex-row sm:justify-between">
         <div className="flex flex-col gap-2">
           <p>{site.disclaimer}</p>
-          <p>
-            SellSail is a trading name of{" "}
-            <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-white">
-              {site.company}
-            </a>
-            , registered in England and Wales, company number {site.companyNumber}. Registered office: {site.address}, United Kingdom.
-          </p>
+          <p>{companyLine}</p>
         </div>
         <p className="shrink-0">© {new Date().getFullYear()} {site.company}</p>
       </div>

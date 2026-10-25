@@ -31,46 +31,46 @@ export function FloorsDive() {
   return (
     <div id="floors" className="flex flex-wrap items-center gap-12 rounded-[36px] bg-mint p-8 sm:p-12">
       <div className="min-w-0 flex-[1_1_380px]">
-        <Eyebrow>Fee-aware floors</Eyebrow>
+        <Eyebrow>Fee-aware pricing</Eyebrow>
         <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
           Know your real break-even on every listing
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-body">
-          OnBuy charges commission on the price including VAT and delivery. SellSail does the same maths, so your floor
-          is where you actually stop making money.
+          OnBuy takes its commission from the whole price. SellSail adds commission, payment fees and your profit on top
+          of the Amazon cost, so every price pays for itself.
         </p>
         <CheckList
           items={[
-            "Supplier cost, delivery, VAT and commission in one floor",
-            "Set a target margin and get the price to hit it",
-            "Floors move when your supplier's costs do",
+            "Margin bands by Amazon price: profit %, minimum profit, fixed amount",
+            "Commission and payment fees counted on every listing",
+            "Prices move when Amazon's do, within minutes",
           ]}
         />
-        <Link href="/beta" className={`${buttonVariants({ variant: "sea" })} mt-7`}>
-          Join the beta <span aria-hidden="true">→</span>
+        <Link href="/signup" className={`${buttonVariants({ variant: "sea" })} mt-7`}>
+          Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>
       <div className="relative min-w-0 flex-[1_1_420px]">
-        <BrowserFrame title="Floor builder">
+        <BrowserFrame title="How a price is built">
           <div className="p-5">
             <div className="font-bold">
               Bamboo cutlery set <span className="text-[13px] font-medium text-muted">· example</span>
             </div>
             <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-3 gap-y-2.5 text-[15px]">
-              <dt className="text-muted">Supplier cost</dt>
+              <dt className="text-muted">Amazon price</dt>
               <dd>£11.50</dd>
-              <dt className="text-muted">Supplier delivery</dt>
+              <dt className="text-muted">Amazon delivery</dt>
               <dd>£2.40</dd>
-              <dt className="text-muted">VAT (20%)</dt>
-              <dd>£3.39</dd>
+              <dt className="text-muted">Your profit (25% band)</dt>
+              <dd>£3.47</dd>
               <dt className="text-muted">OnBuy commission (15%)</dt>
-              <dd>£3.05</dd>
-              <dt className="border-t-2 border-dashed border-line-soft pt-2.5 font-bold">Floor price</dt>
-              <dd className="border-t-2 border-dashed border-line-soft pt-2.5 font-display text-[22px] font-extrabold">£20.34</dd>
+              <dd>£3.07</dd>
+              <dt className="border-t-2 border-dashed border-line-soft pt-2.5 font-bold">OnBuy price</dt>
+              <dd className="border-t-2 border-dashed border-line-soft pt-2.5 font-display text-[22px] font-extrabold">£20.44</dd>
             </dl>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-sun-soft p-3.5">
-              <span className="font-semibold">Price for a 15% margin</span>
-              <span className="font-display text-[22px] font-extrabold">£24.91</span>
+              <span className="font-semibold">Lowest it goes against a rival (£1 profit kept)</span>
+              <span className="font-display text-[22px] font-extrabold">£17.53</span>
             </div>
           </div>
         </BrowserFrame>
@@ -91,7 +91,7 @@ export function BuyBoxDive() {
     <div id="buybox" className="flex flex-wrap-reverse items-center gap-12 rounded-[36px] bg-sun-soft p-8 sm:p-12">
       <div className="relative min-w-0 flex-[1_1_420px]">
         <BrowserFrame
-          title="Buy Box"
+          title="Competition"
           right={
             <span className="inline-flex items-center gap-1.5 font-bold text-sea-dark">
               <span className="size-2 animate-pulse-soft rounded-full bg-sea" /> Watching
@@ -113,23 +113,23 @@ export function BuyBoxDive() {
         <Callout text="Won't go below cost" side="right" />
       </div>
       <div className="min-w-0 flex-[1_1_380px]">
-        <Eyebrow className="text-[#6b5300]">Buy Box watch</Eyebrow>
+        <Eyebrow className="text-[#6b5300]">Competition</Eyebrow>
         <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
           Win the sales worth winning
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-sun-ink">
-          SellSail checks which listings are winning and reprices the rest within your floor and ceiling, paced to
-          OnBuy&apos;s API limits.
+          SellSail asks OnBuy who is winning each listing. When another seller is cheaper, it prices just under them,
+          never below the floor you set.
         </p>
         <CheckList
           items={[
             "Winning and losing listings at a glance",
             "Holds at your floor when a rival goes too low",
-            "Raises prices again when the rival recovers",
+            "Tries your full price again when the rival is gone",
           ]}
         />
-        <Link href="/beta" className={`${buttonVariants({ variant: "ink" })} mt-7`}>
-          Join the beta <span aria-hidden="true">→</span>
+        <Link href="/signup" className={`${buttonVariants({ variant: "ink" })} mt-7`}>
+          Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>
     </div>
@@ -142,22 +142,22 @@ export function SyncDive() {
       <div className="min-w-0 flex-[1_1_380px]">
         <Eyebrow className="text-sun">Stock sync and safety</Eyebrow>
         <h3 className="mt-3 font-display text-[44px] leading-none font-extrabold tracking-[-0.04em]">
-          Your supplier changes. Your listings keep up.
+          Amazon changes. Your listings keep up.
         </h3>
         <p className="mt-4 text-lg leading-relaxed text-[#c9ddd5]">
-          SellSail checks your Amazon, AliExpress or feed supplier on every sync. Cost goes up, the floor goes up. Stock
-          runs out, the listing pauses. Something looks wrong, the run stops.
+          SellSail keeps checking Amazon for every listing. Cost goes up, your price goes up. Amazon runs out, the listing
+          goes out of stock. Something looks wrong, it checks again before OnBuy sees it.
         </p>
         <CheckList
           tone="sun"
           items={[
-            "Amazon, AliExpress, CSV and XML sources",
-            "Out-of-stock listings paused automatically",
-            "Empty or broken data stops the run",
+            "Prices and stock sent to OnBuy every few minutes",
+            "Out of stock straight away when Amazon runs out",
+            "Sudden price drops confirmed before they're used",
           ]}
         />
-        <Link href="/beta" className={`${buttonVariants({ variant: "sun" })} mt-7`}>
-          Join the beta <span aria-hidden="true">→</span>
+        <Link href="/signup" className={`${buttonVariants({ variant: "sun" })} mt-7`}>
+          Start free trial <span aria-hidden="true">→</span>
         </Link>
       </div>
       <div className="min-w-0 flex-[1_1_420px]">
@@ -167,15 +167,15 @@ export function SyncDive() {
             <ul className="flex flex-col gap-2.5 text-[15px]">
               <li className="flex items-center gap-3 rounded-xl bg-[#13261e] p-3">
                 <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-sun font-extrabold text-ink">↑</span>
-                <span>AliExpress cost +£1.20 on <strong>LED desk lamp</strong>. Floor raised.</span>
+                <span>Amazon cost +£1.20 on <strong>LED desk lamp</strong>. Price raised.</span>
               </li>
               <li className="flex items-center gap-3 rounded-xl bg-[#13261e] p-3">
                 <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-coral font-extrabold text-[#9b3a1a]">‖</span>
-                <span><strong>Kitchen scale</strong> out of stock on Amazon. Listing paused.</span>
+                <span><strong>Kitchen scale</strong> out of stock on Amazon. Set to 0 on OnBuy.</span>
               </li>
               <li className="flex items-center gap-3 rounded-xl bg-[#13261e] p-3">
                 <span className="flex size-8 flex-none items-center justify-center rounded-lg bg-sea-mid font-extrabold">✓</span>
-                <span><strong>Bamboo cutlery set</strong> repriced to £23.48. Buy Box won.</span>
+                <span><strong>Bamboo cutlery set</strong> repriced to £23.48. Now the cheapest.</span>
               </li>
             </ul>
           </div>

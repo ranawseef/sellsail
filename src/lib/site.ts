@@ -3,12 +3,11 @@ export const site = {
   name: "SellSail",
   url: "https://sellsail.io",
   description:
-    "Fee-aware OnBuy repricing and dropshipping automation for UK sellers. Source from Amazon and AliExpress, list on OnBuy, and never sell below cost.",
+    "The Amazon to OnBuy repricer for UK sellers. Live Amazon prices, fee-aware OnBuy pricing, competition that never goes below your floor, and stock sync every few minutes.",
   email: "hello@sellsail.io",
   company: "Horizon Retail Solutions Ltd",
   companyNumber: "15884637",
   address: "2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE",
-  companiesHouse: "https://find-and-update.company-information.service.gov.uk/company/15884637",
   disclaimer:
     "SellSail is an independent tool and is not affiliated with, endorsed by or sponsored by OnBuy / OnCommerce, Amazon or AliExpress. All trademarks belong to their owners.",
 };
@@ -28,7 +27,8 @@ export const footerNav = [
       { href: "/features", label: "Features" },
       { href: "/pricing", label: "Pricing" },
       { href: "/onbuy-fee-calculator", label: "OnBuy fee calculator" },
-      { href: "/beta", label: "Join the beta" },
+      { href: "/signup", label: "Start free trial" },
+      { href: "/login", label: "Log in" },
     ],
   },
   {

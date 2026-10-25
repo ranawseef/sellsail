@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { BetaForm } from "@/components/beta-form";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -132,8 +132,8 @@ export function FaqJsonLd({ items }: { items: { q: string; a: string }[] }) {
 }
 
 export function CtaBand({
-  title = "Set sail with the beta",
-  intro = "Free while in beta. One email when your place is ready.",
+  title = "Set sail with SellSail",
+  intro = "Start your 14-day free trial. No card needed, cancel any time.",
 }: {
   title?: string;
   intro?: string;
@@ -145,12 +145,19 @@ export function CtaBand({
           {title}
         </h2>
         <p className="mx-auto mt-3.5 mb-7 max-w-lg text-lg text-sun-ink">{intro}</p>
-        <BetaForm />
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
+            Start your free trial <span aria-hidden="true">→</span>
+          </Link>
+          <Link href="/pricing" className={buttonVariants({ variant: "white", size: "lg" })}>
+            See pricing
+          </Link>
+        </div>
         <div className="pointer-events-none absolute right-10 bottom-8 hidden h-16 w-72 xl:block" aria-hidden="true">
           {[
-            ["Floor raised", "supplier cost +£1.20 · example"],
-            ["Buy Box won at £23.48", "profit £2.15 kept · example"],
-            ["Listing paused", "supplier out of stock · example"],
+            ["Price raised", "Amazon cost +£1.20 · example"],
+            ["Now cheapest at £23.48", "profit £2.15 kept · example"],
+            ["Set out of stock", "Amazon ran out · example"],
           ].map(([t, s], i) => (
             <div
               key={t}

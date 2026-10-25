@@ -9,7 +9,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   async redirects() {
-    return [{ source: "/guides", destination: "/blog", permanent: true }];
+    return [
+      { source: "/guides", destination: "/blog", permanent: true },
+      // The beta list became the free trial at launch.
+      { source: "/beta", destination: "/signup", permanent: true },
+    ];
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

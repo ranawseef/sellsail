@@ -5,13 +5,13 @@ import { companyLine, site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact SellSail",
-  description: "Get in touch with the SellSail team about the beta, agency plans or support.",
+  description: "Get in touch with the SellSail team about support, billing or agency plans for several OnBuy accounts.",
   alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {
   const cards = [
-    { icon: Mail, title: "General and support", text: "Questions about SellSail or the beta.", action: site.email, href: `mailto:${site.email}` },
+    { icon: Mail, title: "General and support", text: "Help with your account, set-up or billing.", action: site.email, href: `mailto:${site.email}` },
     { icon: Building2, title: "Agency plans", text: "Managing several OnBuy accounts? Let's talk.", action: "Email about agency plans", href: `mailto:${site.email}?subject=Agency%20plan` },
     { icon: MessageSquare, title: "Feedback", text: "Ideas for features or guides you'd like to see.", action: "Send feedback", href: `mailto:${site.email}?subject=Feedback` },
   ];
@@ -38,10 +38,7 @@ export default function ContactPage() {
           ))}
         </ul>
         <p className="mt-10 text-center text-muted">
-          {companyLine}{" "}
-          <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
-            View on Companies House
-          </a>
+          {companyLine}
         </p>
       </section>
     </>

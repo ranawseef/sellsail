@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CtaBand, PageHero } from "@/components/sections";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "About SellSail",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 const values = [
   ["Safe by default", "Every price has a floor that covers your costs and fees. Safety brakes stop a run when data looks wrong."],
   ["Clear UK pricing", "Prices in pounds, VAT handled properly, and no surprise fees."],
-  ["Simple to set up", "Built for small shops: connect, add your sources, pick a margin."],
+  ["Simple to set up", "Connect OnBuy, import your listings, check your margins. No Amazon keys needed."],
   ["Honest about rules", "We point you to the marketplace rules that apply, and never promise what we can't deliver."],
 ];
 
@@ -27,11 +28,16 @@ export default function AboutPage() {
           <p>
             SellSail is made by an OnBuy and eBay dropshipper running a registered UK company. Doing the fee maths by hand
             for every listing was slow, and getting it wrong was expensive. So we built a tool that does it properly: it
-            imports products, works out a floor that covers every fee, and only competes where there is profit to win.
+            reads Amazon prices, works out an OnBuy price that covers every fee, and only competes where there is profit
+            to win.
+          </p>
+          <p>
+            SellSail is a trading name of {site.company}, a company registered in England and Wales (number{" "}
+            {site.companyNumber}).
           </p>
           <p>
             We&apos;re starting with OnBuy because UK sellers there deserve tools that understand UK pricing, VAT and the
-            way OnBuy charges commission.
+            way OnBuy charges commission. AliExpress as a source and eBay as a marketplace are next.
           </p>
         </div>
       </section>

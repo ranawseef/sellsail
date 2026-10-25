@@ -15,11 +15,7 @@ export default function TermsPage() {
     <LegalPage title="Terms of service" updated="25 October 2026">
       <p>
         These terms apply to your use of sellsail.io and the SellSail service. SellSail is a trading name of {site.company}, a
-        company registered in England and Wales (company number{" "}
-        <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer">
-          {site.companyNumber}
-        </a>
-        ), registered office {site.address}, United Kingdom (&quot;we&quot;, &quot;us&quot;). By creating an account you agree to
+        company registered in England and Wales (company number {site.companyNumber}), registered office {site.address}, United Kingdom (&quot;we&quot;, &quot;us&quot;). By creating an account you agree to
         these terms on behalf of yourself and the business you sign up for.
       </p>
 

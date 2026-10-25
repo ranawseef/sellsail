@@ -8,9 +8,9 @@ import { faqText } from "@/content/faq";
 import { Faq, FaqJsonLd, SectionHeading } from "@/components/sections";
 
 export const metadata: Metadata = {
-  title: "OnBuy dropshipping from Amazon and AliExpress",
+  title: "OnBuy dropshipping from Amazon",
   description:
-    "Import products from Amazon and AliExpress, list them on OnBuy with prices that cover every fee, and keep stock and prices in sync automatically.",
+    "Dropship to OnBuy from Amazon UK with prices that cover every fee, competition that never goes below your floor, and stock kept in sync. AliExpress coming soon.",
   alternates: { canonical: "/dropshipping" },
 };
 
@@ -22,12 +22,12 @@ export default function DropshippingPage() {
       <PageHero
         eyebrow="OnBuy dropshipping"
         title={<>Dropship to OnBuy <span className="highlight px-1">without the spreadsheets</span></>}
-        intro="Import from Amazon or AliExpress, list on OnBuy with a price that covers every fee, and let SellSail keep stock and prices in sync."
+        intro="Price your OnBuy listings from Amazon UK with every fee covered, and let SellSail keep stock and prices in sync. AliExpress is coming soon."
       >
         <div className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
           {[
             ["/dropshipping/amazon-to-onbuy", "Amazon to OnBuy", "Fast UK delivery from Amazon listings."],
-            ["/dropshipping/aliexpress-to-onbuy", "AliExpress to OnBuy", "Low-cost products with wider margins."],
+            ["/dropshipping/aliexpress-to-onbuy", "AliExpress to OnBuy", "Coming soon: low-cost products with wider margins."],
           ].map(([href, t, d]) => (
             <Link key={href} href={href} className="group rounded-3xl border border-line bg-white p-6 text-left text-ink no-underline hover:border-sea">
               <span className="flex items-center justify-between font-display text-2xl font-bold">

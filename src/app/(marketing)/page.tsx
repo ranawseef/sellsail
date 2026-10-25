@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CtaBand, Faq, FaqJsonLd, SectionHeading } from "@/components/sections";
 import { Hero, TrustMarquee } from "@/components/home/hero";
 import { Sourcing } from "@/components/home/sourcing";
@@ -7,6 +8,31 @@ import { Comparison } from "@/components/home/comparison";
 import { CalculatorBand, HowItWorks, Included, PricingCards } from "@/components/home/misc";
 import { InsideLook } from "@/components/home/inside-look";
 import { homeFaq } from "@/content/faq";
+import { PAID_PLANS, PLANS } from "@/config/plans";
+import { site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+// The product, for search engines: what it is, who makes it and what it costs.
+const softwareJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: site.name,
+  url: site.url,
+  description: site.description,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  publisher: { "@id": `${site.url}/#organization` },
+  offers: PAID_PLANS.map((id) => ({
+    "@type": "Offer",
+    name: PLANS[id].name,
+    price: (PLANS[id].pricePence / 100).toFixed(2),
+    priceCurrency: "GBP",
+    url: `${site.url}/pricing`,
+  })),
+};
 
 export default function HomePage() {
   return (
@@ -57,6 +83,7 @@ export default function HomePage() {
       </section>
 
       <CtaBand />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
     </>
   );
 }

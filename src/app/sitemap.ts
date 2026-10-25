@@ -13,15 +13,23 @@ const paths = [
   "/blog",
   "/about",
   "/contact",
-  "/beta",
   "/privacy",
   "/terms",
   "/cookies",
 ];
 
+// Bump when the marketing pages change.
+const SITE_UPDATED = new Date("2026-10-25");
+const LEGAL = new Set(["/privacy", "/terms", "/cookies"]);
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    ...paths.map((p) => ({ url: `${site.url}${p}`, changeFrequency: "weekly" as const, priority: p === "" ? 1 : 0.7 })),
+    ...paths.map((p) => ({
+      url: `${site.url}${p}`,
+      lastModified: SITE_UPDATED,
+      changeFrequency: (LEGAL.has(p) ? "yearly" : "weekly") as "yearly" | "weekly",
+      priority: p === "" ? 1 : LEGAL.has(p) ? 0.3 : 0.7,
+    })),
     ...posts.map((p) => ({ url: `${site.url}/blog/${p.slug}`, lastModified: p.date, changeFrequency: "monthly" as const, priority: 0.8 })),
   ];
 }

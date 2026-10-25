@@ -82,7 +82,7 @@ export default function BlogPage() {
           ))}
         </ul>
       </section>
-      <CtaBand title="Get new guides first" intro="Join the beta list and we'll send new guides as they go live." />
+      <CtaBand />
     </>
   );
 }
