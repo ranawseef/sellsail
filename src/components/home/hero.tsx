@@ -1,20 +1,10 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { productImages } from "@/content/product-images";
+import { DemoVideo } from "@/components/home/demo-video";
 import { TRIAL_DAYS } from "@/config/plans";
 import { MessageCircle, Play } from "lucide-react";
 import { portal, site } from "@/lib/site";
-
-// Worked examples at 15% commission (7% for the phone stand) and 20% VAT.
-// Supplier cost includes the supplier's delivery charge.
-const examples = [
-  { name: "Steel water bottle", source: "Amazon", cost: "£10.89", price: "£19.99", fees: "£6.33", profit: "+£2.77", status: "WON", image: productImages.waterBottle, r: "-6deg", y: "18px" },
-  { name: "LED desk lamp", source: "Amazon", cost: "£16.90", price: "£29.99", fees: "£9.50", profit: "+£3.59", status: "RAISED", image: productImages.deskLamp, r: "-3deg", y: "4px" },
-  { name: "Bamboo cutlery set", source: "Amazon", cost: "£13.90", price: "£23.48", fees: "£7.43", profit: "+£2.15", status: "WON", image: productImages.cutlery, r: "0deg", y: "0px", featured: true },
-  { name: "Yoga mat", source: "Amazon", cost: "£13.89", price: "£24.99", fees: "£7.92", profit: "+£3.18", status: "WON", image: productImages.yogaMat, r: "3deg", y: "4px" },
-  { name: "Phone stand", source: "Amazon", cost: "£5.49", price: "£12.99", fees: "£3.08", profit: "+£4.42", status: "WON", image: productImages.phoneStand, r: "6deg", y: "18px" },
-];
 
 export function Hero() {
   return (
@@ -74,41 +64,8 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1240px] pt-12 pb-10 sm:px-6 sm:pt-14">
-        <p className="mb-5 px-6 text-center text-sm font-semibold tracking-wide text-sea-dark">
-          Illustrative examples, with OnBuy commission and VAT ↓
-        </p>
-        <ul className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pt-2 pb-6 scrollbar-none sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pt-0 sm:pb-0">
-          {examples.map((e, i) => (
-            <li
-              key={e.name}
-              className={`fan-card w-[200px] shrink-0 snap-center rounded-2xl sm:w-auto sm:flex-[0_1_200px] bg-white p-4 text-left shadow-[0_14px_34px_rgba(16,35,28,.12)] ${e.featured ? "outline-2 outline-sea" : ""}`}
-              style={{ "--r": e.r, "--y": e.y, animationDelay: `${0.05 + i * 0.1}s` } as React.CSSProperties}
-            >
-              <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={e.image} alt={e.name} width={160} height={128} loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-sm font-bold">{e.name}</span>
-                <Badge variant={e.status === "WON" ? "mint" : "sun"} size="sm" className="text-[10px]">
-                  {e.status}
-                </Badge>
-              </div>
-              <div className="mt-1 text-xs text-muted">from {e.source}</div>
-              <dl className="mt-2.5 grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-[13px]">
-                <dt className="text-muted">Supplier</dt>
-                <dd>{e.cost}</dd>
-                <dt className="text-muted">OnBuy price</dt>
-                <dd className="font-bold">{e.price}</dd>
-                <dt className="text-muted">Fees + VAT</dt>
-                <dd>{e.fees}</dd>
-                <dt className="font-bold text-sea-dark">Profit</dt>
-                <dd className="font-bold text-sea-dark">{e.profit}</dd>
-              </dl>
-            </li>
-          ))}
-        </ul>
+      <div id="demo" className="mx-auto max-w-[1240px] scroll-mt-24 px-4 pt-12 pb-14 sm:px-6 sm:pt-14 sm:pb-20">
+        <DemoVideo />
       </div>
     </section>
   );
