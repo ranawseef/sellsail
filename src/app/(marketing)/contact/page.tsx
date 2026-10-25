@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Mail, MessageSquare, Building2 } from "lucide-react";
 import { PageHero } from "@/components/sections";
-import { site } from "@/lib/site";
+import { companyLine, site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact SellSail",
@@ -38,7 +38,10 @@ export default function ContactPage() {
           ))}
         </ul>
         <p className="mt-10 text-center text-muted">
-          SellSail is a trading name of Horizon Retail Solutions Ltd · Registered in England and Wales, company number 15884637 · 2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE
+          {companyLine}{" "}
+          <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+            View on Companies House
+          </a>
         </p>
       </section>
     </>

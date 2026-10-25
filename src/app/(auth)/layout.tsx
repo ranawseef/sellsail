@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Logo } from "@/components/logo";
-import { site } from "@/lib/site";
+import { companyLine, site } from "@/lib/site";
 
 export const metadata: Metadata = { robots: { index: false, follow: true } };
 
@@ -14,7 +14,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main id="main" className="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:pt-12">
         {children}
       </main>
-      <footer className="mx-auto w-full max-w-[1200px] px-6 py-6 text-[13px] leading-relaxed text-muted">{site.disclaimer}</footer>
+      <footer className="mx-auto w-full max-w-[1200px] px-6 py-6 text-[13px] leading-relaxed text-muted">
+        <p>{site.disclaimer}</p>
+        <p className="mt-1">{companyLine}</p>
+      </footer>
     </div>
   );
 }

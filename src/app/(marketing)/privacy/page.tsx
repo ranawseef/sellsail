@@ -11,45 +11,106 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="15 October 2026">
+    <LegalPage title="Privacy policy" updated="25 October 2026">
       <p>
-        This policy explains how Horizon Retail Solutions Ltd (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. We are the
-        data controller for the data described here. Company number 15884637, registered office 2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE.
+        This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
+        {site.company}, registered in England and Wales, company number{" "}
+        <a href={site.companiesHouse} target="_blank" rel="noopener noreferrer">
+          {site.companyNumber}
+        </a>
+        , registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
+        <a href={`mailto:${site.email}`}>{site.email}</a>.
       </p>
+
       <h2>What we collect</h2>
       <ul>
-        <li><strong>Contact details</strong> you give us, such as your email address when you join the beta or email us.</li>
-        <li><strong>Account and store data</strong> once the service launches, such as your OnBuy API keys, listings, orders and supplier links, which we need to run the service.</li>
-        <li><strong>Technical data</strong> such as server logs needed to keep the site secure.</li>
+        <li>
+          <strong>Account details:</strong> your name, email address and workspace name. Your password is stored only as a
+          one-way hash; we can&apos;t read it.
+        </li>
+        <li>
+          <strong>Store data:</strong> your OnBuy API keys, an optional proxy login, your listings, SKUs, ASINs, prices,
+          stock levels, price history and the competition data OnBuy returns for your listings.
+        </li>
+        <li>
+          <strong>Billing data:</strong> your plan, subscription status and invoices. Card details are entered on Stripe&apos;s
+          pages and never reach us.
+        </li>
+        <li>
+          <strong>Technical data:</strong> IP address, browser type, sign-in sessions and server logs, used to keep accounts
+          secure.
+        </li>
+        <li>
+          <strong>Messages</strong> you send us, and your email if you join the beta list.
+        </li>
       </ul>
       <p>The fee calculator runs in your browser. Nothing you type into it is sent to us.</p>
+
       <h2>Why we use it and our lawful basis</h2>
       <ul>
-        <li>To provide the service you sign up for (contract).</li>
-        <li>To tell you about the beta when you ask us to (consent). You can withdraw consent at any time.</li>
-        <li>To keep the site and service secure and working (legitimate interests).</li>
-        <li>To meet legal and tax obligations (legal obligation).</li>
+        <li>To provide the service you signed up for: pricing your listings and sending updates to OnBuy (contract).</li>
+        <li>To send account emails such as sign-up codes, password resets and payment problems (contract).</li>
+        <li>To keep the service secure, prevent abuse and give support (legitimate interests).</li>
+        <li>To send beta updates when you ask for them (consent, which you can withdraw at any time).</li>
+        <li>To keep accounting and tax records (legal obligation).</li>
       </ul>
+
       <h2>Who we share it with</h2>
+      <ul>
+        <li>
+          <strong>Hostinger</strong> hosts the website, database and our email.
+        </li>
+        <li>
+          <strong>Stripe</strong> takes subscription payments. Stripe may act as the reseller (merchant of record) of your
+          subscription and handle sales tax and VAT; for that it uses your billing details under its own privacy policy
+          (stripe.com/privacy).
+        </li>
+        <li>
+          <strong>OnBuy</strong> receives your price and stock updates through your own API keys, and{" "}
+          <strong>Amazon</strong> is asked for public offer prices for your ASINs. Neither receives your personal details from
+          us.
+        </li>
+        <li>Your proxy provider, if you add one, carries your OnBuy requests.</li>
+      </ul>
       <p>
-        We use trusted suppliers such as our hosting provider and email provider to run the service. They only process
-        data on our instructions. We never sell your data.
+        Our suppliers only process data to provide their service to us. We never sell your data. Some suppliers, such as
+        Stripe, may process data outside the UK; where they do, they use safeguards approved under UK law, such as the
+        International Data Transfer Addendum.
       </p>
+
+      <h2>Your API keys and support access</h2>
+      <p>
+        Marketplace API keys, tokens and proxy passwords are encrypted (AES-256-GCM) before they are stored, and are never
+        shown in your dashboard again after you save them. A small number of SellSail staff can decrypt them in our admin
+        panel to help you with support or investigate a problem. Every such view is recorded with who viewed it and when.
+      </p>
+
       <h2>How long we keep it</h2>
-      <p>
-        We keep data only as long as we need it for the purposes above, then delete it. Beta list emails are deleted when
-        you unsubscribe or the beta ends, whichever comes first.
-      </p>
+      <ul>
+        <li>Account and store data: while your workspace is open. When it is closed, it is deleted straight away.</li>
+        <li>Price history and activity logs: 30 days. Background job logs: 14 days.</li>
+        <li>Invoices and billing records: 6 years, as UK tax law requires.</li>
+        <li>Beta list emails: until you unsubscribe or the beta ends.</li>
+      </ul>
+
       <h2>Security</h2>
-      <p>Connections are encrypted with HTTPS. Marketplace API keys will be stored encrypted.</p>
+      <p>
+        All connections use HTTPS. Keys and passwords are encrypted or hashed as described above, sign-in sessions are
+        stored as hashes, and new accounts confirm their email with a one-time code. Staff access to the admin panel needs a
+        code sent to a SellSail inbox, and admin actions are logged.
+      </p>
+
       <h2>Your rights</h2>
       <p>
         Under UK GDPR you can ask to access, correct, delete or move your data, object to or restrict how we use it, and
-        withdraw consent. Email <a href={`mailto:${site.email}`}>{site.email}</a>. You can also complain to the
-        Information Commissioner&apos;s Office (ico.org.uk).
+        withdraw consent. Email <a href={`mailto:${site.email}`}>{site.email}</a> and we will reply within one month. You can
+        also complain to the Information Commissioner&apos;s Office (ico.org.uk).
       </p>
+
       <h2>Cookies</h2>
-      <p>See our <Link href="/cookies">cookie notice</Link>.</p>
+      <p>
+        See our <Link href="/cookies">cookie notice</Link>.
+      </p>
     </LegalPage>
   );
 }

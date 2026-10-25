@@ -8,7 +8,7 @@ import { LogoMark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/server/actions/auth";
-import { site } from "@/lib/site";
+import { companyLine, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -153,8 +153,9 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
 
         <footer className="mx-auto w-full max-w-[1200px] border-t border-line px-4 py-6 text-[13px] leading-relaxed text-muted sm:px-6">
           <p>{site.disclaimer}</p>
+          <p className="mt-1">{companyLine}</p>
           <p className="mt-1">
-            © {new Date().getFullYear()} {site.name} ·{" "}
+            © {new Date().getFullYear()} {site.company} ·{" "}
             <Link href="/terms" className="text-muted underline-offset-4 hover:underline">
               Terms
             </Link>{" "}

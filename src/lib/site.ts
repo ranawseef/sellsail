@@ -8,6 +8,7 @@ export const site = {
   company: "Horizon Retail Solutions Ltd",
   companyNumber: "15884637",
   address: "2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE",
+  companiesHouse: "https://find-and-update.company-information.service.gov.uk/company/15884637",
   disclaimer:
     "SellSail is an independent tool and is not affiliated with, endorsed by or sponsored by OnBuy / OnCommerce, Amazon or AliExpress. All trademarks belong to their owners.",
 };
@@ -50,3 +51,6 @@ export const footerNav = [
     ],
   },
 ];
+
+/** The legal line shown in footers and emails. */
+export const companyLine = `SellSail is a trading name of ${site.company}, registered in England and Wales, company number ${site.companyNumber}. Registered office: ${site.address}, United Kingdom.`;

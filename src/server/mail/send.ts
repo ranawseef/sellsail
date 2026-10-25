@@ -12,6 +12,7 @@
 //   MAIL_REPLY_TO  optional, defaults to "SellSail <hello@sellsail.io>"
 
 import { sendSmtp, type SmtpConfig } from "./smtp.ts";
+import { companyLine } from "../../lib/site.ts";
 
 export function mailConfig(): SmtpConfig | null {
   const host = process.env.SMTP_HOST?.trim();
@@ -49,7 +50,7 @@ function codeEmailHtml(heading: string, intro: string, code: string, outro: stri
 <tr><td style="padding:22px 0"><div style="font-size:34px;letter-spacing:10px;font-weight:800;background:#e8f5f0;border-radius:12px;padding:16px;text-align:center;font-family:Courier New,monospace">${escapeHtml(code)}</div></td></tr>
 <tr><td style="font-size:13px;line-height:1.6;color:#4d6159">${escapeHtml(outro)}</td></tr>
 </table>
-<p style="font-size:12px;color:#4d6159;max-width:480px">SellSail, sellsail.io. You got this email because someone used this address on SellSail.</p>
+<p style="font-size:12px;color:#4d6159;max-width:480px">You got this email because someone used this address on SellSail (sellsail.io). ${escapeHtml(companyLine)}</p>
 </td></tr></table></body></html>`;
 }
 
@@ -93,7 +94,7 @@ export async function sendCodeEmail(to: string, purpose: "verify" | "reset" | "a
       replyTo: replyTo(from),
       to,
       subject: copy.subject,
-      text: `${copy.heading}\n\n${copy.intro}\n\n    ${code}\n\n${copy.outro}\n\nSellSail, sellsail.io`,
+      text: `${copy.heading}\n\n${copy.intro}\n\n    ${code}\n\n${copy.outro}\n\nSellSail, sellsail.io\n${companyLine}`,
       html: codeEmailHtml(copy.heading, copy.intro, code, copy.outro),
     });
     return true;
