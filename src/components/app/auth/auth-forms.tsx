@@ -202,17 +202,18 @@ export function SignupForm() {
   return (
     <form action={action} className="flex flex-col gap-4" noValidate>
       <FormError state={state} />
-      <TextField id={`${id}-name`} name="name" label="Your name" autoComplete="name" required defaultValue={v?.name} error={state?.fieldErrors?.name} />
-      <TextField
-        id={`${id}-workspace`}
-        name="workspace"
-        label="Business name"
-        hint="Shown in your dashboard. You can change it later."
-        autoComplete="organization"
-        required
-        defaultValue={v?.workspace}
-        error={state?.fieldErrors?.workspace}
-      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField id={`${id}-name`} name="name" label="Your name" autoComplete="name" required defaultValue={v?.name} error={state?.fieldErrors?.name} />
+        <TextField
+          id={`${id}-workspace`}
+          name="workspace"
+          label="Business name"
+          autoComplete="organization"
+          required
+          defaultValue={v?.workspace}
+          error={state?.fieldErrors?.workspace}
+        />
+      </div>
       <TextField id={`${id}-email`} name="email" type="email" label="Email" autoComplete="email" required defaultValue={v?.email} error={state?.fieldErrors?.email} />
       <TextField
         id={`${id}-password`}

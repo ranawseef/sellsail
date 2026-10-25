@@ -26,7 +26,7 @@ export function AdminLoginForm() {
       {step !== "code" ? (
         <motion.form key="email" action={request} className="flex flex-col gap-4" noValidate {...slide}>
           <Message state={sent} />
-          <TextField id={`${id}-email`} name="email" type="email" label="Admin email" autoComplete="email" required defaultValue="hello@sellsail.io" />
+          <TextField id={`${id}-email`} name="email" type="email" label="Admin email" autoComplete="off" spellCheck={false} required />
           <SubmitButton size="lg" pendingLabel="Sending…" className="mt-1 w-full">
             <Mail aria-hidden="true" className="size-4" /> Email me a code
           </SubmitButton>
