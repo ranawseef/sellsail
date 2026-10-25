@@ -5,7 +5,8 @@ import { ArrowLeft, ListChecks, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CtaBand, Faq } from "@/components/sections";
 import { PostCover } from "@/components/post-cover";
-import { getPost, isPublished, publishedPosts, relatedPosts, unsplash } from "@/content/posts";
+import { getPost, isPublished, publishedPosts, relatedPosts } from "@/content/posts";
+import { coverUrl } from "@/lib/cover";
 import { headings, Markdown } from "@/lib/markdown";
 import { portal, site } from "@/lib/site";
 
@@ -31,7 +32,7 @@ const longDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { da
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const post = getPost((await params).slug);
   if (!post || !isPublished(post)) return {};
-  const image = post.cover ? unsplash(post.cover.src, 1200) : `${site.url}/opengraph-image`;
+  const image = `${site.url}/blog/${post.slug}/opengraph-image`;
   return {
     title: post.title,
     description: post.description,
@@ -66,7 +67,7 @@ export default async function PostPage({ params }: Params) {
       "@type": "BlogPosting",
       headline: post.title,
       description: post.description,
-      image: post.cover ? unsplash(post.cover.src, 1200) : `${site.url}/opengraph-image`,
+      image: coverUrl(post, 1200),
       datePublished: post.date,
       dateModified: post.updated ?? post.date,
       inLanguage: "en-GB",
