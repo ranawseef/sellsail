@@ -31,6 +31,8 @@ const organizationJsonLd = {
   logo: `${site.url}/logo.png`,
   description: site.description,
   email: site.email,
+  telephone: site.phone,
+  contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: site.email, telephone: site.phone, areaServed: "GB", availableLanguage: "en" },
   identifier: { "@type": "PropertyValue", propertyID: "Companies House", value: site.companyNumber },
   address: {
     "@type": "PostalAddress",

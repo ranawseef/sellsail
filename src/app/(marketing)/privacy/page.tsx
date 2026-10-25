@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       <p>
         This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
         {site.company}, registered in England and Wales, company number {site.companyNumber}, registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
-        <a href={`mailto:${site.email}`}>{site.email}</a>.
+        <a href={`mailto:${site.email}`}>{site.email}</a> or on <a href={site.phoneHref}>{site.phone}</a>.
       </p>
 
       <h2>What we collect</h2>

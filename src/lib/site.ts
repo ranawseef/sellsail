@@ -5,6 +5,8 @@ export const site = {
   description:
     "The Amazon to OnBuy repricer for UK sellers. Live Amazon prices, fee-aware OnBuy pricing, competition that never goes below your floor, and stock sync every few minutes.",
   email: "hello@sellsail.io",
+  phone: "+44 7383 318529",
+  phoneHref: "tel:+447383318529",
   company: "Horizon Retail Solutions Ltd",
   companyNumber: "15884637",
   address: "2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE",

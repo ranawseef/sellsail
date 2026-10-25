@@ -11,11 +11,14 @@ export function SiteFooter() {
             <LogoMark /> SellSail
           </div>
           <p className="mt-3 max-w-sm leading-relaxed">
-            Fee-aware repricing and dropshipping automation for UK sellers on OnBuy.
+            The Amazon to OnBuy repricer for UK sellers: fee-aware prices, competition and stock sync.
           </p>
-          <p className="mt-4 text-sm">
+          <p className="mt-4 flex flex-col gap-1 text-sm">
             <a href={`mailto:${site.email}`} className="text-white underline-offset-4 hover:underline">
               {site.email}
+            </a>
+            <a href={site.phoneHref} className="text-white underline-offset-4 hover:underline">
+              {site.phone}
             </a>
           </p>
         </div>

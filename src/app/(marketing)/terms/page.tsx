@@ -108,7 +108,8 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        {site.company}, {site.address}, United Kingdom. Email <a href={`mailto:${site.email}`}>{site.email}</a>.
+        {site.company}, {site.address}, United Kingdom. Email <a href={`mailto:${site.email}`}>{site.email}</a> or call{" "}
+        <a href={site.phoneHref}>{site.phone}</a>.
       </p>
     </LegalPage>
   );
