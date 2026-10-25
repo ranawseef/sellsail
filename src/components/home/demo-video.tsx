@@ -6,7 +6,7 @@
 // derives what it shows from its local time, so pause, seek and loop are
 // exact. It plays muted-video style when scrolled into view; under
 // prefers-reduced-motion it waits for the play button and shows the final
-// sales screen meanwhile. All numbers are demo data and labelled as such.
+// sales screen meanwhile. All numbers are from a demo shop.
 // Text sizes use container units (cqw) so nothing overflows at any width.
 //
 // A presenter (two short clips, voiced) sits in a round picture-in-picture
@@ -149,7 +149,6 @@ export function DemoVideo() {
             <span className="flex items-center gap-1.5 font-display text-[13px] font-extrabold text-white">
               <LogoMark size={20} /> SellSail
             </span>
-            <span className="rounded-full bg-sun px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-ink uppercase">Demo data</span>
           </div>
 
           <div
@@ -180,7 +179,7 @@ export function DemoVideo() {
                   muted
                   playsInline
                   preload={inView || shown > 0 ? "auto" : "none"}
-                  className="absolute inset-0 h-full w-full object-cover object-[50%_22%] transition-opacity duration-300"
+                  className="absolute inset-0 h-full w-full object-cover object-[50%_6%] transition-opacity duration-300"
                   style={{ opacity: i === Math.max(activeClip, 0) ? 1 : 0 }}
                 />
               ))}
@@ -286,9 +285,6 @@ export function DemoVideo() {
           <li key={s.id}>{s.text}</li>
         ))}
       </ol>
-      <p className="mt-4 text-center text-[13px] text-muted">
-        Demo shop with sample data. Real results depend on your products, prices and competition.
-      </p>
     </div>
   );
 }

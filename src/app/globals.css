@@ -85,18 +85,6 @@
   to { background-size: 100% 100%; }
 }
 
-/* Fanned example cards in the hero. */
-.fan-card {
-  transform: translateY(var(--y, 0px)) rotate(var(--r, 0deg));
-  transition: transform 0.25s ease;
-  animation: fan-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.fan-card:hover { transform: translateY(-14px) rotate(0deg); }
-@keyframes fan-in {
-  from { opacity: 0; transform: translateY(60px) rotate(0deg); }
-  to { opacity: 1; transform: translateY(var(--y, 0px)) rotate(var(--r, 0deg)); }
-}
-
 /* Activity toasts that take turns. */
 .toast-cycle { opacity: 0; animation: toast 12s infinite; }
 @keyframes toast {
@@ -146,9 +134,5 @@ details[open] .faq-icon { transform: rotate(45deg); }
   }
 }
 
-/* Phones: the hero cards sit in a swipeable row, so keep them upright, and
-   never let a stray wide element scroll the whole page sideways. */
-@media (max-width: 639px) {
-  .fan-card { --r: 0deg !important; --y: 0px !important; }
-}
+/* Never let a stray wide element scroll the whole page sideways. */
 html, body { overflow-x: clip; }

@@ -15,7 +15,7 @@ const POINTS = [
 
 // Login, signup and the account pages: the form on the left, and on wide
 // screens a dark panel on the right that sells the product with a small
-// dashboard preview (demo data, labelled).
+// dashboard preview (demo shop numbers).
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-1 bg-white">
@@ -71,7 +71,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="rounded-3xl bg-white p-5 text-ink shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-muted">Revenue this month</p>
-              <span className="rounded-full bg-sun px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">Demo data</span>
             </div>
             <div className="mt-1 flex items-end justify-between gap-4">
               <p className="font-display text-4xl font-extrabold tracking-[-0.03em]">£48,917</p>
