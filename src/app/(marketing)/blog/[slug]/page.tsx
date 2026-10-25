@@ -111,13 +111,8 @@ export default async function PostPage({ params }: Params) {
             <h1 className="mt-4 font-display text-[clamp(34px,5vw,58px)] leading-[1.04] font-extrabold tracking-[-0.035em]">{post.title}</h1>
             <p className="mt-5 text-xl leading-relaxed text-body">{post.description}</p>
             <p className="mt-5 text-sm text-muted">
-              By the SellSail team · <time dateTime={post.date}>{longDate(post.date)}</time>
-              {post.updated && post.updated !== post.date && (
-                <>
-                  {" "}· Updated <time dateTime={post.updated}>{longDate(post.updated)}</time>
-                </>
-              )}{" "}
-              · {post.readingMinutes} min read
+              By the SellSail team · Updated <time dateTime={post.updated ?? post.date}>{longDate(post.updated ?? post.date)}</time> ·{" "}
+              {post.readingMinutes} min read
             </p>
           </div>
         </header>

@@ -84,7 +84,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               </h2>
               <p className="mt-3 leading-relaxed text-body">{featured.description}</p>
               <p className="mt-5 text-sm text-muted">
-                {formatDate(featured.date)} · {featured.readingMinutes} min read
+                Updated {formatDate(featured.updated ?? featured.date)} · {featured.readingMinutes} min read
               </p>
             </div>
           </Link>
@@ -100,7 +100,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
                   <h2 className="mt-3 font-display text-xl leading-tight font-bold tracking-[-0.02em] group-hover:text-sea-dark">{p.title}</h2>
                   <p className="mt-2 line-clamp-3 text-[15px] leading-relaxed text-body">{p.description}</p>
                   <p className="mt-auto pt-5 text-sm text-muted">
-                    {formatDate(p.date)} · {p.readingMinutes} min read
+                    Updated {formatDate(p.updated ?? p.date)} · {p.readingMinutes} min read
                   </p>
                 </div>
               </Link>

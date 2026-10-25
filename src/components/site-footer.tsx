@@ -1,16 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Lock, Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, Mail, MessageCircle, Phone } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { buttonVariants } from "@/components/ui/button";
 import { TRIAL_DAYS } from "@/config/plans";
 import { footerNav, portal, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
-
-const TRUST = [
-  { icon: Building2, label: "UK registered company" },
-  { icon: Lock, label: "Payments secured by Stripe" },
-  { icon: ShieldCheck, label: "API keys encrypted at rest" },
-];
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -89,15 +83,6 @@ export function SiteFooter() {
             </nav>
           ))}
         </div>
-
-        {/* Trust row */}
-        <ul className="flex flex-wrap gap-x-6 gap-y-3 border-t border-white/10 py-6 text-sm">
-          {TRUST.map(({ icon: Icon, label }) => (
-            <li key={label} className="inline-flex items-center gap-2 font-semibold text-white/90">
-              <Icon aria-hidden="true" className="size-4 text-sea-mid" /> {label}
-            </li>
-          ))}
-        </ul>
 
         {/* Legal */}
         <div className="flex flex-col gap-4 border-t border-white/10 py-8 text-[13px] leading-relaxed text-[#8fa89e] lg:flex-row lg:justify-between lg:gap-12">
