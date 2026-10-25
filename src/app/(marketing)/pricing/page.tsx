@@ -14,6 +14,7 @@ const pricingFaq = [
   { q: "Do prices include VAT?", a: "No. Prices are monthly and exclude VAT, which is added at checkout where it applies." },
   faqText.trial,
   { q: "Can I cancel any time?", a: "Yes. Plans are monthly with no minimum term. Cancel in Billing and you keep access until the end of the month you've paid for." },
+  { q: "Can I pay yearly?", a: "Yes. Annual billing costs ten months' price for twelve months: two months free. You can switch between monthly and annual in Billing." },
   { q: "Can I change plan later?", a: "Yes, at any time in Billing. The difference is charged or credited pro rata." },
   { q: "What counts as a listing?", a: "Each OnBuy SKU that SellSail prices for you. Archived SKUs that OnBuy no longer recognises don't count." },
   faqText.affiliated,

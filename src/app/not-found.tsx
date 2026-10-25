@@ -15,7 +15,7 @@ export default function NotFound() {
       <main id="main" className="flex-1">
         <section className="bg-dots">
           <div className="mx-auto max-w-[820px] px-6 py-32 text-center">
-            <p className="font-hand text-3xl text-sea">Lost at sea?</p>
+            <p className="text-[13px] font-bold tracking-[0.12em] text-sea uppercase">Lost at sea?</p>
             <h1 className="mt-2 font-display text-[clamp(44px,7vw,84px)] leading-none font-extrabold tracking-[-0.045em]">
               We can&apos;t find that page
             </h1>

@@ -7,6 +7,7 @@ export const site = {
   email: "hello@sellsail.io",
   phone: "+44 7383 318529",
   phoneHref: "tel:+447383318529",
+  whatsapp: `https://wa.me/447383318529?text=${encodeURIComponent("Hi SellSail, I'd like a quick demo.")}`,
   company: "Horizon Retail Solutions Ltd",
   companyNumber: "15884637",
   address: "2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE",

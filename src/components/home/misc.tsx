@@ -13,7 +13,7 @@ export function HowItWorks() {
     <ol className="grid gap-4 md:grid-cols-3">
       {steps.map(([title, text], i) => (
         <li key={title} className={cn("rounded-3xl bg-white p-7", i === 2 ? "border-2 border-sea" : "border border-line")}>
-          <div className="font-hand text-[28px] text-sea">Step {i + 1}</div>
+          <div className="text-[13px] font-bold tracking-[0.12em] text-sea uppercase">Step {i + 1}</div>
           <h3 className="mt-1 font-display text-2xl font-bold tracking-[-0.02em]">{title}</h3>
           <p className="mt-2 leading-relaxed text-body">{text}</p>
         </li>

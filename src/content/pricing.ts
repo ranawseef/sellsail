@@ -1,6 +1,6 @@
 // Public plans, built from src/config/plans.ts so the website and the app
 // can never disagree on prices, limits or sync speeds.
-import { PLANS, TRIAL_DAYS, type PlanId } from "@/config/plans";
+import { PLANS, TRIAL_DAYS, YEARLY_MONTHS, yearlyPence, type PlanId } from "@/config/plans";
 
 const mins = (s: number) => `${Math.round(s / 60)} min`;
 const n = (v: number) => v.toLocaleString("en-GB");
@@ -10,6 +10,8 @@ export type PublicPlan = {
   name: string;
   tagline: string;
   price: string;
+  /** Yearly price and what it works out to per month; null for custom plans. */
+  yearly: { price: string; perMonth: string } | null;
   listings: string;
   highlights: string[];
   cta: string;
@@ -22,6 +24,7 @@ const paid = (id: "starter" | "growth" | "pro", tagline: string, extra: string, 
   name: PLANS[id].name,
   tagline,
   price: `£${PLANS[id].pricePence / 100}`,
+  yearly: { price: `£${yearlyPence(PLANS[id]) / 100}`, perMonth: `£${(yearlyPence(PLANS[id]) / 1200).toFixed(2)}` },
   listings: `${n(PLANS[id].maxSkus)} listings`,
   highlights: [
     `OnBuy updated every ${mins(PLANS[id].pushIntervalS)}`,
@@ -42,6 +45,7 @@ export const plans: PublicPlan[] = [
     name: "Agency",
     tagline: "For several OnBuy shops",
     price: "£249+",
+    yearly: null,
     listings: "Custom limits",
     highlights: ["Several OnBuy accounts", "Limits and sync speed to suit you", "Set-up help from our team"],
     cta: "Talk to us",
@@ -72,3 +76,5 @@ export const compareRows: [string, string, string, string, string][] = [
   ["OnBuy accounts", "1", "1", "1", "Several"],
   ...planIncludes.map((f): [string, string, string, string, string] => [f, "yes", "yes", "yes", "yes"]),
 ];
+
+export const yearlySaving = `${12 - YEARLY_MONTHS} months free`;

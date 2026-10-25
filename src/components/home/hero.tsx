@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { productImages } from "@/content/product-images";
 import { TRIAL_DAYS } from "@/config/plans";
+import { MessageCircle } from "lucide-react";
+import { site } from "@/lib/site";
 
 // Worked examples at 15% commission (7% for the phone stand) and 20% VAT.
 // Supplier cost includes the supplier's delivery charge.
@@ -34,9 +36,9 @@ export function Hero() {
           <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
             Start your free trial <span aria-hidden="true">→</span>
           </Link>
-          <Link href="/onbuy-fee-calculator" className={buttonVariants({ variant: "sun", size: "lg" })}>
-            Work out my OnBuy fees
-          </Link>
+          <a href={site.whatsapp} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "sun", size: "lg" })}>
+            <MessageCircle aria-hidden="true" className="size-5" /> Book a demo
+          </a>
         </div>
         <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-body">
           {["No Amazon keys needed", "Never below your floor", "No card needed"].map((t) => (
@@ -66,7 +68,7 @@ export function Hero() {
       </div>
 
       <div className="mx-auto max-w-[1240px] px-6 pt-14 pb-10">
-        <p className="mb-5 text-center font-hand text-2xl text-sea-dark">
+        <p className="mb-5 text-center text-sm font-semibold tracking-wide text-sea-dark">
           Illustrative examples, with OnBuy commission and VAT ↓
         </p>
         <ul className="flex flex-wrap justify-center gap-4">

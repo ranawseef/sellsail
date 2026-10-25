@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -149,9 +150,9 @@ export function CtaBand({
           <Link href="/signup" className={buttonVariants({ variant: "ink", size: "lg" })}>
             Start your free trial <span aria-hidden="true">→</span>
           </Link>
-          <Link href="/pricing" className={buttonVariants({ variant: "white", size: "lg" })}>
-            See pricing
-          </Link>
+          <a href={site.whatsapp} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "white", size: "lg" })}>
+            <MessageCircle aria-hidden="true" className="size-5" /> Book a demo on WhatsApp
+          </a>
         </div>
         <div className="pointer-events-none absolute right-10 bottom-8 hidden h-16 w-72 xl:block" aria-hidden="true">
           {[

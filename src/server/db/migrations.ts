@@ -507,4 +507,20 @@ export const migrations: Migration[] = [
          ADD COLUMN IF NOT EXISTS comp_note  VARCHAR(255) NULL`,
     ],
   },
+  {
+    id: "011_lifecycle_emails",
+    statements: [
+      // Which scheduled account emails each workspace has had (welcome, trial
+      // reminders), so none is ever sent twice.
+      `CREATE TABLE IF NOT EXISTS lifecycle_emails (
+        tenant_id INT UNSIGNED NOT NULL,
+        kind      VARCHAR(16)  NOT NULL,
+        sent_at   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (tenant_id, kind),
+        CONSTRAINT fk_lifecycle_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE
+      ) ${T}`,
+      // Workspaces older than a week never get the welcome email.
+      `INSERT IGNORE INTO lifecycle_emails (tenant_id, kind) SELECT id, 'welcome' FROM tenants WHERE created_at < NOW(3) - INTERVAL 7 DAY`,
+    ],
+  },
 ];

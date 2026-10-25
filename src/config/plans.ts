@@ -20,7 +20,18 @@ export type Plan = {
   stripePriceEnv?: string;
   /** Stripe price lookup key for the monthly price. */
   lookupKey?: string;
+  /** Stripe price lookup key for the yearly price (10 × monthly: 2 months free). */
+  yearlyLookupKey?: string;
 };
+
+export type BillingInterval = "month" | "year";
+
+/** A year costs ten months: two months free. */
+export const YEARLY_MONTHS = 10;
+
+export function yearlyPence(plan: Plan): number {
+  return plan.pricePence * YEARLY_MONTHS;
+}
 
 export const TRIAL_DAYS = 14;
 
@@ -35,6 +46,7 @@ export const PLANS: Record<PlanId, Plan> = {
     competeIntervalS: 1800,
     stripePriceEnv: "STRIPE_PRICE_STARTER",
     lookupKey: "sellsail_starter_monthly",
+    yearlyLookupKey: "sellsail_starter_yearly",
   },
   growth: {
     id: "growth",
@@ -45,6 +57,7 @@ export const PLANS: Record<PlanId, Plan> = {
     competeIntervalS: 900,
     stripePriceEnv: "STRIPE_PRICE_GROWTH",
     lookupKey: "sellsail_growth_monthly",
+    yearlyLookupKey: "sellsail_growth_yearly",
   },
   pro: {
     id: "pro",
@@ -55,6 +68,7 @@ export const PLANS: Record<PlanId, Plan> = {
     competeIntervalS: 600,
     stripePriceEnv: "STRIPE_PRICE_PRO",
     lookupKey: "sellsail_pro_monthly",
+    yearlyLookupKey: "sellsail_pro_yearly",
   },
 };
 
@@ -67,7 +81,7 @@ export function planFor(id: string | null | undefined): Plan {
 /** The plan a Stripe price lookup key belongs to. */
 export function planForLookupKey(key: string | null | undefined): PlanId | null {
   if (!key) return null;
-  return PAID_PLANS.find((id) => PLANS[id].lookupKey === key) ?? null;
+  return PAID_PLANS.find((id) => PLANS[id].lookupKey === key || PLANS[id].yearlyLookupKey === key) ?? null;
 }
 
 /** The Stripe price id set in env for a plan, or null (then the lookup key is used). */

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Check, CreditCard, Download, ExternalLink } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { ProgressBar, Rise } from "@/components/app/motion";
@@ -9,7 +10,7 @@ import { usage } from "@/server/repos/dashboard";
 import { checkoutAction, portalAction } from "@/server/actions/app";
 import { listInvoices, stripeConfigured } from "@/server/billing/stripe";
 import { one } from "@/server/db/pool";
-import { PAID_PLANS, PLANS, planFor, formatPence } from "@/config/plans";
+import { PAID_PLANS, PLANS, planFor, formatPence, yearlyPence } from "@/config/plans";
 import { daysLeft, formatCount, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +24,10 @@ const STATUS: Record<string, { label: string; variant: "mint" | "sun" | "danger"
   expired: { label: "Expired", variant: "danger" },
 };
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string; interval?: string }> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
+  const yearly = sp.interval === "year";
   const [use, tenant, invoices] = await Promise.all([
     usage(auth.tenantId),
     one<{ stripe_customer_id: string | null; stripe_subscription_id: string | null; comp_until: Date | null }>(
@@ -99,6 +101,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <p className="rounded-2xl bg-sun-soft p-4 text-sm font-semibold text-sun-ink">Online payment isn&apos;t switched on yet. Email us to start a paid plan.</p>
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Billing period" className="inline-flex rounded-full border border-line bg-white p-1 text-sm font-semibold">
+          <Link href="/app/billing" aria-current={!yearly ? "page" : undefined} className={cn("rounded-full px-4 py-2 no-underline", !yearly ? "bg-ink text-white" : "text-body hover:bg-mint")}>
+            Monthly
+          </Link>
+          <Link href="/app/billing?interval=year" aria-current={yearly ? "page" : undefined} className={cn("rounded-full px-4 py-2 no-underline", yearly ? "bg-ink text-white" : "text-body hover:bg-mint")}>
+            Annual <span className={cn("ml-1 rounded-full px-2 py-0.5 text-[11px]", yearly ? "bg-sun text-ink" : "bg-mint text-sea-dark")}>2 months free</span>
+          </Link>
+        </nav>
+      </div>
+
       <Rise delay={0.05}>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Plans">
           {PAID_PLANS.map((id) => {
@@ -112,8 +125,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   {current ? <Badge variant="mint" size="sm">Your plan</Badge> : featured && <Badge variant="solid" size="sm">Most popular</Badge>}
                 </div>
                 <p className="mt-3 font-display text-[40px] leading-none font-extrabold tracking-[-0.04em]">
-                  {formatPence(p.pricePence)}
-                  <span className="ml-1 font-sans text-base font-semibold text-muted">/month</span>
+                  {formatPence(yearly ? yearlyPence(p) : p.pricePence)}
+                  <span className="ml-1 font-sans text-base font-semibold text-muted">{yearly ? "/year" : "/month"}</span>
+                </p>
+                <p className="mt-1 text-[13px] text-muted">
+                  {yearly ? `${formatPence(Math.round(yearlyPence(p) / 12))}/month, billed yearly + VAT` : "+ VAT, billed monthly"}
                 </p>
                 <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
                   {[
@@ -139,7 +155,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                     ) : null
                   ) : (
                     canPay && (
-                      <ActionButton action={checkoutAction} fields={{ plan: id }} variant={featured ? "sea" : "ink"} pendingLabel="Opening checkout…" disabled={!live}>
+                      <ActionButton action={checkoutAction} fields={{ plan: id, interval: yearly ? "year" : "month" }} variant={featured ? "sea" : "ink"} pendingLabel="Opening checkout…" disabled={!live}>
                         Choose {p.name}
                       </ActionButton>
                     )

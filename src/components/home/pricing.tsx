@@ -1,13 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Check, Minus, ShieldCheck, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { compareRows, planIncludes, plans, trialNote } from "@/content/pricing";
+import { compareRows, planIncludes, plans, trialNote, yearlySaving } from "@/content/pricing";
 import { cn } from "@/lib/utils";
 
 /** The four plans as cards, with what each one gives you. */
 export function PricingCards() {
+  const [yearly, setYearly] = useState(false);
   return (
     <>
+      <div className="mb-10 flex justify-center">
+        <div role="group" aria-label="Billing period" className="inline-flex rounded-full border border-line bg-white p-1 text-sm font-semibold shadow-sm">
+          <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)} className={cn("rounded-full px-5 py-2 transition-colors", !yearly ? "bg-ink text-white" : "text-body hover:bg-mint")}>
+            Monthly
+          </button>
+          <button type="button" aria-pressed={yearly} onClick={() => setYearly(true)} className={cn("rounded-full px-5 py-2 transition-colors", yearly ? "bg-ink text-white" : "text-body hover:bg-mint")}>
+            Annual
+            <span className={cn("ml-2 rounded-full px-2 py-0.5 text-[11px]", yearly ? "bg-sun text-ink" : "bg-mint text-sea-dark")}>{yearlySaving}</span>
+          </button>
+        </div>
+      </div>
       <ul className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {plans.map((p) => {
           const agency = p.id === "agency";
@@ -32,10 +47,14 @@ export function PricingCards() {
               <p className={cn("mt-1 text-sm", p.featured ? "text-[#9fbdb1]" : "text-muted")}>{p.tagline}</p>
 
               <p className="mt-6 flex items-baseline gap-1">
-                <span className="font-display text-[52px] leading-none font-extrabold tracking-[-0.04em]">{p.price}</span>
+                <span className="font-display text-[52px] leading-none font-extrabold tracking-[-0.04em]">
+                  {yearly && p.yearly ? p.yearly.perMonth : p.price}
+                </span>
                 <span className={cn("text-sm", p.featured ? "text-[#c9ddd5]" : "text-muted")}>/month</span>
               </p>
-              <p className={cn("mt-1 text-[13px]", p.featured ? "text-[#9fbdb1]" : "text-muted")}>{agency ? "Tailored to your shops" : "+ VAT, billed monthly"}</p>
+              <p className={cn("mt-1 text-[13px]", p.featured ? "text-[#9fbdb1]" : "text-muted")}>
+                {agency ? "Tailored to your shops" : yearly && p.yearly ? `${p.yearly.price} billed yearly + VAT` : "+ VAT, billed monthly"}
+              </p>
 
               <p
                 className={cn(

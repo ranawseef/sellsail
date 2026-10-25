@@ -103,3 +103,36 @@ export async function sendCodeEmail(to: string, purpose: "verify" | "reset" | "a
     return false;
   }
 }
+
+export type MessageEmail = { subject: string; heading: string; paragraphs: string[]; cta?: { label: string; url: string } };
+
+function messageEmailHtml(m: MessageEmail): string {
+  const body = m.paragraphs.map((p) => `<tr><td style="padding-top:12px;font-size:15px;line-height:1.6;color:#33493f">${escapeHtml(p)}</td></tr>`).join("");
+  const cta = m.cta
+    ? `<tr><td style="padding:24px 0 4px"><a href="${escapeHtml(m.cta.url)}" style="display:inline-block;background:#10231c;color:#ffffff;text-decoration:none;font-weight:700;border-radius:999px;padding:13px 26px">${escapeHtml(m.cta.label)}</a></td></tr>`
+    : "";
+  return `<!doctype html><html><body style="margin:0;background:#fbfaf6;font-family:Arial,Helvetica,sans-serif;color:#10231c">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #ece8dc;border-radius:16px;padding:32px">
+<tr><td style="font-size:22px;font-weight:800;color:#0e7c66">SellSail</td></tr>
+<tr><td style="padding-top:20px;font-size:21px;font-weight:700">${escapeHtml(m.heading)}</td></tr>
+${body}${cta}
+</table>
+<p style="font-size:12px;color:#4d6159;max-width:520px">You're getting this because you have a SellSail account. Questions? Just reply. ${escapeHtml(companyLine)}</p>
+</td></tr></table></body></html>`;
+}
+
+/** Sends an account email (welcome, trial reminders). Returns false when it couldn't be sent. */
+export async function sendMessageEmail(to: string, m: MessageEmail): Promise<boolean> {
+  const cfg = mailConfig();
+  if (!cfg) return false;
+  const text = [m.heading, ...m.paragraphs, m.cta ? `${m.cta.label}: ${m.cta.url}` : "", "SellSail, sellsail.io", companyLine].filter(Boolean).join("\n\n");
+  try {
+    const from = fromAddress(cfg);
+    await sendSmtp(cfg, { from, replyTo: replyTo(from), to, subject: m.subject, text, html: messageEmailHtml(m) });
+    return true;
+  } catch (err) {
+    console.error(`[mail] message email failed: ${(err as Error).message}`);
+    return false;
+  }
+}

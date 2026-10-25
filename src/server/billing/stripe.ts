@@ -11,7 +11,7 @@
 import Stripe from "stripe";
 import { exec, one, tx } from "../db/pool.ts";
 import { audit, logEvent } from "../audit.ts";
-import { PAID_PLANS, PLANS, planFor, planForLookupKey, planForStripePrice, stripePriceId, type PlanId } from "../../config/plans.ts";
+import { PAID_PLANS, PLANS, planFor, planForLookupKey, planForStripePrice, stripePriceId, type BillingInterval, type PlanId } from "../../config/plans.ts";
 
 let client: Stripe | null = null;
 
@@ -27,19 +27,24 @@ function stripe(): Stripe {
 }
 
 // Price ids found by lookup key, kept for the life of the process.
-const priceCache = new Map<PlanId, string>();
+const priceCache = new Map<string, string>();
 
-/** The Stripe price for a plan: the env override, else the price with the plan's lookup key. */
-export async function priceIdFor(plan: PlanId): Promise<string | null> {
-  const fromEnv = stripePriceId(plan);
-  if (fromEnv) return fromEnv;
-  const cached = priceCache.get(plan);
-  if (cached) return cached;
-  const key = PLANS[plan].lookupKey;
+/**
+ * The Stripe price for a plan and billing interval: for monthly, the env
+ * override if set; otherwise the price with the plan's lookup key.
+ */
+export async function priceIdFor(plan: PlanId, interval: BillingInterval = "month"): Promise<string | null> {
+  if (interval === "month") {
+    const fromEnv = stripePriceId(plan);
+    if (fromEnv) return fromEnv;
+  }
+  const key = interval === "year" ? PLANS[plan].yearlyLookupKey : PLANS[plan].lookupKey;
   if (!key) return null;
+  const cached = priceCache.get(key);
+  if (cached) return cached;
   const found = await stripe().prices.list({ lookup_keys: [key], active: true, limit: 1 });
   const id = found.data[0]?.id ?? null;
-  if (id) priceCache.set(plan, id);
+  if (id) priceCache.set(key, id);
   return id;
 }
 
@@ -64,7 +69,7 @@ async function customerFor(tenantId: number, email: string): Promise<string> {
 }
 
 /** Hosted Checkout for a new subscription. Returns the URL to send the browser to. */
-export async function checkoutUrl(tenantId: number, email: string, plan: PlanId, baseUrl: string): Promise<string> {
+export async function checkoutUrl(tenantId: number, email: string, plan: PlanId, baseUrl: string, interval: BillingInterval = "month"): Promise<string> {
   if (!PAID_PLANS.includes(plan)) throw new Error("Unknown plan");
   // A workspace with a live subscription changes plan in the portal, so it is
   // never charged for two subscriptions at once.
@@ -72,7 +77,7 @@ export async function checkoutUrl(tenantId: number, email: string, plan: PlanId,
   if (t?.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
     throw new BillingError("You already have a subscription. Change plan from Manage billing.");
   }
-  const price = await priceIdFor(plan);
+  const price = await priceIdFor(plan, interval);
   if (!price) throw new BillingError(`The ${planFor(plan).name} plan isn't set up for payment yet.`);
   const customer = await customerFor(tenantId, email);
   const session = await stripe().checkout.sessions.create({

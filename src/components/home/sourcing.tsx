@@ -30,7 +30,7 @@ export function Sourcing() {
           ["Sync", "Prices and stock reach OnBuy every few minutes"],
         ].map(([title, text], i) => (
           <li key={title} className="relative rounded-3xl border border-line bg-white p-5">
-            <div className="font-hand text-2xl text-sea">Step {i + 1}</div>
+            <div className="text-[13px] font-bold tracking-[0.12em] text-sea uppercase">Step {i + 1}</div>
             <h3 className="mt-1 font-display text-xl font-bold tracking-[-0.02em]">{title}</h3>
             <p className="mt-1.5 text-[15px] leading-relaxed text-body">{text}</p>
             {i < 4 && (

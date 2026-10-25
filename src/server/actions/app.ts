@@ -424,7 +424,7 @@ export async function checkoutAction(_prev: ActionState, form: FormData): Promis
     const auth = await authForAction("admin");
     const plan = str(form, "plan") as PlanId;
     if (!PAID_PLANS.includes(plan)) return { error: "Choose a plan." };
-    url = await checkoutUrl(auth.tenantId, auth.email, plan, appUrl());
+    url = await checkoutUrl(auth.tenantId, auth.email, plan, appUrl(), str(form, "interval") === "year" ? "year" : "month");
     return undefined;
   });
   if (url) redirect(url);

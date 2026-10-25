@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Boxes, CircleCheck, Clock3, Rocket, Sparkles, TrendingUp } from "lucide-react";
 import { PageHeader, SectionCard, StatTile } from "@/components/app/page-bits";
-import { AnimatedNumber, Rise } from "@/components/app/motion";
+import { AnimatedNumber, ProgressBar, Rise } from "@/components/app/motion";
 import { ChangesChart, Pipeline, type Stage } from "@/components/app/charts";
 import { EventFeed, RunHistory } from "@/components/app/feeds";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { amazonPoolStatus } from "@/server/connections/amazon";
 import { getOnBuyAccount } from "@/server/connections/onbuy";
 import { getBands } from "@/server/repos/pricing";
 import { formatCount, timeAgo } from "@/lib/format";
+import { one } from "@/server/db/pool";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -35,6 +37,20 @@ export default async function OverviewPage() {
     getOnBuyAccount(t),
     getBands(t),
   ]);
+  const setup = await one<{ pricing_reviewed_at: Date | null; compete_enabled: number | null }>(
+    "SELECT t.pricing_reviewed_at, rs.compete_enabled FROM tenants t LEFT JOIN repricer_settings rs ON rs.tenant_id = t.id WHERE t.id = ?",
+    [t],
+  );
+  const checklist = [
+    { label: "Confirm your email", done: true, href: "/app/settings" },
+    { label: "Connect OnBuy", done: Boolean(onbuy), href: "/app/onboarding?step=onbuy" },
+    { label: "Check your margins", done: Boolean(setup?.pricing_reviewed_at), href: "/app/onboarding?step=pricing" },
+    { label: "Import your listings", done: o.products > 0, href: "/app/onboarding?step=import" },
+    { label: "Switch on competition", done: Boolean(setup?.compete_enabled), href: "/app/competition" },
+    { label: "Choose a plan", done: auth.planStatus === "active" || auth.planStatus === "past_due", href: "/app/billing" },
+  ];
+  const doneCount = checklist.filter((c) => c.done).length;
+  const nextStep = checklist.find((c) => !c.done);
 
   const reprice = jobs.filter((j) => j.kind === "reprice");
   const push = jobs.find((j) => j.kind === "push");
@@ -81,22 +97,50 @@ export default async function OverviewPage() {
         }
       />
 
-      {!auth.onboardedAt && (
+      {nextStep && (
         <Rise>
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-sun p-6">
-            <div className="flex items-center gap-4">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-white" aria-hidden="true">
-                <Rocket className="size-6" />
-              </span>
-              <div>
-                <p className="font-display text-xl font-bold">Finish setting up</p>
-                <p className="text-sun-ink">Connect OnBuy, check your margins, then import your listings.</p>
+          <section aria-labelledby="setup-title" className="rounded-3xl bg-sun p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-white" aria-hidden="true">
+                  <Rocket className="size-6" />
+                </span>
+                <div>
+                  <h2 id="setup-title" className="font-display text-xl font-bold">
+                    Get set up: {doneCount} of {checklist.length} done
+                  </h2>
+                  <p className="text-sun-ink">Next: {nextStep.label.toLowerCase()}.</p>
+                </div>
               </div>
+              <Link href={nextStep.href} className={buttonVariants({ variant: "ink" })}>
+                {nextStep.label} <span aria-hidden="true">→</span>
+              </Link>
             </div>
-            <Link href="/app/onboarding" className={buttonVariants({ variant: "ink" })}>
-              Continue setup <span aria-hidden="true">→</span>
-            </Link>
-          </div>
+            <div className="mt-5">
+              <ProgressBar value={doneCount} max={checklist.length} label="Set-up progress" tone="sea" />
+            </div>
+            <ol className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {checklist.map((c) => (
+                <li key={c.label}>
+                  <Link
+                    href={c.href}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold no-underline transition-colors",
+                      c.done ? "bg-white/50 text-sun-ink" : "bg-white text-ink hover:bg-mint",
+                    )}
+                  >
+                    {c.done ? (
+                      <CircleCheck aria-hidden="true" className="size-5 shrink-0 text-sea" />
+                    ) : (
+                      <span aria-hidden="true" className="size-5 shrink-0 rounded-full border-2 border-sun-ink/40" />
+                    )}
+                    <span className={c.done ? "line-through decoration-sun-ink/40" : undefined}>{c.label}</span>
+                    <span className="sr-only">{c.done ? "(done)" : "(to do)"}</span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </section>
         </Rise>
       )}
 

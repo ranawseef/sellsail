@@ -22,6 +22,7 @@ import { runReprice } from "./reprice.ts";
 import { runPush } from "./push.ts";
 import { runImport } from "./import.ts";
 import { runCompete } from "./compete.ts";
+import { sendLifecycleEmails } from "../mail/lifecycle.ts";
 import type { JobKind } from "./registry.ts";
 import type { JobCtx, RunResult } from "./types.ts";
 
@@ -195,6 +196,7 @@ export async function pollOnce(via = "worker"): Promise<number> {
     if (Date.now() - pool.lastMaintenance > 3600_000) {
       pool.lastMaintenance = Date.now();
       void maintenance().catch((err) => console.error("[jobs] maintenance failed:", err));
+      void sendLifecycleEmails().catch((err) => console.error("[mail] lifecycle emails failed:", err));
     }
   } catch (err) {
     console.error("[jobs] poll failed:", (err as Error).message);

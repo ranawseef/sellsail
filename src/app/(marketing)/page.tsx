@@ -8,6 +8,7 @@ import { Comparison } from "@/components/home/comparison";
 import { CalculatorBand, HowItWorks, Included } from "@/components/home/misc";
 import { PricingCards } from "@/components/home/pricing";
 import { InsideLook } from "@/components/home/inside-look";
+import { LiveStats } from "@/components/home/live-stats";
 import { homeFaq } from "@/content/faq";
 import { PAID_PLANS, PLANS } from "@/config/plans";
 import { site } from "@/lib/site";
@@ -40,6 +41,7 @@ export default function HomePage() {
     <>
       <Hero />
       <TrustMarquee />
+      <LiveStats />
       <InsideLook />
       <Sourcing />
 

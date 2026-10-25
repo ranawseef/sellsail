@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of service" updated="25 October 2026">
+    <LegalPage title="Terms of service" updated="26 October 2026">
       <p>
         These terms apply to your use of sellsail.io and the SellSail service. SellSail is a trading name of {site.company}, a
         company registered in England and Wales (company number {site.companyNumber}), registered office {site.address}, United Kingdom (&quot;we&quot;, &quot;us&quot;). By creating an account you agree to
@@ -62,10 +62,11 @@ export default function TermsPage() {
           Payments are taken by Stripe. Stripe may act as the reseller (merchant of record) of your subscription and collect
           any sales tax or VAT due. Invoices are available under Billing.
         </li>
-        <li>You can change plan at any time in Billing; the difference is charged or credited pro rata.</li>
+        <li>You can also pay yearly, at ten times the monthly price (two months free), billed in advance.</li>
+        <li>You can change plan or billing period at any time in Billing; the difference is charged or credited pro rata.</li>
         <li>
           You can cancel at any time in Billing. Cancellation takes effect at the end of the period you have paid for and
-          you keep access until then. We don&apos;t refund part-used months unless the law requires it or we have made a
+          you keep access until then. We don&apos;t refund part-used months or years unless the law requires it or we have made a
           billing mistake.
         </li>
         <li>If a payment fails, we may pause price updates until it is paid.</li>
