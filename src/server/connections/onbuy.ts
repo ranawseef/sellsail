@@ -50,6 +50,7 @@ export async function connectOnBuy(tenantId: number, route: Route, creds: OnBuyC
     );
     const acc = await t.q<{ id: number }>("SELECT id FROM marketplace_accounts WHERE tenant_id = ? AND marketplace = 'onbuy'", [tenantId]);
     await ensureJob(tenantId, "push", acc[0].id, {}, t);
+    await ensureJob(tenantId, "compete", acc[0].id, {}, t);
   });
   const acc = await getOnBuyAccount(tenantId);
   if (!acc) throw new Error("OnBuy account vanished after saving");
@@ -115,7 +116,7 @@ export async function disconnectOnBuy(tenantId: number): Promise<void> {
   await tx(async (t) => {
     const acc = await t.q<{ id: number }>("SELECT id FROM marketplace_accounts WHERE tenant_id = ? AND marketplace = 'onbuy'", [tenantId]);
     if (!acc[0]) return;
-    await t.exec("DELETE FROM jobs WHERE tenant_id = ? AND kind IN ('push','import') AND target_id = ?", [tenantId, acc[0].id]);
+    await t.exec("DELETE FROM jobs WHERE tenant_id = ? AND kind IN ('push','import','compete') AND target_id = ?", [tenantId, acc[0].id]);
     await t.exec("DELETE FROM marketplace_accounts WHERE id = ? AND tenant_id = ?", [acc[0].id, tenantId]);
   });
 }

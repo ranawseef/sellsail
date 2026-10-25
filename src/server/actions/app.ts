@@ -19,7 +19,7 @@ import { audit, logEvent } from "../audit.ts";
 import { exec, one, tx } from "../db/pool.ts";
 import { loadProxy, parseProxyInput, removeProxy, routeForTenant, saveProxy, testProxy } from "../connections/proxy.ts";
 import { connectOnBuy, disconnectOnBuy, getOnBuyAccount, parseOnBuyKeys } from "../connections/onbuy.ts";
-import { repriceLocally, saveBands, saveSettings, getSettings } from "../repos/pricing.ts";
+import { repriceLocally, saveBands, saveCompete, saveSettings, getSettings } from "../repos/pricing.ts";
 import { startOnBuyImport, upsertListings } from "../jobs/import.ts";
 import { runJobNow } from "../jobs/registry.ts";
 import { requestFullPush } from "../jobs/push.ts";
@@ -257,6 +257,70 @@ export async function saveSettingsAction(_prev: ActionState, form: FormData): Pr
     refreshApp();
     return { ok: true, message: changed ? `Settings saved. ${changed} listing price${changed === 1 ? "" : "s"} updated.` : "Settings saved." };
   });
+}
+
+// ---- competition -----------------------------------------------------------------
+
+const competeSchema = z.object({
+  enabled: z.boolean(),
+  strategy: z.enum(["profit", "aggressive"], { error: "Choose a strategy." }),
+  beatBy: money("Beat by", 5),
+  maxUndercut: money("Max undercut", 100),
+  minProfit: money("Minimum profit", 500),
+  maxLoss: money("Maximum loss", 50),
+});
+
+export async function saveCompeteAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    const auth = await authForAction("admin");
+    const parsed = competeSchema.safeParse({
+      enabled: form.get("enabled") === "on",
+      strategy: str(form, "strategy"),
+      beatBy: str(form, "beatBy"),
+      maxUndercut: str(form, "maxUndercut"),
+      minProfit: str(form, "minProfit") || "0",
+      maxLoss: str(form, "maxLoss") || "0",
+    });
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the fields." };
+    const errors = await saveCompete(auth.tenantId, parsed.data);
+    if (errors.length) return { error: errors.join(" ") };
+    const changed = await repriceLocally(auth.tenantId);
+    if (parsed.data.enabled) await exec("UPDATE jobs SET run_now = 1, enabled = 1 WHERE tenant_id = ? AND kind = 'compete'", [auth.tenantId]);
+    const { ip } = await requestInfo();
+    await audit({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: "compete.settings",
+      detail: `${parsed.data.enabled ? "On" : "Off"}, ${parsed.data.strategy}, beat by £${parsed.data.beatBy}; ${changed} prices changed`,
+      ip,
+    });
+    if (parsed.data.enabled) kickScheduler();
+    refreshApp();
+    const base = parsed.data.enabled ? "Competition is on. The first check starts now." : "Competition is off. Listings go back to their band prices.";
+    return { ok: true, message: changed ? `${base} ${changed} price${changed === 1 ? "" : "s"} updated.` : base };
+  });
+}
+
+export async function checkCompetitionNowAction(): Promise<ActionState> {
+  return attempt(async () => {
+    const auth = await authForAction();
+    const res = await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'compete' AND enabled = 1", [auth.tenantId]);
+    if (res.affectedRows === 0) return { error: "Connect OnBuy first." };
+    kickScheduler();
+    refreshApp();
+    return { ok: true, message: "Check queued. Results appear here as OnBuy answers." };
+  });
+}
+
+/** One listing in or out of competition. */
+export async function setListingCompeteAction(form: FormData): Promise<void> {
+  const auth = await authForAction("admin");
+  const id = Number(form.get("productId"));
+  if (!Number.isInteger(id) || id <= 0) return;
+  const on = form.get("on") === "1";
+  await exec("UPDATE products SET compete = ?, compete_checked_at = IF(?, NULL, compete_checked_at) WHERE id = ? AND tenant_id = ?", [on ? 1 : 0, on ? 1 : 0, id, auth.tenantId]);
+  await repriceLocally(auth.tenantId);
+  refreshApp();
 }
 
 // ---- import ----------------------------------------------------------------------

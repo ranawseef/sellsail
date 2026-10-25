@@ -16,7 +16,9 @@ export type SmtpConfig = {
 };
 
 export type OutgoingMail = {
-  from: string; // "SellSail <hello@sellsail.io>"
+  from: string; // "SellSail <no-reply@sellsail.io>"
+  /** Where replies go, when not to the sender. */
+  replyTo?: string;
   to: string;
   subject: string;
   text: string;
@@ -106,6 +108,7 @@ export function buildMessage(mail: OutgoingMail, domain: string): string {
   const lines = [
     `From: ${headerText(mail.from)}`,
     `To: <${bareAddress(mail.to)}>`,
+    ...(mail.replyTo ? [`Reply-To: ${headerText(mail.replyTo)}`] : []),
     `Subject: ${headerText(mail.subject)}`,
     `Date: ${new Date().toUTCString().replace("GMT", "+0000")}`,
     `Message-ID: <${randomBytes(16).toString("hex")}@${domain}>`,

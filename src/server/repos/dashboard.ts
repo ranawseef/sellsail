@@ -72,7 +72,7 @@ export async function changesByHour(tenantId: number): Promise<{ hour: string; c
 
 export type JobRow = {
   id: number;
-  kind: "reprice" | "push" | "import";
+  kind: "reprice" | "push" | "import" | "compete";
   targetId: number;
   enabled: boolean;
   running: boolean;
@@ -96,7 +96,7 @@ export async function listJobs(tenantId: number): Promise<JobRow[]> {
             IF(j.kind = 'reprice', 'Amazon prices', 'OnBuy') AS target_label
        FROM jobs j
       WHERE j.tenant_id = ?
-      ORDER BY FIELD(j.kind, 'import', 'reprice', 'push'), j.id`,
+      ORDER BY FIELD(j.kind, 'import', 'reprice', 'compete', 'push'), j.id`,
     [tenantId],
   );
   return rows.map((r) => ({

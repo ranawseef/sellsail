@@ -21,6 +21,7 @@ import { planFor } from "../../config/plans.ts";
 import { runReprice } from "./reprice.ts";
 import { runPush } from "./push.ts";
 import { runImport } from "./import.ts";
+import { runCompete } from "./compete.ts";
 import type { JobKind } from "./registry.ts";
 import type { JobCtx, RunResult } from "./types.ts";
 
@@ -58,7 +59,10 @@ const RUNNERS: Record<JobKind, (ctx: JobCtx) => Promise<RunResult>> = {
   reprice: runReprice,
   push: runPush,
   import: runImport,
+  compete: runCompete,
 };
+
+const JOB_LABEL: Record<JobKind, string> = { reprice: "Repricing", push: "OnBuy sync", import: "Import", compete: "Competition" };
 
 // The SQL form of canRunJobs() in config/plans.ts.
 const TENANT_MAY_RUN = `t.paused = 0 AND (t.plan_status IN ('active', 'past_due') OR (t.plan_status = 'trialing' AND t.trial_ends_at > NOW(3)))`;
@@ -160,7 +164,7 @@ export async function execute(job: DueJob, via: string, owner = OWNER, budgetMs 
     ]);
     // Tell the seller when a job starts failing, not on every failed run.
     if (!result.ok && prev?.last_ok !== 0 && !result.disable) {
-      await logEvent(job.tenant_id, "error", job.kind, `${job.kind === "reprice" ? "Repricing" : job.kind === "push" ? "OnBuy sync" : "Import"} problem: ${result.msg}`);
+      await logEvent(job.tenant_id, "error", job.kind, `${JOB_LABEL[job.kind]} problem: ${result.msg}`);
     }
   } catch (err) {
     console.error(`[jobs] could not record ${job.kind} #${job.id}:`, err);
@@ -231,6 +235,9 @@ export async function maintenance(): Promise<void> {
     "DELETE FROM rate_limits WHERE window_start < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
     "DELETE FROM oauth_states WHERE expires_at < NOW(3) LIMIT 5000",
     "DELETE FROM email_codes WHERE created_at < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
+    "DELETE FROM admin_codes WHERE created_at < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
+    "DELETE FROM admin_sessions WHERE expires_at < NOW(3) LIMIT 5000",
+    "DELETE FROM admin_audit WHERE created_at < NOW(3) - INTERVAL 365 DAY LIMIT 5000",
     "DELETE FROM job_runs WHERE started_at < NOW(3) - INTERVAL 14 DAY LIMIT 5000",
     "DELETE FROM price_history WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",
     "DELETE FROM events WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",

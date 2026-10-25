@@ -59,8 +59,8 @@ settings, billing; owner = all, including deleting the workspace.
 
 ## Open decisions for the owner
 
-1. Plan limits in `src/config/plans.ts` are placeholders (trial 1,000 SKUs /
-   1 Amazon account; Starter 2,000/1; Growth 10,000/3; Pro 40,000/8).
+1. Plan limits in `src/config/plans.ts`: trial 1,000 listings, Starter 5,000,
+   Growth 20,000, Pro 50,000 (set 2026-10-25, shown on /pricing).
 2. Default bands (`DEFAULT_BANDS`) are SellSail's suggestion, not the
    reference app's figures.
 3. Public signup is live at `/signup` but not linked from the marketing site,
@@ -89,3 +89,24 @@ Orders and dispatch, profit reports from local snapshots (no live API paging), t
 - **Wizard:** three steps (OnBuy, Pricing, Import); the proxy is an optional
   fold-out in the OnBuy step.
 - **Home page:** `InsideLook`, an animated dashboard preview with demo data.
+
+
+## Change (2026-10-25, later): competition and admin
+
+- **Competition** (`src/lib/competition.ts`, `src/server/jobs/compete.ts`,
+  `/app/competition`). A `compete` job per OnBuy account calls
+  `GET /listings/check-winning` (JSON body, 100 SKUs) and stores the leader's
+  price on each product. The undercut is applied inside `decide()`/`listPrice()`,
+  so Amazon repricing and settings changes keep it instead of undoing it.
+  Floor: "protect profit" keeps `min_profit` after fees, "win the sale" allows
+  `max_loss` after fees. The band price is always the ceiling. A leader price is
+  trusted for 6 h, then the band price is tried again. Off by default.
+  Check interval per plan: 30 / 30 / 15 / 10 min.
+- **Admin panel** (`/admin`, `src/server/admin/*`). Sign-in by a 6-digit code
+  emailed to an address in `ADMIN_EMAILS` (default hello@sellsail.io); 12 h
+  sessions in `admin_sessions`; every change in `admin_audit`. Pages:
+  overview, workspaces (plan/status, trial days, pause, run jobs), users
+  (mark verified, sign out), system health, audit log.
+- **Email**: automated mail is meant to come from no-reply@ (`SMTP_USER`),
+  with `Reply-To` hello@ (`MAIL_REPLY_TO`).
+- Migrations 008_competition and 009_admin.

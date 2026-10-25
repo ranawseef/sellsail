@@ -48,7 +48,7 @@ export default async function OverviewPage() {
       state: stageState(amazonOn && o.products > 0, reprice.some((j) => j.running), amazonOn && (pool.healthy === 0 || reprice.some((j) => j.lastOk === false))),
       value: o.products - o.unpriced,
       unit: "priced",
-      detail: amazonOn ? `SellSail's connection · last read ${timeAgo(o.lastRepriceAt)}` : "Starting soon",
+      detail: amazonOn ? `Last read ${timeAgo(o.lastRepriceAt)}` : "Starting soon",
     },
     {
       title: "Pricing",
@@ -161,7 +161,7 @@ export default async function OverviewPage() {
         <SectionCard title="Sources and marketplaces" intro="Where products come from and where they're sold.">
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: "Amazon", role: "Source", on: amazonOn, note: amazonOn ? "Provided by SellSail" : "Starting soon", label: amazonOn ? "Included" : "Soon" },
+              { name: "Amazon", role: "Source", on: amazonOn, note: amazonOn ? "Included in your plan" : "Starting soon", label: amazonOn ? "Included" : "Soon" },
               { name: "OnBuy", role: "Marketplace", on: Boolean(onbuy), note: onbuy ? `Key ${onbuy.keyHint}` : "Not connected" },
               { name: "AliExpress", role: "Source", soon: true, note: "Import and reprice from AliExpress" },
               { name: "eBay", role: "Marketplace", soon: true, note: "List and reprice on eBay" },

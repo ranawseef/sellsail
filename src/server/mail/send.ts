@@ -1,11 +1,15 @@
-// SellSail's own emails: sign-up verification codes and password-reset codes.
+// SellSail's automated emails: sign-up verification codes, password-reset
+// codes and admin sign-in codes. They go out from the no-reply mailbox;
+// replies are pointed at hello@.
 //
 // Settings come from env (set in hPanel):
 //   SMTP_HOST      smtp.hostinger.com
 //   SMTP_PORT      465
-//   SMTP_USER      hello@sellsail.io
-//   SMTP_PASSWORD  the mailbox password
-//   MAIL_FROM      optional, defaults to "SellSail <SMTP_USER>"
+//   SMTP_USER      no-reply@sellsail.io
+//   SMTP_PASSWORD  that mailbox's password
+//   MAIL_FROM      optional, defaults to "SellSail <SMTP_USER>". Hostinger only
+//                  sends as the signed-in mailbox or one of its aliases.
+//   MAIL_REPLY_TO  optional, defaults to "SellSail <hello@sellsail.io>"
 
 import { sendSmtp, type SmtpConfig } from "./smtp.ts";
 
@@ -23,6 +27,12 @@ export function mailConfigured(): boolean {
 
 function fromAddress(cfg: SmtpConfig): string {
   return process.env.MAIL_FROM?.trim() || `SellSail <${cfg.user}>`;
+}
+
+function replyTo(from: string): string | undefined {
+  const r = process.env.MAIL_REPLY_TO?.trim() || "SellSail <hello@sellsail.io>";
+  // No Reply-To when it would just repeat the sender.
+  return from.toLowerCase().includes(r.replace(/^.*</, "").replace(/>.*$/, "").toLowerCase()) ? undefined : r;
 }
 
 function escapeHtml(s: string): string {
@@ -48,7 +58,7 @@ function codeEmailHtml(heading: string, intro: string, code: string, outro: stri
  * or the mail server refused, so the caller can tell the user to try again.
  * The code itself is never logged.
  */
-export async function sendCodeEmail(to: string, purpose: "verify" | "reset", code: string): Promise<boolean> {
+export async function sendCodeEmail(to: string, purpose: "verify" | "reset" | "admin", code: string): Promise<boolean> {
   const cfg = mailConfig();
   if (!cfg) {
     console.error("[mail] not sent: SMTP_HOST, SMTP_USER and SMTP_PASSWORD must be set");
@@ -62,7 +72,14 @@ export async function sendCodeEmail(to: string, purpose: "verify" | "reset", cod
           intro: "Enter this code on SellSail to finish setting up your account.",
           outro: "The code works for 15 minutes. If you didn't sign up for SellSail, you can ignore this email.",
         }
-      : {
+      : purpose === "admin"
+        ? {
+            subject: `${code} is your SellSail admin sign-in code`,
+            heading: "Admin sign-in",
+            intro: "Enter this code to open the SellSail admin panel.",
+            outro: "The code works for 10 minutes. If you didn't try to sign in, someone has this address: nothing happens unless the code is used.",
+          }
+        : {
           subject: `${code} is your SellSail password reset code`,
           heading: "Reset your password",
           intro: "Enter this code on SellSail to choose a new password.",
@@ -70,8 +87,10 @@ export async function sendCodeEmail(to: string, purpose: "verify" | "reset", cod
             "The code works for 15 minutes. If you didn't ask to reset your password, ignore this email: your password stays as it is.",
         };
   try {
+    const from = fromAddress(cfg);
     await sendSmtp(cfg, {
-      from: fromAddress(cfg),
+      from,
+      replyTo: replyTo(from),
       to,
       subject: copy.subject,
       text: `${copy.heading}\n\n${copy.intro}\n\n    ${code}\n\n${copy.outro}\n\nSellSail, sellsail.io`,

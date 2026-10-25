@@ -10,6 +10,9 @@
 //   GET  /listings?site_id=2000&limit=&offset=  -> results[], metadata.total_rows
 //   PUT  /listings/by-sku  { site_id, listings: [{ sku, price, stock,
 //        boost_marketing_commission }] }, up to 1000 per request.
+//   GET  /listings/check-winning?site_id=2000 with a JSON body { skus: [...] }
+//        (up to 100) -> results[{ sku, winning, lead_price }]. Same shape the
+//        single-seller repricer has used in production.
 
 import { egressFetch, type EgressResponse, type Route } from "../../net/egress.ts";
 import { isAuthFailure } from "./results.ts";
@@ -150,4 +153,31 @@ export async function updateListingsBySku(
     ...(boostPct !== null ? { boost_marketing_commission: boostPct } : {}),
   }));
   return onbuyCall(route, tokens, "PUT", "/listings/by-sku", { body: { site_id: siteId, listings }, timeoutMs: 120_000 });
+}
+
+export const CHECK_WINNING_MAX = 100;
+
+export type WinningResult = { sku: string; winning: boolean; leadPrice: number | null };
+
+/** Reads check-winning's results; anything malformed is skipped, not guessed. */
+export function readWinningResults(json: unknown): WinningResult[] {
+  const results = (json as { results?: unknown } | null)?.results;
+  const list = Array.isArray(results) ? results : results && typeof results === "object" ? Object.values(results) : [];
+  const out: WinningResult[] = [];
+  for (const r of list) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>;
+    if (typeof o.sku !== "string" && typeof o.sku !== "number") continue;
+    const w = o.winning;
+    const winning = w === true || w === 1 || w === "1" || w === "true";
+    const lead = Number(o.lead_price);
+    out.push({ sku: String(o.sku).trim(), winning, leadPrice: Number.isFinite(lead) && lead > 0 ? Math.round(lead * 100) / 100 : null });
+  }
+  return out;
+}
+
+/** GET /listings/check-winning for up to 100 SKUs. */
+export async function checkWinning(route: Route, tokens: TokenSource, skus: readonly string[], siteId = ONBUY_UK_SITE): Promise<EgressResponse> {
+  if (skus.length > CHECK_WINNING_MAX) throw new Error(`check-winning takes at most ${CHECK_WINNING_MAX} SKUs`);
+  return onbuyCall(route, tokens, "GET", "/listings/check-winning", { query: { site_id: siteId }, body: { skus }, timeoutMs: 60_000 });
 }

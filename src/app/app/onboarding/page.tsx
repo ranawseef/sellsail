@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, ChevronDown, Globe, KeyRound, PackageOpen, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Globe, KeyRound, PackageOpen, SlidersHorizontal } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { ProgressBar, Rise } from "@/components/app/motion";
 import { CsvImportForm, OnBuyForm, OnBuyImportForm, ProxyForm } from "@/components/app/connection-forms";
@@ -108,10 +108,6 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
               );
             })}
           </ol>
-          <p className="mt-4 hidden items-start gap-2 rounded-2xl bg-mint p-3 text-[13px] text-sea-dark lg:flex">
-            <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            Amazon prices are read with SellSail&apos;s own Amazon connection. No Amazon keys needed.
-          </p>
         </nav>
 
         <Rise key={current}>

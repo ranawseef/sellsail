@@ -137,3 +137,12 @@ details[open] .faq-icon { transform: rotate(45deg); }
 .prose-site li { margin: 0.3em 0; }
 .prose-site a { color: var(--color-sea-dark); text-decoration: underline; text-underline-offset: 3px; }
 .prose-site strong { color: var(--color-ink); }
+
+/* Sidebars scroll when the window is short, without showing a scrollbar. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@
 //   reprice  target = 0                        (one per workspace; SellSail's Amazon keys)
 //   push     target = marketplace_accounts.id  (one per OnBuy account)
 //   import   target = marketplace_accounts.id  (runs once when asked)
+//   compete  target = marketplace_accounts.id  (OnBuy competition checks)
 
 import { exec, type Tx } from "../db/pool.ts";
 
@@ -21,12 +22,13 @@ export async function ensureRepriceJob(tenantId: number, t?: Tx): Promise<void> 
   );
 }
 
-export type JobKind = "reprice" | "push" | "import";
+export type JobKind = "reprice" | "push" | "import" | "compete";
 
 export const DEFAULT_INTERVALS: Record<JobKind, number> = {
   reprice: 60, // a run reprices 200 ASINs and takes ~100 s at Amazon's pace
   push: 300,
   import: 3600,
+  compete: 120, // each run checks the listings that are due (plan sets how often)
 };
 
 export async function ensureJob(

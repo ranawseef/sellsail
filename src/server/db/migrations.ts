@@ -425,4 +425,75 @@ export const migrations: Migration[] = [
       `DELETE FROM oauth_states WHERE purpose = 'amazon'`,
     ],
   },
+  {
+    id: "008_competition",
+    statements: [
+      // Competition settings per workspace (see lib/competition.ts). Off until
+      // the seller switches it on, so no price moves by surprise.
+      `ALTER TABLE repricer_settings
+         ADD COLUMN IF NOT EXISTS compete_enabled      TINYINT(1)   NOT NULL DEFAULT 0,
+         ADD COLUMN IF NOT EXISTS compete_strategy     VARCHAR(10)  NOT NULL DEFAULT 'profit',
+         ADD COLUMN IF NOT EXISTS compete_beat_by      DECIMAL(6,2) NOT NULL DEFAULT 0.05,
+         ADD COLUMN IF NOT EXISTS compete_max_undercut DECIMAL(8,2) NOT NULL DEFAULT 2.00,
+         ADD COLUMN IF NOT EXISTS compete_min_profit   DECIMAL(8,2) NOT NULL DEFAULT 1.00,
+         ADD COLUMN IF NOT EXISTS compete_max_loss     DECIMAL(8,2) NOT NULL DEFAULT 0.00`,
+      // Per listing: its own switch, the OnBuy leader's last price and when it
+      // was seen, whether we were winning, and when it was last checked.
+      `ALTER TABLE products
+         ADD COLUMN IF NOT EXISTS compete            TINYINT(1)    NOT NULL DEFAULT 1,
+         ADD COLUMN IF NOT EXISTS competitor_price   DECIMAL(10,2) NULL,
+         ADD COLUMN IF NOT EXISTS competitor_seen_at DATETIME(3)   NULL,
+         ADD COLUMN IF NOT EXISTS winning            TINYINT(1)    NULL,
+         ADD COLUMN IF NOT EXISTS compete_checked_at DATETIME(3)   NULL,
+         ADD INDEX IF NOT EXISTS ix_products_compete (tenant_id, marketplace, compete_checked_at)`,
+      // Why a price changed: NULL for Amazon/settings, 'compete' for competition.
+      `ALTER TABLE price_history ADD COLUMN IF NOT EXISTS reason VARCHAR(10) NULL`,
+      `ALTER TABLE jobs DROP CONSTRAINT IF EXISTS ck_jobs_kind`,
+      `ALTER TABLE jobs ADD CONSTRAINT ck_jobs_kind CHECK (kind IN ('reprice','push','import','compete'))`,
+      // One competition job per connected OnBuy account.
+      `INSERT IGNORE INTO jobs (tenant_id, kind, target_id, enabled, interval_s, next_run_at)
+       SELECT tenant_id, 'compete', id, 1, 120, NOW(3) FROM marketplace_accounts WHERE marketplace = 'onbuy'`,
+    ],
+  },
+  {
+    id: "009_admin",
+    statements: [
+      // SellSail staff sign in to /admin with a code emailed to an address in
+      // ADMIN_EMAILS. Only an HMAC of each code and each session token is kept.
+      `CREATE TABLE IF NOT EXISTS admin_codes (
+        id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        email      VARCHAR(190)    NOT NULL,
+        code_hash  CHAR(64)        NOT NULL,
+        attempts   INT UNSIGNED    NOT NULL DEFAULT 0,
+        expires_at DATETIME(3)     NOT NULL,
+        used_at    DATETIME(3)     NULL,
+        created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (id),
+        KEY ix_admin_codes_email (email, created_at)
+      ) ${T}`,
+      `CREATE TABLE IF NOT EXISTS admin_sessions (
+        id           CHAR(64)     NOT NULL,
+        email        VARCHAR(190) NOT NULL,
+        created_at   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        last_seen_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        expires_at   DATETIME(3)  NOT NULL,
+        ip           VARCHAR(45)  NOT NULL DEFAULT '',
+        user_agent   VARCHAR(255) NOT NULL DEFAULT '',
+        PRIMARY KEY (id),
+        KEY ix_admin_sessions_expires (expires_at)
+      ) ${T}`,
+      // Everything an admin changes, kept for a year.
+      `CREATE TABLE IF NOT EXISTS admin_audit (
+        id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        email      VARCHAR(190)    NOT NULL,
+        action     VARCHAR(64)     NOT NULL,
+        tenant_id  INT UNSIGNED    NULL,
+        detail     VARCHAR(500)    NOT NULL DEFAULT '',
+        ip         VARCHAR(45)     NOT NULL DEFAULT '',
+        created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (id),
+        KEY ix_admin_audit_created (created_at)
+      ) ${T}`,
+    ],
+  },
 ];

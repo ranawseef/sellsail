@@ -29,7 +29,17 @@ export const repriceDeps = { reserveAmazonApp, amazonAppToken, itemOffersBatch, 
 /** A product is not re-read sooner than this after its last price. */
 export const MIN_REPRICE_AGE_S = 10 * 60;
 
-type Product = { id: number; source_ref: string; source_price: number | null; price: number | null; stock: number | null; source_fails: number };
+type Product = {
+  id: number;
+  source_ref: string;
+  source_price: number | null;
+  price: number | null;
+  stock: number | null;
+  source_fails: number;
+  compete: number;
+  competitor_price: number | null;
+  competitor_seen_at: Date | null;
+};
 
 export async function runReprice(ctx: JobCtx): Promise<RunResult> {
   const { tenantId } = ctx;
@@ -117,7 +127,7 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
     }
 
     const products = await q<Product>(
-      `SELECT id, source_ref, source_price, price, stock, source_fails FROM products
+      `SELECT id, source_ref, source_price, price, stock, source_fails, compete, competitor_price, competitor_seen_at FROM products
         WHERE tenant_id = ? AND source = 'amazon' AND source_ref IN (?)`,
       [tenantId, asins],
     );
@@ -132,6 +142,8 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
           price: p.price === null ? null : Number(p.price),
           stock: p.stock,
           sourceFails: p.source_fails,
+          compete: Boolean(p.compete),
+          competitor: { price: p.competitor_price === null ? null : Number(p.competitor_price), seenAt: p.competitor_seen_at },
         };
         const result = broken ? { asin: p.source_ref, kind: "temporary" as const, status: res.status === 200 ? 0 : res.status } : results.get(p.source_ref.toUpperCase());
         const d = decide(state, result, cfg);

@@ -112,7 +112,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
                   {[
                     `Up to ${formatCount(p.maxSkus)} listings`,
-                    "Amazon prices included, no keys needed",
+                    "Amazon prices included",
                     `OnBuy updates every ${Math.round(p.pushIntervalS / 60)} minutes`,
                     "Fee-aware pricing, brakes and history",
                   ].map((f) => (

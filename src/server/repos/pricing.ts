@@ -2,9 +2,10 @@
 // the tenant id first and filters on it.
 
 import { marketplacePrice, validateBands, validateFees, type PricingBand, type PricingFees } from "../../lib/pricing.ts";
+import { validateCompete, type CompeteSettings, type CompeteStrategy } from "../../lib/competition.ts";
 import { parsePrefixes } from "../../lib/sku.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
-import type { RepriceConfig } from "../jobs/decide.ts";
+import { listPrice, type RepriceConfig } from "../jobs/decide.ts";
 
 export type RepricerSettings = {
   fees: PricingFees;
@@ -13,6 +14,7 @@ export type RepricerSettings = {
   boostPct: number | null;
   skuPrefixes: string;
   prefixedOnly: boolean;
+  compete: CompeteSettings;
 };
 
 export async function getBands(tenantId: number): Promise<PricingBand[]> {
@@ -33,6 +35,12 @@ export async function getSettings(tenantId: number): Promise<RepricerSettings> {
     boost_pct: number | null;
     sku_prefixes: string;
     prefixed_only: number;
+    compete_enabled: number;
+    compete_strategy: string;
+    compete_beat_by: number;
+    compete_max_undercut: number;
+    compete_min_profit: number;
+    compete_max_loss: number;
   }>("SELECT * FROM repricer_settings WHERE tenant_id = ?", [tenantId]);
   if (!r) throw new Error("Repricer settings missing for this workspace");
   return {
@@ -42,12 +50,39 @@ export async function getSettings(tenantId: number): Promise<RepricerSettings> {
     boostPct: r.boost_pct === null ? null : Number(r.boost_pct),
     skuPrefixes: r.sku_prefixes,
     prefixedOnly: Boolean(r.prefixed_only),
+    compete: {
+      enabled: Boolean(r.compete_enabled),
+      strategy: (r.compete_strategy === "aggressive" ? "aggressive" : "profit") as CompeteStrategy,
+      beatBy: Number(r.compete_beat_by),
+      maxUndercut: Number(r.compete_max_undercut),
+      minProfit: Number(r.compete_min_profit),
+      maxLoss: Number(r.compete_max_loss),
+    },
   };
+}
+
+export async function saveCompete(tenantId: number, c: CompeteSettings): Promise<string[]> {
+  const errors = validateCompete(c);
+  if (errors.length) return errors;
+  await exec(
+    `UPDATE repricer_settings SET compete_enabled = ?, compete_strategy = ?, compete_beat_by = ?, compete_max_undercut = ?,
+       compete_min_profit = ?, compete_max_loss = ? WHERE tenant_id = ?`,
+    [c.enabled ? 1 : 0, c.strategy, c.beatBy, c.maxUndercut, c.minProfit, c.maxLoss, tenantId],
+  );
+  return [];
 }
 
 export async function getRepriceConfig(tenantId: number): Promise<RepriceConfig & { settings: RepricerSettings; prefixes: string[] }> {
   const [bands, settings] = await Promise.all([getBands(tenantId), getSettings(tenantId)]);
-  return { bands, fees: settings.fees, inStockQty: settings.inStockQty, outOfStockPrice: settings.outOfStockPrice, settings, prefixes: parsePrefixes(settings.skuPrefixes) };
+  return {
+    bands,
+    fees: settings.fees,
+    inStockQty: settings.inStockQty,
+    outOfStockPrice: settings.outOfStockPrice,
+    compete: settings.compete.enabled ? settings.compete : undefined,
+    settings,
+    prefixes: parsePrefixes(settings.skuPrefixes),
+  };
 }
 
 /** Replaces the band list. Returns problems instead of saving when it is invalid. */
@@ -69,7 +104,7 @@ export async function saveBands(tenantId: number, bands: PricingBand[]): Promise
   return [];
 }
 
-export function validateSettings(s: RepricerSettings): string[] {
+export function validateSettings(s: Omit<RepricerSettings, "compete">): string[] {
   const errors = validateFees(s.fees);
   if (!Number.isInteger(s.inStockQty) || s.inStockQty < 1 || s.inStockQty > 999) errors.push("Stock to show must be a whole number from 1 to 999.");
   if (!(s.outOfStockPrice >= 1 && s.outOfStockPrice <= 99999)) errors.push("Out-of-stock price must be between £1 and £99,999.");
@@ -78,7 +113,7 @@ export function validateSettings(s: RepricerSettings): string[] {
   return errors;
 }
 
-export async function saveSettings(tenantId: number, s: RepricerSettings): Promise<string[]> {
+export async function saveSettings(tenantId: number, s: Omit<RepricerSettings, "compete">): Promise<string[]> {
   const errors = validateSettings(s);
   if (errors.length) return errors;
   await exec(
@@ -100,7 +135,7 @@ export async function saveSettings(tenantId: number, s: RepricerSettings): Promi
 }
 
 /**
- * After bands or fees change, re-price every in-stock listing from the Amazon
+ * After bands, fees or competition settings change, re-price every in-stock listing from the Amazon
  * price we already hold, without calling Amazon. Out-of-stock listings are
  * left for their next Amazon read, which decides whether they can come back.
  * Returns how many listings changed price.
@@ -110,8 +145,16 @@ export async function repriceLocally(tenantId: number): Promise<number> {
   let lastId = 0;
   let changed = 0;
   for (;;) {
-    const rows = await q<{ id: number; source_price: number; price: number | null; stock: number | null }>(
-      `SELECT id, source_price, price, stock FROM products
+    const rows = await q<{
+      id: number;
+      source_price: number;
+      price: number | null;
+      stock: number | null;
+      compete: number;
+      competitor_price: number | null;
+      competitor_seen_at: Date | null;
+    }>(
+      `SELECT id, source_price, price, stock, compete, competitor_price, competitor_seen_at FROM products
         WHERE tenant_id = ? AND id > ? AND source_price > 0 AND stock > 0 AND source_fails = 0
         ORDER BY id LIMIT 500`,
       [tenantId, lastId],
@@ -121,7 +164,23 @@ export async function repriceLocally(tenantId: number): Promise<number> {
 
     const updates: { id: number; price: number; stock: number; old: { price: number | null; stock: number | null }; source: number }[] = [];
     for (const r of rows) {
-      const p = marketplacePrice(Number(r.source_price), cfg.bands, cfg.fees);
+      const band = marketplacePrice(Number(r.source_price), cfg.bands, cfg.fees);
+      const p =
+        band === null
+          ? null
+          : listPrice(
+              band,
+              Number(r.source_price),
+              {
+                sourcePrice: Number(r.source_price),
+                price: r.price,
+                stock: r.stock,
+                sourceFails: 0,
+                compete: Boolean(r.compete),
+                competitor: { price: r.competitor_price === null ? null : Number(r.competitor_price), seenAt: r.competitor_seen_at },
+              },
+              cfg,
+            );
       const price = p ?? cfg.outOfStockPrice;
       const stock = p === null ? 0 : cfg.inStockQty;
       const oldPrice = r.price === null ? null : Number(r.price);

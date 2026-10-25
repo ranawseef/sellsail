@@ -9,8 +9,11 @@
 //   - a source price that drops by more than 60% must be seen 3 times in a row
 //     before it is used, so one bad offer can't undercut the listing
 //   - a price above the highest band is never sold at zero profit: out of stock
+// Competition (lib/competition.ts) can then lower the band price to undercut
+// the OnBuy leader, down to the seller's floor.
 
 import { marketplacePrice, type PricingBand, type PricingFees } from "../../lib/pricing.ts";
+import { competitivePrice, type CompeteSettings, type Competitor } from "../../lib/competition.ts";
 import type { ItemOfferResult } from "../integrations/amazon/offers.ts";
 
 export const MAX_SOURCE_FAILS = 3;
@@ -21,6 +24,8 @@ export type RepriceConfig = {
   fees: PricingFees;
   inStockQty: number;
   outOfStockPrice: number;
+  /** Competition settings; absent means competition is off. */
+  compete?: CompeteSettings;
 };
 
 export type ProductState = {
@@ -28,7 +33,16 @@ export type ProductState = {
   price: number | null;
   stock: number | null;
   sourceFails: number;
+  /** The listing's own competition switch (default on) and the leader's last price. */
+  compete?: boolean;
+  competitor?: Competitor;
 };
+
+/** The band price, lowered by competition when the settings and the listing allow it. */
+export function listPrice(bandPrice: number, sourcePrice: number, state: ProductState, cfg: RepriceConfig, now = new Date()): number {
+  if (!cfg.compete || state.compete === false) return bandPrice;
+  return competitivePrice(bandPrice, sourcePrice, state.competitor ?? null, cfg.fees, cfg.compete, now).price;
+}
 
 export type Decision =
   | { kind: "priced"; sourcePrice: number; price: number; stock: number; fails: 0; error: null }
@@ -59,7 +73,7 @@ export function decide(state: ProductState, result: ItemOfferResult | undefined,
 
   const price = marketplacePrice(landed, cfg.bands, cfg.fees);
   if (price === null) return outOfStock(cfg, `Amazon price £${landed.toFixed(2)} is above your highest band`, landed);
-  return { kind: "priced", sourcePrice: landed, price, stock: cfg.inStockQty, fails: 0, error: null };
+  return { kind: "priced", sourcePrice: landed, price: listPrice(price, landed, state, cfg), stock: cfg.inStockQty, fails: 0, error: null };
 }
 
 /**

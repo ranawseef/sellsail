@@ -17,6 +17,7 @@ const KIND: Record<string, { title: string; what: string }> = {
   reprice: { title: "Reprice", what: "Reads Amazon offers, 20 ASINs per call, and sets each listing's price and stock." },
   push: { title: "Send to OnBuy", what: "Sends changed prices and stock to OnBuy, up to 1,000 per request." },
   import: { title: "Import from OnBuy", what: "Reads your OnBuy listings, 500 at a time." },
+  compete: { title: "Competition", what: "Asks OnBuy who is winning each listing, 100 at a time, and undercuts cheaper sellers down to your floor." },
 };
 
 export default async function AutomationPage() {

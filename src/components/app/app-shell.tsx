@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BadgePoundSterling, CreditCard, LayoutDashboard, LogOut, Menu, Package, Plug, Rocket, Settings, Workflow, X } from "lucide-react";
+import { BadgePoundSterling, CreditCard, LayoutDashboard, LogOut, Menu, Package, Plug, Rocket, Settings, Swords, Workflow, X } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/app/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/app/products", label: "Products", icon: Package },
   { href: "/app/pricing", label: "Pricing", icon: BadgePoundSterling },
+  { href: "/app/competition", label: "Competition", icon: Swords },
   { href: "/app/automation", label: "Automation", icon: Workflow },
   { href: "/app/connections", label: "Connections", icon: Plug },
   { href: "/app/billing", label: "Billing", icon: CreditCard },
@@ -73,9 +74,11 @@ function Brand() {
 
 function SoonList() {
   return (
-    <div className="mt-8 rounded-2xl border border-[#2a4038] p-3.5 text-[13px] text-[#9fbdb1]">
-      <p className="font-bold text-white">Coming soon</p>
-      <p className="mt-1">eBay as a marketplace and AliExpress as a source.</p>
+    <div className="mt-auto pt-8">
+      <div className="rounded-2xl border border-[#2a4038] p-3.5 text-[13px] text-[#9fbdb1]">
+        <p className="font-bold text-white">Coming soon</p>
+        <p className="mt-1">eBay as a marketplace and AliExpress as a source.</p>
+      </div>
     </div>
   );
 }
@@ -86,7 +89,7 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
   return (
     <div className="flex min-h-screen flex-1 bg-paper">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto bg-ink px-4 py-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-y-auto overscroll-contain bg-ink px-4 py-5 scrollbar-none lg:flex">
         <Brand />
         <p className="mt-1 mb-6 truncate pl-[38px] text-[13px] text-[#9fbdb1]" title={workspace}>
           {workspace}
@@ -99,7 +102,7 @@ export function AppShell({ workspace, userName, planLabel, planTone, onboarded, 
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-ink/50" onClick={() => setOpen(false)} />
-          <aside id="app-mobile-nav" className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto bg-ink px-4 py-5">
+          <aside id="app-mobile-nav" className="absolute inset-y-0 left-0 flex w-72 flex-col overflow-y-auto overscroll-contain bg-ink px-4 py-5 scrollbar-none">
             <div className="flex items-center justify-between">
               <Brand />
               <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="inline-flex size-11 items-center justify-center rounded-full text-white hover:bg-[#13261e]">

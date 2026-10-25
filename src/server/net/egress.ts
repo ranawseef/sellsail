@@ -12,7 +12,7 @@
 // scripts/check-egress.mjs fails the build if fetch(), undici, node:http(s) or a
 // marketplace hostname shows up anywhere else.
 
-import { Agent, fetch as undiciFetch, ProxyAgent, type Dispatcher } from "undici";
+import { Agent, fetch as undiciFetch, ProxyAgent, request as undiciRequest, type Dispatcher } from "undici";
 import { socksDispatcher } from "fetch-socks";
 
 // A host-wide NO_PROXY could exempt marketplace hosts from a proxy in some
@@ -174,6 +174,36 @@ export async function egressFetch(route: Route, url: string, req: EgressRequest 
   const viaProxyRoute = route.kind === "proxy";
   const dispatcher = viaProxyRoute ? dispatcherFor(route.proxy) : directDispatcher();
 
+  // fetch() refuses a GET with a body, but OnBuy's check-winning takes its
+  // SKUs that way, so those go through undici's lower-level request().
+  if ((req.method ?? "GET") === "GET" && req.body !== undefined) {
+    let r;
+    try {
+      r = await undiciRequest(target, {
+        method: "GET",
+        headers: req.headers,
+        body: req.body,
+        dispatcher,
+        signal: AbortSignal.timeout(req.timeoutMs ?? 60_000),
+      });
+    } catch (err) {
+      const cause = (err as { cause?: { code?: string; message?: string }; code?: string }).cause;
+      const message = cause?.message ?? (err as Error).message;
+      const code = cause?.code ?? (err as { code?: string }).code;
+      const detail = code && !message.includes(code) ? `${code} ${message}` : message;
+      if (viaProxyRoute && PROXY_ERROR.test(detail)) throw new ProxyFailureError(`Proxy failed: ${detail}`);
+      throw new Error(`Request failed: ${detail}`);
+    }
+    if (viaProxyRoute && r.statusCode === 407) throw new ProxyFailureError("Proxy rejected the username or password (HTTP 407)");
+    const text = await r.body.text();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(r.headers)) {
+      if (typeof v === "string") headers.set(k, v);
+      else if (Array.isArray(v)) headers.set(k, v.join(", "));
+    }
+    return { status: r.statusCode, headers, text, json: parseJson(text) };
+  }
+
   let res;
   try {
     res = await undiciFetch(target, {
@@ -195,15 +225,16 @@ export async function egressFetch(route: Route, url: string, req: EgressRequest 
   if (viaProxyRoute && res.status === 407) throw new ProxyFailureError("Proxy rejected the username or password (HTTP 407)");
 
   const text = await res.text();
-  let json: unknown = null;
-  if (text) {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = null;
-    }
+  return { status: res.status, headers: res.headers as unknown as Headers, text, json: parseJson(text) };
+}
+
+function parseJson(text: string): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
-  return { status: res.status, headers: res.headers as unknown as Headers, text, json };
 }
 
 /** The IP address the marketplace APIs see on this route. */

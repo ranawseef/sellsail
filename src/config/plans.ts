@@ -1,8 +1,5 @@
-// Subscription plans. Prices match the marketing pricing page. The SKU
-// limits are PLACEHOLDERS chosen for the first build: confirm them before
-// launch and put the same numbers on /pricing (it still shows "[X] listings").
-// Amazon prices come from SellSail's own keys, so plans don't limit Amazon
-// accounts any more.
+// Subscription plans. Prices and listing limits match the marketing pricing
+// page (src/content/pricing.ts).
 //
 // Stripe price ids come from env vars so test and live mode can differ.
 
@@ -16,35 +13,40 @@ export type Plan = {
   maxSkus: number;
   /** Seconds between push runs (how quickly OnBuy sees a new price). */
   pushIntervalS: number;
+  /** Seconds before a listing's competition is checked again. */
+  competeIntervalS: number;
   stripePriceEnv?: string;
 };
 
 export const TRIAL_DAYS = 14;
 
 export const PLANS: Record<PlanId, Plan> = {
-  trial: { id: "trial", name: "Free trial", pricePence: 0, maxSkus: 1000, pushIntervalS: 300 },
+  trial: { id: "trial", name: "Free trial", pricePence: 0, maxSkus: 1000, pushIntervalS: 300, competeIntervalS: 1800 },
   starter: {
     id: "starter",
     name: "Starter",
     pricePence: 2900,
-    maxSkus: 2000,
+    maxSkus: 5000,
     pushIntervalS: 300,
+    competeIntervalS: 1800,
     stripePriceEnv: "STRIPE_PRICE_STARTER",
   },
   growth: {
     id: "growth",
     name: "Growth",
     pricePence: 6900,
-    maxSkus: 10000,
+    maxSkus: 20000,
     pushIntervalS: 180,
+    competeIntervalS: 900,
     stripePriceEnv: "STRIPE_PRICE_GROWTH",
   },
   pro: {
     id: "pro",
     name: "Pro",
     pricePence: 14900,
-    maxSkus: 40000,
+    maxSkus: 50000,
     pushIntervalS: 120,
+    competeIntervalS: 600,
     stripePriceEnv: "STRIPE_PRICE_PRO",
   },
 };

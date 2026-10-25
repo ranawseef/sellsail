@@ -40,7 +40,7 @@ export function EventFeed({ events, empty = "Nothing has happened yet." }: { eve
   );
 }
 
-const KIND = { reprice: "Reprice", push: "OnBuy sync", import: "Import" } as Record<string, string>;
+const KIND = { reprice: "Reprice", push: "OnBuy sync", import: "Import", compete: "Competition" } as Record<string, string>;
 
 export function RunHistory({ runs }: { runs: RunRow[] }) {
   if (runs.length === 0) return <EmptyState icon={<CheckCircle2 className="size-5" />} title="No runs yet">Runs appear here once your connections are set up.</EmptyState>;

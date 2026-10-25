@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Globe, KeyRound, ShoppingCart, Sparkles, Store } from "lucide-react";
+import { Globe, KeyRound, Sparkles, Store } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { Rise } from "@/components/app/motion";
 import { ActionButton } from "@/components/app/action-button";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { requireAuth } from "@/server/auth/context";
 import { loadProxy } from "@/server/connections/proxy";
 import { getOnBuyAccount } from "@/server/connections/onbuy";
-import { amazonPoolStatus } from "@/server/connections/amazon";
 import { disconnectOnBuyAction, removeProxyAction, testProxyAction } from "@/server/actions/app";
 import { formatDateTime, timeAgo } from "@/lib/format";
 
@@ -29,18 +28,17 @@ function Facts({ items }: { items: [string, React.ReactNode][] }) {
 
 export default async function ConnectionsPage() {
   const auth = await requireAuth();
-  const [proxy, onbuy, pool] = await Promise.all([loadProxy(auth.tenantId), getOnBuyAccount(auth.tenantId), amazonPoolStatus()]);
+  const [proxy, onbuy] = await Promise.all([loadProxy(auth.tenantId), getOnBuyAccount(auth.tenantId)]);
   const canEdit = auth.role !== "member";
   const proxyOk = proxy?.status === "ok";
   const proxyBlocking = Boolean(proxy) && !proxyOk;
-  const amazonState = pool.configured === 0 ? "off" : pool.healthy === 0 ? "trouble" : "ok";
 
   return (
     <>
       <PageHeader
         eyebrow="Connections"
-        title="OnBuy and Amazon"
-        intro="Your OnBuy keys are stored encrypted and never shown again after you save them. Amazon prices come from SellSail's own connection."
+        title="OnBuy"
+        intro="Your OnBuy keys are stored encrypted and never shown again after you save them."
       />
 
       <Rise>
@@ -96,33 +94,6 @@ export default async function ConnectionsPage() {
 
       <Rise delay={0.05}>
         <SectionCard
-          id="amazon"
-          title={
-            <span className="flex items-center gap-2.5">
-              <ShoppingCart aria-hidden="true" className="size-5 text-sea" /> Amazon
-            </span>
-          }
-          intro="Source. SellSail reads Amazon UK offers for your ASINs with its own Amazon connection, shared fairly between sellers. You don't need Amazon API keys."
-          actions={
-            <Badge variant={amazonState === "ok" ? "mint" : amazonState === "trouble" ? "danger" : "sun"}>
-              {amazonState === "ok" ? "Provided by SellSail" : amazonState === "trouble" ? "Delayed" : "Starting soon"}
-            </Badge>
-          }
-        >
-          <p className="rounded-xl bg-mist p-4 text-sm text-body">
-            {amazonState === "ok" ? (
-              <>Amazon prices are being read{pool.lastOkAt ? <>, last at {formatDateTime(pool.lastOkAt)}</> : null}. Nothing to set up here.</>
-            ) : amazonState === "trouble" ? (
-              "Amazon isn't answering SellSail right now. We're on it; your listings keep their last prices, and anything without a fresh price for 24 hours is set out of stock."
-            ) : (
-              "Amazon price reading is being switched on. Your listings will start repricing as soon as it is, with nothing for you to do."
-            )}
-          </p>
-        </SectionCard>
-      </Rise>
-
-      <Rise delay={0.1}>
-        <SectionCard
           id="proxy"
           title={
             <span className="flex items-center gap-2.5">
@@ -173,7 +144,7 @@ export default async function ConnectionsPage() {
         </SectionCard>
       </Rise>
 
-      <Rise delay={0.15}>
+      <Rise delay={0.1}>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-label="Coming soon">
           {[
             { name: "AliExpress", role: "Source", text: "Source products from AliExpress and reprice them with the same bands and brakes." },
