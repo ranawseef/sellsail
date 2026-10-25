@@ -6,7 +6,7 @@ import { PAID_PLANS, PLANS, TRIAL_DAYS, formatPence } from "@/config/plans";
 
 export const metadata: Metadata = {
   title: "Terms of service",
-  description: "The terms that apply when you use the SellSail website and service.",
+  description: "The terms of service for SellSail: free trial, subscriptions and billing, your responsibilities on OnBuy, our liability, and how either side can end the agreement.",
   alternates: { canonical: "/terms" },
 };
 

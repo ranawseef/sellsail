@@ -6,7 +6,7 @@ import { TRIAL_DAYS } from "@/config/plans";
 
 export const metadata: Metadata = {
   title: "Refund and cancellation policy",
-  description: "SellSail's free trial, how to cancel a subscription, and when we give refunds.",
+  description: "How SellSail's 14-day free trial works, how to cancel a monthly or annual subscription at any time, and when we give refunds.",
   alternates: { canonical: "/refunds" },
 };
 

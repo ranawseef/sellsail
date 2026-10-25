@@ -91,7 +91,7 @@ export const amazonToOnbuyStepByStep: Post = {
     "How to dropship Amazon products on OnBuy profitably: choosing products, pricing with OnBuy fees, SKUs that carry the ASIN, keeping price and stock in sync, and fast fulfilment.",
   keyword: "Amazon to OnBuy dropshipping",
   category: "Dropshipping",
-  date: "2026-10-26",
+  date: "2026-10-25",
   readingMinutes: 7,
   cover: { src: "photo-1580674285054-bed31e145f59", alt: "A stack of cardboard shipping boxes in the back of a delivery van" },
   Body,

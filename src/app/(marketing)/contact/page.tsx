@@ -4,8 +4,8 @@ import { PageHero } from "@/components/sections";
 import { companyLine, site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Contact SellSail",
-  description: "Get in touch with the SellSail team about support, billing or agency plans for several OnBuy accounts.",
+  title: "Contact SellSail: support, demos and billing",
+  description: "Contact the SellSail team by email, phone or WhatsApp for support, a live demo, billing questions or agency plans covering several OnBuy accounts.",
   alternates: { canonical: "/contact" },
 };
 

@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { AnalyticsConsent } from "@/components/analytics-consent";
 
 // Public marketing pages: the site header and footer around each page.
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
@@ -10,6 +11,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <SiteFooter />
+      <AnalyticsConsent />
     </>
   );
 }

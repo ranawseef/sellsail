@@ -5,8 +5,8 @@ import { LEGAL_PAGES, LegalPage } from "@/components/legal-page";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Legal information",
-  description: "SellSail's legal documents and company details.",
+  title: "Legal information and company details",
+  description: "SellSail's legal documents in one place, plus company details for VIVIDDEALS LTD: registered office, company number and how to contact us.",
   alternates: { canonical: "/legal" },
 };
 

@@ -4,13 +4,11 @@ import { coverHeadline, coverUrl } from "@/lib/cover";
 
 // The branded picture shown when a guide is shared on social sites and in
 // chats: the post's cover photo under the SellSail brand. Rendered on
-// request rather than at build time, to keep Hostinger builds light.
-export const alt = "SellSail guide";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-export const dynamic = "force-dynamic";
+// request rather than at build time, to keep Hostinger builds light; the
+// response is cached for a day.
+const size = { width: 1200, height: 630 };
 
-export default async function PostOgImage({ params }: { params: Promise<{ slug: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const post = getPost((await params).slug);
   const title = post && isPublished(post) ? post.title : "SellSail guides for UK OnBuy sellers";
   const chip = post?.category ?? "Guides";
@@ -19,6 +17,7 @@ export default async function PostOgImage({ params }: { params: Promise<{ slug: 
     (
       <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#10231c", fontFamily: "sans-serif" }}>
         {post && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl(post, 1200, 630)} alt="" width={1200} height={630} style={{ position: "absolute", inset: 0, width: 1200, height: 630, objectFit: "cover" }} />
         )}
         <div
@@ -53,6 +52,6 @@ export default async function PostOgImage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
     ),
-    size,
+    { ...size, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" } },
   );
 }

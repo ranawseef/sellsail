@@ -3,8 +3,8 @@ import { CtaBand, PageHero } from "@/components/sections";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "About SellSail",
-  description: "SellSail is a UK-built tool for OnBuy sellers and dropshippers, made by a seller who needed safer repricing.",
+  title: "About SellSail: the UK OnBuy repricer team",
+  description: "SellSail is a UK-built repricer for OnBuy sellers and dropshippers: who we are, why we built it, and how we keep sellers profitable and in control.",
   alternates: { canonical: "/about" },
 };
 

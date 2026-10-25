@@ -3,8 +3,8 @@ import { CompanyDetails, LegalPage } from "@/components/legal-page";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Security",
-  description: "How SellSail protects your account, your OnBuy API keys and your store data.",
+  title: "Security: how SellSail protects your account",
+  description: "How SellSail protects your account, your OnBuy API keys and your store data: encryption at rest, secure sign-in, access controls and safe pricing limits.",
   alternates: { canonical: "/security" },
 };
 

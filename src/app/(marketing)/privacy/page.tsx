@@ -5,13 +5,13 @@ import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
-  description: "How SellSail collects, uses and protects your personal data under UK GDPR.",
+  description: "How SellSail, run by VIVIDDEALS LTD, collects, uses, stores and protects your personal data under UK GDPR, and the rights you have over it.",
   alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="26 October 2026">
+    <LegalPage title="Privacy policy" updated="25 October 2026">
       <p>
         This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
         {site.company}, registered in England and Wales, company number {site.companyNumber}, registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
@@ -66,6 +66,11 @@ export default function PrivacyPage() {
           us.
         </li>
         <li>Your proxy provider, if you add one, carries your OnBuy requests.</li>
+        <li>
+          <strong>Google Analytics</strong>, only if you allow analytics cookies on sellsail.io, receives information about
+          how you use the public website (pages visited, device and approximate location). Our lawful basis is your
+          consent, which you can withdraw at any time with &quot;Cookie settings&quot;.
+        </li>
       </ul>
       <p>
         The full list of the suppliers who process data for us is on our{" "}

@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const post = getPost((await params).slug);
   if (!post || !isPublished(post)) return {};
   return {
-    title: post.title,
+    title: { absolute: post.title },
     description: post.description,
     keywords: [post.keyword, ...(post.secondary ?? []), "OnBuy", "UK sellers"],
     alternates: { canonical: `/blog/${post.slug}` },
@@ -46,8 +46,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       modifiedTime: post.updated ?? post.date,
       section: post.category,
       tags: [post.keyword, ...(post.secondary ?? [])],
+      images: [{ url: `/og/blog/${post.slug}`, width: 1200, height: 630, alt: post.title }],
     },
-    twitter: { card: "summary_large_image", title: post.title, description: post.description },
+    twitter: { card: "summary_large_image", title: post.title, description: post.description, images: [`/og/blog/${post.slug}`] },
   };
 }
 

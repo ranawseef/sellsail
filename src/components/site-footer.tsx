@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Building2, Mail, MessageCircle, Phone } from "lucide-react";
 import { LogoMark } from "@/components/logo";
+import { CookieSettingsButton } from "@/components/analytics-consent";
 import { buttonVariants } from "@/components/ui/button";
 import { TRIAL_DAYS } from "@/config/plans";
 import { footerNav, portal, site } from "@/lib/site";
@@ -92,9 +93,12 @@ export function SiteFooter() {
               {site.companyNumber}). Registered office: {site.address}, United Kingdom.
             </p>
           </div>
-          <p className="shrink-0 font-semibold text-[#b9cfc6]">
-            © {year} {site.company}. All rights reserved.
-          </p>
+          <div className="flex shrink-0 flex-col gap-1 lg:items-end">
+            <p className="font-semibold text-[#b9cfc6]">
+              © {year} {site.company}. All rights reserved.
+            </p>
+            <CookieSettingsButton className="text-left text-[#b9cfc6] underline-offset-4 hover:text-white hover:underline" />
+          </div>
         </div>
       </div>
     </footer>

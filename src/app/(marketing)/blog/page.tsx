@@ -9,7 +9,7 @@ import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "OnBuy seller blog: fees, pricing, repricing and dropshipping guides",
+  title: "OnBuy seller blog: fees, repricing and dropshipping",
   description:
     "Practical guides for UK OnBuy sellers: how to sell on OnBuy, fees and profit, repricing, Amazon to OnBuy dropshipping and growing a marketplace shop.",
   alternates: { canonical: "/blog", types: { "application/rss+xml": "/blog/feed.xml" } },

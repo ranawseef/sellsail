@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   openGraph: { siteName: site.name, locale: "en_GB", type: "website" },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: false, address: false, email: false },
+  // Search Console / Bing Webmaster verification tags, set in the hosting
+  // environment (not needed when verifying by DNS).
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
+  },
 };
 
 const organizationJsonLd = {

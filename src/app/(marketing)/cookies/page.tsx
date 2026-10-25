@@ -3,18 +3,18 @@ import { LegalPage } from "@/components/legal-page";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Cookie notice",
-  description: "How sellsail.io uses cookies.",
+  title: "Cookie notice: how sellsail.io uses cookies",
+  description: "Which cookies sellsail.io sets, why each one is needed, how long they last, and how to give or withdraw consent for optional analytics cookies.",
   alternates: { canonical: "/cookies" },
 };
 
 export default function CookiesPage() {
   return (
-    <LegalPage title="Cookie notice" updated="26 October 2026">
+    <LegalPage title="Cookie notice" updated="25 October 2026">
       <p>
-        sellsail.io is run by {site.company} (company number {site.companyNumber}). It does not set any analytics or
-        advertising cookies. We only use cookies that are strictly necessary for the site to work, which don&apos;t need
-        your consent.
+        sellsail.io is run by {site.company} (company number {site.companyNumber}). It never sets advertising cookies. It uses
+        cookies that are strictly necessary for the site to work, which don&apos;t need your consent, and optional
+        analytics cookies only if you allow them.
       </p>
       <h2>Cookies we set</h2>
       <ul>
@@ -31,10 +31,13 @@ export default function CookiesPage() {
         When you choose a plan, payment happens on Stripe&apos;s own pages, which set their own cookies to process the
         payment and prevent fraud. See stripe.com/cookies-policy.
       </p>
-      <h2>If this changes</h2>
+      <h2>Analytics (optional)</h2>
       <p>
-        If we add analytics in future, we will ask for your consent first and non-essential cookies will be off until you
-        say yes. You will be able to change your choice at any time.
+        With your permission we use Google Analytics to understand how visitors use sellsail.io, such as which pages are
+        read and how people find us. It sets cookies named <code>_ga</code> and <code>_ga_*</code>, which last up to 2
+        years. These cookies stay off until you choose &quot;Allow analytics&quot; in the cookie banner. You can change
+        your choice at any time with the &quot;Cookie settings&quot; link at the bottom of every page, and you can delete
+        existing cookies in your browser settings.
       </p>
     </LegalPage>
   );

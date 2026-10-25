@@ -6,7 +6,7 @@ export const site = {
   appUrl: "https://app.sellsail.io",
   appHost: "app.sellsail.io",
   description:
-    "The Amazon to OnBuy repricer for UK sellers. Live Amazon prices, fee-aware OnBuy pricing, competition that never goes below your floor, and stock sync every few minutes.",
+    "The Amazon to OnBuy repricer for UK sellers: live Amazon prices, fee-aware OnBuy pricing, competition that respects your floor, and stock sync every few minutes.",
   email: "hello@sellsail.io",
   phone: "+44 7383 318529",
   phoneHref: "tel:+447383318529",

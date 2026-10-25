@@ -5,7 +5,7 @@ import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Data processing and sub-processors",
-  description: "How SellSail processes data on behalf of sellers under UK GDPR, and the sub-processors we use.",
+  description: "How SellSail processes store and customer data on behalf of sellers under UK GDPR, the security measures we use, and our list of sub-processors.",
   alternates: { canonical: "/data-processing" },
 };
 

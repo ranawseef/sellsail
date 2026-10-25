@@ -111,7 +111,7 @@ export const onbuyRepricerGuide: Post = {
     "What an OnBuy repricer does, why a fee-aware floor matters more than anything else, what to look for when choosing one, and the mistakes that make sellers lose money.",
   keyword: "OnBuy repricer",
   category: "Repricing",
-  date: "2026-10-26",
+  date: "2026-10-25",
   readingMinutes: 6,
   cover: { src: "photo-1707157284454-553ef0a4ed0d", alt: "An office desk with a smartphone and printed financial charts" },
   Body,

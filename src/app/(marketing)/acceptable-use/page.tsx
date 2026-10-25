@@ -5,7 +5,7 @@ import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Acceptable use policy",
-  description: "What you may and may not use SellSail for.",
+  description: "What you may and may not use SellSail for: marketplace rules, lawful products, fair use of the service, and what happens if the policy is broken.",
   alternates: { canonical: "/acceptable-use" },
 };
 
