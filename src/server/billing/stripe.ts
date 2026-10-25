@@ -86,8 +86,6 @@ export async function checkoutUrl(tenantId: number, email: string, plan: PlanId,
     // Businesses can add a VAT number; it is printed on their invoices.
     tax_id_collection: { enabled: true },
     customer_update: { name: "auto", address: "auto" },
-    // Charge in pounds everywhere: no converted local-currency prices.
-    adaptive_pricing: { enabled: false },
     success_url: `${baseUrl}/app/billing?checkout=success`,
     cancel_url: `${baseUrl}/app/billing?checkout=cancelled`,
   });
