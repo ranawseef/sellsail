@@ -11,7 +11,7 @@ export const batch04: Post[] = [
     keyword: "sku generator",
     secondary: ["how to create a sku", "sku naming convention", "sku format", "sku builder"],
     category: "Guides",
-    date: "2026-11-09",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "Decide a pattern first, such as CATEGORY-ITEM-VARIANT, then generate SKUs from it.",
@@ -96,7 +96,7 @@ Choose a pattern, abbreviate consistently, build SKUs with a formula, and check 
     keyword: "break even calculator",
     secondary: ["break even price", "how to calculate break even price", "break even formula"],
     category: "Fees and profit",
-    date: "2026-11-11",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Your break-even price is the lowest price at which you make £0 after every cost.",
@@ -183,7 +183,7 @@ That's why break-even should be recalculated automatically whenever the cost cha
     keyword: "psychological pricing",
     secondary: ["charm pricing", "99p pricing", "pricing psychology", "price anchoring"],
     category: "Pricing",
-    date: "2026-11-13",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Psychological pricing uses how people perceive numbers, such as £9.99 feeling cheaper than £10.",
@@ -257,7 +257,7 @@ Psychological pricing can nudge buyers, but on marketplaces it works on top of g
     keyword: "floor price",
     secondary: ["minimum price repricer", "min max price", "repricing floor", "price floor"],
     category: "Repricing",
-    date: "2026-11-16",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "A floor price is the lowest price a repricer may set for a listing.",
@@ -336,7 +336,7 @@ A floor price protects every sale. Build it from your real cost plus fees plus a
     keyword: "competitor price monitoring",
     secondary: ["price monitoring software", "competitor price tracking", "monitor competitor prices"],
     category: "Repricing",
-    date: "2026-11-18",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Track the competitors that actually take your sales: the same product, on the same marketplace.",

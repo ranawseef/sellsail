@@ -71,8 +71,8 @@ Takeaways:
 
 ## Publishing calendar
 
-10 posts live on 26 Oct 2026 (highest volume and the pillar), then three a week
-(Mon/Wed/Fri) to 1 Feb 2027. Posts are dated in code and appear on their date
+All 50 posts published on 25 Oct 2026. New posts can still be dated ahead and
+will appear on their date
 automatically (`isPublished`), so the cadence needs no manual work.
 
 The full list, with keyword, volume tier, intent and date, is in

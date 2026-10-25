@@ -11,7 +11,7 @@ export const batch05: Post[] = [
     keyword: "onbuy seller account",
     secondary: ["onbuy seller", "onbuy seller registration", "become an onbuy seller"],
     category: "Selling on OnBuy",
-    date: "2026-11-20",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Prepare business, identity, bank and VAT details before you apply to speed up approval.",
@@ -81,7 +81,7 @@ When your account is approved, connect your OnBuy API keys to [SellSail](/signup
     keyword: "onbuy returns",
     secondary: ["onbuy refunds", "onbuy return policy seller", "marketplace returns uk"],
     category: "Selling on OnBuy",
-    date: "2026-11-23",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "UK online buyers can usually cancel within 14 days of delivery and then have 14 days to send goods back.",
@@ -163,7 +163,7 @@ SellSail's margin bands include a minimum profit for exactly this reason. [See h
     keyword: "aliexpress dropshipping uk",
     secondary: ["aliexpress uk dropshipping", "dropshipping from aliexpress to uk", "alidropship uk"],
     category: "Dropshipping",
-    date: "2026-11-25",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "AliExpress offers low prices and a huge range, but delivery to the UK can take much longer than UK suppliers.",
@@ -237,7 +237,7 @@ SellSail currently prices OnBuy listings from Amazon UK. AliExpress as a source 
     keyword: "ebay dropshipping uk",
     secondary: ["ebay dropshipping", "dropshipping on ebay uk", "ebay dropshipping suppliers uk"],
     category: "Dropshipping",
-    date: "2026-11-27",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "eBay allows dropshipping from wholesale suppliers, but not buying from another retailer to ship to your eBay buyer.",
@@ -310,7 +310,7 @@ SellSail currently reprices OnBuy listings from Amazon UK; eBay as a marketplace
     keyword: "shopify dropshipping uk",
     secondary: ["dropshipping uk shopify", "shopify dropshipping suppliers uk", "uk dropshipping suppliers for shopify"],
     category: "Dropshipping",
-    date: "2026-11-30",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "A Shopify store gives you full control and no marketplace commission, but you must bring every visitor.",

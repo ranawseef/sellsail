@@ -10,7 +10,7 @@ export const batch02: Post[] = [
     keyword: "how to sell on onbuy",
     secondary: ["onbuy seller", "sell on onbuy uk", "onbuy marketplace", "selling on onbuy"],
     category: "Selling on OnBuy",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 13,
     takeaways: [
       "To sell on OnBuy you open a seller account, list products against OnBuy's catalogue, and ship orders within your stated dispatch time.",
@@ -139,7 +139,7 @@ Start with a small range, prove your margins, then scale. You can [try SellSail 
     keyword: "margin vs markup",
     secondary: ["markup vs margin", "difference between margin and markup", "margin and markup formula"],
     category: "Fees and profit",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Markup is profit as a percentage of cost; margin is profit as a percentage of the selling price.",
@@ -250,7 +250,7 @@ Next: [the profit margin formula](/blog/profit-margin-formula) and [how to calcu
     keyword: "what is an asin",
     secondary: ["asin meaning", "asin number", "asin lookup", "amazon asin"],
     category: "Guides",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "An ASIN (Amazon Standard Identification Number) is a 10-character code Amazon gives every product in its catalogue.",
@@ -337,7 +337,7 @@ An ASIN is Amazon's product number: 10 characters, usually starting B0, found in
     keyword: "sku meaning",
     secondary: ["what is a sku", "sku number", "stock keeping unit", "sku vs barcode"],
     category: "Guides",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "SKU stands for stock keeping unit: a code you create to identify each product you sell.",
@@ -429,7 +429,7 @@ A SKU is your own product code. Make it unique, short and consistent, and if you
     keyword: "profit margin calculator",
     secondary: ["profit margin formula", "how to calculate profit margin", "gross margin", "net profit margin"],
     category: "Fees and profit",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Profit margin = profit ÷ selling price × 100.",

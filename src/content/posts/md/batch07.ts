@@ -10,7 +10,7 @@ export const batch07: Post[] = [
     keyword: "dropshipping profit margin",
     secondary: ["dropshipping margins", "how much do dropshippers make uk", "average dropshipping profit"],
     category: "Dropshipping",
-    date: "2026-12-14",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "After fees, many marketplace dropshippers work on net margins of roughly 10–20%.",
@@ -94,7 +94,7 @@ Same price, almost no profit, and one refund turns it into a loss. A VAT-registe
     keyword: "dropshipping mistakes",
     secondary: ["dropshipping tips uk", "why dropshipping fails", "common dropshipping mistakes"],
     category: "Dropshipping",
-    date: "2026-12-16",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Most dropshipping losses come from pricing without every fee, and from stock that's out of sync.",
@@ -179,7 +179,7 @@ That's what [SellSail](/features) does for OnBuy sellers sourcing from Amazon UK
     keyword: "best dropshipping products uk",
     secondary: ["dropshipping products uk", "winning dropshipping products", "what to dropship uk"],
     category: "Dropshipping",
-    date: "2026-12-18",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "The best products leave room for fees, ship cheaply and sell all year.",
@@ -255,7 +255,7 @@ SellSail shows which OnBuy listings you're winning and losing, and the price you
     keyword: "start dropshipping uk",
     secondary: ["start a dropshipping business uk", "dropshipping business uk", "how to start dropshipping uk"],
     category: "Dropshipping",
-    date: "2026-12-21",
+    date: "2026-10-25",
     readingMinutes: 10,
     takeaways: [
       "Decide sole trader or limited company, register with HMRC and open a business bank account.",
@@ -338,7 +338,7 @@ If you sell on OnBuy and source from Amazon UK, [SellSail](/signup) covers step 
     keyword: "vat for online sellers",
     secondary: ["ecommerce vat uk", "vat for marketplace sellers", "vat threshold online sellers"],
     category: "Fees and profit",
-    date: "2026-12-23",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Register for VAT when VAT-taxable turnover passes £90,000 in a rolling 12 months.",

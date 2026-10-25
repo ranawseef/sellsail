@@ -10,7 +10,7 @@ export const batch08: Post[] = [
     keyword: "online arbitrage uk",
     secondary: ["online arbitrage", "what is online arbitrage", "reselling online uk"],
     category: "Growth",
-    date: "2026-12-28",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Online arbitrage means buying discounted products from online shops and reselling them on marketplaces.",
@@ -84,7 +84,7 @@ Online arbitrage suits sellers who enjoy deal-hunting and can store and ship sto
     keyword: "inventory sync",
     secondary: ["stock sync", "inventory sync dropshipping", "sync stock with supplier"],
     category: "Repricing",
-    date: "2026-12-30",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Stock sync keeps your listings' stock in line with what your supplier actually has.",
@@ -151,7 +151,7 @@ Related: [Dropshipping mistakes](/blog/dropshipping-mistakes) and [Ecommerce aut
     keyword: "onbuy buy box",
     secondary: ["onbuy winning offer", "win the buy box onbuy", "onbuy competition"],
     category: "Selling on OnBuy",
-    date: "2027-01-04",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "When several sellers list the same product on OnBuy, one offer is shown as the main offer to buyers.",
@@ -218,7 +218,7 @@ SellSail asks OnBuy whether each listing is winning, every 10 to 30 minutes depe
     keyword: "onbuy listing",
     secondary: ["onbuy listing optimisation", "onbuy product listing", "list products on onbuy"],
     category: "Selling on OnBuy",
-    date: "2027-01-06",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Match products to the right catalogue page with the correct EAN.",
@@ -300,7 +300,7 @@ A SKU that contains the source ID, such as "AMZ-" plus the ASIN, lets tools pric
     keyword: "onbuy api",
     secondary: ["onbuy api keys", "onbuy seller api", "onbuy integration"],
     category: "Selling on OnBuy",
-    date: "2027-01-08",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "OnBuy API keys let approved software read and update your listings on your behalf.",

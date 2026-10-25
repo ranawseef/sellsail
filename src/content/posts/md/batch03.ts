@@ -11,7 +11,7 @@ export const batch03: Post[] = [
     keyword: "dynamic pricing",
     secondary: ["dynamic pricing ecommerce", "what is dynamic pricing", "dynamic pricing strategy"],
     category: "Pricing",
-    date: "2026-10-28",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Dynamic pricing means changing prices automatically in response to costs, competitors or demand.",
@@ -100,7 +100,7 @@ SellSail is dynamic pricing built for OnBuy sellers who source from Amazon UK:
     keyword: "price war",
     secondary: ["race to the bottom", "marketplace price war", "how to avoid a price war"],
     category: "Pricing",
-    date: "2026-10-30",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "A price war is when competing sellers keep cutting prices to win sales until nobody makes money.",
@@ -187,7 +187,7 @@ SellSail's competition feature asks OnBuy who's winning each listing. When anoth
     keyword: "repricer",
     secondary: ["what is a repricer", "repricing software", "repricing tool", "automated repricing"],
     category: "Repricing",
-    date: "2026-11-02",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "A repricer is software that changes your marketplace prices automatically, based on rules you set.",
@@ -269,7 +269,7 @@ OnBuy has fewer repricing tools than Amazon or eBay. SellSail is built for OnBuy
     keyword: "retail arbitrage uk",
     secondary: ["what is retail arbitrage", "retail arbitrage", "reselling uk"],
     category: "Growth",
-    date: "2026-11-04",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Retail arbitrage means buying discounted products in shops and reselling them online for more.",
@@ -349,7 +349,7 @@ Many UK sellers start with arbitrage, learn which products and channels work, th
     keyword: "sell online uk",
     secondary: ["how to sell online uk", "start selling online", "selling online uk"],
     category: "Growth",
-    date: "2026-11-06",
+    date: "2026-10-25",
     readingMinutes: 10,
     takeaways: [
       "Start on a marketplace to reach buyers immediately; add your own website later.",

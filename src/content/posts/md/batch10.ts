@@ -10,7 +10,7 @@ export const batch10: Post[] = [
     keyword: "ecommerce automation",
     secondary: ["automate online shop", "ecommerce automation tools", "marketplace automation"],
     category: "Growth",
-    date: "2027-01-22",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Automate the tasks that repeat often and cost money when late: prices and stock first.",
@@ -79,7 +79,7 @@ export const batch10: Post[] = [
     keyword: "ecommerce glossary",
     secondary: ["ecommerce terms", "online selling terms", "marketplace glossary"],
     category: "Guides",
-    date: "2027-01-25",
+    date: "2026-10-25",
     readingMinutes: 9,
     takeaways: [
       "Margin, markup, break-even and floor price are the core pricing terms.",
@@ -185,7 +185,7 @@ export const batch10: Post[] = [
     keyword: "dropshipping customer service",
     secondary: ["dropshipping returns uk", "dropshipping delivery delays", "handling customer complaints online"],
     category: "Dropshipping",
-    date: "2027-01-27",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "You're the seller of record, so customers come to you, not your supplier.",
@@ -255,7 +255,7 @@ Before selling, agree the returns address, who pays for faulty-item returns, and
     keyword: "onbuy ean",
     secondary: ["ean vs asin", "gtin meaning", "ean barcode uk", "upc vs ean"],
     category: "Guides",
-    date: "2027-01-29",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "GTIN is the family of global product numbers; EAN (13 digits) and UPC (12 digits) are types of GTIN.",
@@ -323,7 +323,7 @@ A dropshipper sourcing from Amazon UK and selling on OnBuy might use:
     keyword: "grow onbuy sales",
     secondary: ["increase onbuy sales", "onbuy tips", "sell more on onbuy"],
     category: "Selling on OnBuy",
-    date: "2027-02-01",
+    date: "2026-10-25",
     readingMinutes: 9,
     takeaways: [
       "Win more offers by undercutting cheaper sellers by pennies, inside a floor.",

@@ -10,7 +10,7 @@ export const batch09: Post[] = [
     keyword: "repricing strategies",
     secondary: ["repricing strategy", "marketplace pricing strategy", "how to reprice"],
     category: "Repricing",
-    date: "2027-01-11",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Start every strategy from a cost-plus price that covers fees and profit.",
@@ -86,7 +86,7 @@ SellSail uses cost-plus margin bands from the live Amazon UK price as the ceilin
     keyword: "automated repricing",
     secondary: ["manual repricing", "repricing tool", "should i use a repricer"],
     category: "Repricing",
-    date: "2027-01-13",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "Manual repricing works for a small, stable catalogue.",
@@ -151,7 +151,7 @@ SellSail starts with your margins reviewed during set-up, keeps competition off 
     keyword: "minimum advertised price",
     secondary: ["map pricing uk", "resale price maintenance uk", "rrp vs map"],
     category: "Pricing",
-    date: "2027-01-15",
+    date: "2026-10-25",
     readingMinutes: 6,
     takeaways: [
       "A minimum advertised price (MAP) is a supplier's request not to advertise below a set price.",
@@ -210,7 +210,7 @@ Agreeing prices with competitors is price fixing, which is illegal. Watching the
     keyword: "how to price products",
     secondary: ["pricing strategy ecommerce", "product pricing", "ecommerce pricing"],
     category: "Pricing",
-    date: "2027-01-18",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Start from cost: product, delivery, fees, VAT and a target profit.",
@@ -289,7 +289,7 @@ Costs and competitors change. A price that was right last month may now lose mon
     keyword: "hidden costs of selling online",
     secondary: ["costs of selling online uk", "ecommerce costs", "online selling fees uk"],
     category: "Fees and profit",
-    date: "2027-01-20",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Commission is often charged on VAT and delivery as well as the item price.",

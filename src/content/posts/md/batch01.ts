@@ -10,7 +10,7 @@ export const batch01: Post[] = [
     keyword: "what is dropshipping",
     secondary: ["dropshipping meaning", "how does dropshipping work", "dropshipping explained"],
     category: "Dropshipping",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Dropshipping means selling a product you don't stock: when an order comes in, your supplier sends it straight to your customer.",
@@ -131,7 +131,7 @@ Ready to go deeper? Read our full guide to [dropshipping in the UK](/blog/dropsh
     keyword: "dropshipping uk",
     secondary: ["dropshipping united kingdom", "uk dropshipping", "how to dropship in the uk"],
     category: "Dropshipping",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 12,
     takeaways: [
       "UK dropshipping is legal, but you must follow consumer law, register with HMRC and follow each marketplace's rules.",
@@ -256,7 +256,7 @@ Start small: one channel, a handful of products you've priced properly, and auto
     keyword: "dropshipping suppliers uk",
     secondary: ["uk dropshipping suppliers", "dropshipping distributors uk", "drop shipping manufacturers uk", "best dropshipping suppliers uk", "uk based dropshipping suppliers"],
     category: "Dropshipping",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 9,
     takeaways: [
       "A good UK supplier ships single orders from UK stock within one to two working days, with no minimum order.",
@@ -364,7 +364,7 @@ The right UK dropshipping supplier is fast, accurate and honest about returns. V
     keyword: "amazon dropshipping",
     secondary: ["amazon dropshipping uk", "dropshipping from amazon", "amazon to onbuy dropshipping"],
     category: "Dropshipping",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 9,
     takeaways: [
       "\"Amazon dropshipping\" means two different things: selling on Amazon with a dropshipping supplier, or sourcing from Amazon to fulfil orders elsewhere.",
@@ -467,7 +467,7 @@ Sourcing from Amazon UK can work well for sellers on other marketplaces, especia
     keyword: "is onbuy legit",
     secondary: ["onbuy trustpilot", "is onbuy safe", "onbuy reviews", "is onbuy good for sellers"],
     category: "Selling on OnBuy",
-    date: "2026-10-26",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "OnBuy is a genuine UK online marketplace, run by a UK company, where independent sellers list products for buyers.",

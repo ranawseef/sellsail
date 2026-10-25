@@ -10,7 +10,7 @@ export const batch06: Post[] = [
     keyword: "is dropshipping legal uk",
     secondary: ["dropshipping legal uk", "dropshipping laws uk", "dropshipping rules uk"],
     category: "Dropshipping",
-    date: "2026-12-02",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Dropshipping is legal in the UK; you're a retailer like any other.",
@@ -84,7 +84,7 @@ Dropshipping is legal in the UK when you act as a responsible retailer: follow c
     keyword: "onbuy vs amazon",
     secondary: ["onbuy or amazon", "selling on onbuy vs amazon", "amazon alternatives uk"],
     category: "Marketplaces",
-    date: "2026-12-04",
+    date: "2026-10-25",
     readingMinutes: 8,
     takeaways: [
       "Amazon has a far bigger audience; OnBuy has far fewer sellers per product.",
@@ -159,7 +159,7 @@ Sync stock so you don't oversell, and price each channel from its own fees. Read
     keyword: "onbuy vs ebay",
     secondary: ["onbuy or ebay", "selling on onbuy vs ebay", "ebay alternatives uk"],
     category: "Marketplaces",
-    date: "2026-12-07",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "eBay has a huge UK audience and suits used, niche and auction items.",
@@ -227,7 +227,7 @@ SellSail automates OnBuy pricing and stock from Amazon UK today; eBay is coming 
     keyword: "uk online marketplaces",
     secondary: ["best uk marketplaces to sell", "online marketplaces uk", "where to sell online uk"],
     category: "Marketplaces",
-    date: "2026-12-09",
+    date: "2026-10-25",
     readingMinutes: 9,
     takeaways: [
       "Pick a marketplace whose buyers want what you sell, not just the biggest one.",
@@ -298,7 +298,7 @@ If OnBuy is your channel and Amazon UK your source, [SellSail](/features) handle
     keyword: "multichannel selling",
     secondary: ["multichannel ecommerce", "sell on multiple marketplaces", "multichannel selling uk"],
     category: "Growth",
-    date: "2026-12-11",
+    date: "2026-10-25",
     readingMinutes: 7,
     takeaways: [
       "Selling on several channels widens reach and reduces dependence on one marketplace.",
