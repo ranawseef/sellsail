@@ -115,13 +115,13 @@ export function DemoVideo() {
   };
 
   return (
-    <div ref={ref} className="mx-auto max-w-[1040px]">
+    <div ref={ref} className="mx-auto max-w-[820px]">
       <div className="relative overflow-hidden rounded-[28px] bg-ink p-1.5 shadow-[0_40px_80px_-30px_rgba(16,35,28,.55)] sm:rounded-[32px] sm:p-2">
         {/* The "video" */}
-        <div aria-hidden="true" className="@container relative aspect-[3/4] overflow-hidden rounded-[22px] bg-paper sm:aspect-[16/10] sm:rounded-[26px]">
+        <div aria-hidden="true" className="@container relative aspect-[4/5] overflow-hidden rounded-[22px] bg-paper sm:aspect-video sm:rounded-[26px]">
           <AppChrome scene={scene.id} />
           <div className="absolute inset-x-0 top-11 bottom-0 @2xl:left-44" style={{ opacity: fade }}>
-            <div className="h-full p-4 pb-20 @2xl:p-6 @2xl:pb-24">
+            <div className="h-full p-4 pb-20 @2xl:p-5 @2xl:pb-20">
               {scene.id === "connect" && <ConnectScene lt={lt} />}
               {scene.id === "import" && <ImportScene lt={lt} />}
               {scene.id === "price" && <PriceScene lt={lt} />}
@@ -276,7 +276,7 @@ const enter = (v: number, y = 14): React.CSSProperties => ({ opacity: v, transfo
 
 function Heading({ title, sub }: { title: string; sub?: string }) {
   return (
-    <div className="mb-3 @2xl:mb-4">
+    <div className="mb-3">
       <p className="font-display text-lg leading-tight font-extrabold tracking-[-0.02em] @2xl:text-2xl">{title}</p>
       {sub && <p className="mt-0.5 text-xs text-muted @2xl:text-sm">{sub}</p>}
     </div>
@@ -330,7 +330,7 @@ function ImportScene({ lt }: { lt: number }) {
   return (
     <div className="flex h-full flex-col">
       <Heading title="Products" sub="Imported from Amazon UK with live prices and stock." />
-      <Card className="mb-3">
+      <Card className="mb-2.5 py-3">
         <div className="flex items-center justify-between text-xs font-semibold">
           <span>Importing from Amazon</span>
           <span className="text-sea-dark tabular-nums">{int(1248 * bar)} / 1,248</span>
@@ -341,7 +341,7 @@ function ImportScene({ lt }: { lt: number }) {
       </Card>
       <div className="flex flex-col gap-2">
         {PRODUCTS.map((r, i) => (
-          <Card key={r.name} className={cn("flex items-center gap-3 py-2.5 @2xl:py-3", i > 3 && "hidden @md:flex")} style={enter(p(lt, 400 + i * 450, 450))}>
+          <Card key={r.name} className={cn("flex items-center gap-3 py-2", i > 3 && "hidden")} style={enter(p(lt, 400 + i * 450, 450))}>
             <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", r.tint)}>
               <ShoppingBag className="size-4 text-ink/70" />
             </span>
@@ -375,7 +375,7 @@ function PriceScene({ lt }: { lt: number }) {
           return (
             <Card
               key={r.name}
-              className={cn("flex items-center gap-2 py-2.5 transition-colors duration-500 @2xl:gap-3 @2xl:py-3", glow && "border-sea bg-mint", i > 3 && "hidden @md:flex")}
+              className={cn("flex items-center gap-2 py-2.5 transition-colors duration-500 @2xl:gap-3", glow && "border-sea bg-mint", i > 3 && "hidden")}
               style={enter(p(lt, i * 120, 400), 8)}
             >
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{r.name}</span>
