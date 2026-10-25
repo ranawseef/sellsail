@@ -118,7 +118,7 @@ export const onbuyFeesExplained: Post = {
   description:
     "A plain-English guide to OnBuy seller fees in 2026: commission by category, the £0.25 minimum, VAT, and a worked example showing your real profit.",
   keyword: "OnBuy fees",
-  category: "Fees",
+  category: "Fees and profit",
   date: "2026-10-16",
   readingMinutes: 6,
   cover: { src: "photo-1768839720849-fef976b3ffff", alt: "A teal calculator and a white pen on a white desk" },
