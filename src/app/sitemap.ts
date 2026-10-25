@@ -16,11 +16,17 @@ const paths = [
   "/privacy",
   "/terms",
   "/cookies",
+  "/refunds",
+  "/delivery",
+  "/acceptable-use",
+  "/data-processing",
+  "/security",
+  "/legal",
 ];
 
 // Bump when the marketing pages change.
 const SITE_UPDATED = new Date("2026-10-25");
-const LEGAL = new Set(["/privacy", "/terms", "/cookies"]);
+const LEGAL = new Set(["/privacy", "/terms", "/cookies", "/refunds", "/delivery", "/acceptable-use", "/data-processing", "/legal"]);
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

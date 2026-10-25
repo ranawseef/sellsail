@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="25 October 2026">
+    <LegalPage title="Privacy policy" updated="26 October 2026">
       <p>
         This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
         {site.company}, registered in England and Wales, company number {site.companyNumber}, registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
@@ -68,7 +68,8 @@ export default function PrivacyPage() {
         <li>Your proxy provider, if you add one, carries your OnBuy requests.</li>
       </ul>
       <p>
-        Our suppliers only process data to provide their service to us. We never sell your data. Some suppliers, such as
+        The full list of the suppliers who process data for us is on our{" "}
+        <Link href="/data-processing">data processing</Link> page. Our suppliers only process data to provide their service to us. We never sell your data. Some suppliers, such as
         Stripe, may process data outside the UK; where they do, they use safeguards approved under UK law, such as the
         International Data Transfer Addendum.
       </p>

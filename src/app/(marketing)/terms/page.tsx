@@ -19,6 +19,12 @@ export default function TermsPage() {
         these terms on behalf of yourself and the business you sign up for.
       </p>
 
+      <p>
+        These terms include our <Link href="/refunds">refund and cancellation policy</Link>,{" "}
+        <Link href="/acceptable-use">acceptable use policy</Link> and <Link href="/data-processing">data processing terms</Link>.
+        How the service is delivered is described in <Link href="/delivery">service delivery</Link>.
+      </p>
+
       <h2>The service</h2>
       <p>
         SellSail is business software for online sellers. It reads supplier prices, works out OnBuy prices from rules you

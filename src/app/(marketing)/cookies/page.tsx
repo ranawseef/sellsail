@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function CookiesPage() {
   return (
-    <LegalPage title="Cookie notice" updated="25 October 2026">
+    <LegalPage title="Cookie notice" updated="26 October 2026">
       <p>
         sellsail.io is run by {site.company} (company number {site.companyNumber}). It does not set any analytics or
         advertising cookies. We only use cookies that are strictly necessary for the site to work, which don&apos;t need

@@ -8,9 +8,11 @@ export const site = {
   phone: "+44 7383 318529",
   phoneHref: "tel:+447383318529",
   whatsapp: `https://wa.me/447383318529?text=${encodeURIComponent("Hi SellSail, I'd like a quick demo.")}`,
-  company: "Horizon Retail Solutions Ltd",
-  companyNumber: "15884637",
-  address: "2nd Floor College House, 17 King Edwards Road, Ruislip, London, HA4 7AE",
+  company: "VIVIDDEALS LTD",
+  companyNumber: "15917561",
+  address: "2 Frederick Street, Kings Cross, London, WC1X 0ND",
+  /** The address split up, for structured data. */
+  addressParts: { street: "2 Frederick Street, Kings Cross", city: "London", postcode: "WC1X 0ND", country: "GB" },
   disclaimer:
     "SellSail is an independent tool and is not affiliated with, endorsed by or sponsored by OnBuy / OnCommerce, Amazon or AliExpress. All trademarks belong to their owners.",
 };
@@ -48,9 +50,19 @@ export const footerNav = [
     links: [
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact" },
-      { href: "/privacy", label: "Privacy" },
-      { href: "/terms", label: "Terms" },
-      { href: "/cookies", label: "Cookies" },
+      { href: "/security", label: "Security" },
+      { href: "/legal", label: "Legal information" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { href: "/terms", label: "Terms of service" },
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/cookies", label: "Cookie notice" },
+      { href: "/refunds", label: "Refunds and cancellation" },
+      { href: "/acceptable-use", label: "Acceptable use" },
+      { href: "/data-processing", label: "Data processing" },
     ],
   },
 ];

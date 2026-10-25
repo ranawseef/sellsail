@@ -36,11 +36,10 @@ const organizationJsonLd = {
   identifier: { "@type": "PropertyValue", propertyID: "Companies House", value: site.companyNumber },
   address: {
     "@type": "PostalAddress",
-    streetAddress: "2nd Floor College House, 17 King Edwards Road",
-    addressLocality: "Ruislip",
-    addressRegion: "London",
-    postalCode: "HA4 7AE",
-    addressCountry: "GB",
+    streetAddress: site.addressParts.street,
+    addressLocality: site.addressParts.city,
+    postalCode: site.addressParts.postcode,
+    addressCountry: site.addressParts.country,
   },
 };
 
