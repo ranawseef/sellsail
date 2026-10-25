@@ -32,7 +32,6 @@ const longDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { da
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const post = getPost((await params).slug);
   if (!post || !isPublished(post)) return {};
-  const image = `${site.url}/blog/${post.slug}/opengraph-image`;
   return {
     title: post.title,
     description: post.description,
@@ -47,9 +46,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       modifiedTime: post.updated ?? post.date,
       section: post.category,
       tags: [post.keyword, ...(post.secondary ?? [])],
-      images: [image],
     },
-    twitter: { card: "summary_large_image", title: post.title, description: post.description, images: [image] },
+    twitter: { card: "summary_large_image", title: post.title, description: post.description },
   };
 }
 
