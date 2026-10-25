@@ -245,7 +245,7 @@ export function DemoVideo() {
           </button>
           <ol className="relative z-10 flex flex-1 gap-1.5" aria-label="Chapters">
             {SCENES.map((s, i) => {
-              const fill = i < index ? 1 : i > index ? 0 : lt / s.ms;
+              const fill = mode === "idle" ? 0 : i < index ? 1 : i > index ? 0 : lt / s.ms;
               return (
                 <li key={s.id} className="flex-1" style={{ flexGrow: s.ms }}>
                   <button
@@ -272,7 +272,7 @@ export function DemoVideo() {
             })}
           </ol>
           <span className="relative z-10 hidden w-20 shrink-0 text-right text-xs text-white/60 tabular-nums sm:block">
-            {clock(shown)} / {clock(TOTAL)}
+            {clock(mode === "idle" ? 0 : shown)} / {clock(TOTAL)}
           </span>
           <button
             type="button"
