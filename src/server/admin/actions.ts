@@ -10,6 +10,9 @@ import { requestInfo } from "../auth/context.ts";
 import { hit, limitKey, LIMITS } from "../auth/rate-limit.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
 import { sendCodeEmail } from "../mail/send.ts";
+import { decryptJson, secretContext } from "../crypto/secrets.ts";
+import { loadProxy } from "../connections/proxy.ts";
+import type { OnBuyCreds } from "../integrations/onbuy/client.ts";
 import { PLANS, type PlanId } from "../../config/plans.ts";
 import { AdminForbiddenError, adminAudit, adminForAction, consumeAdminCode, endAdminSession, isAdminEmail, issueAdminCode, startAdminSession } from "./auth.ts";
 
@@ -212,6 +215,47 @@ export async function deleteTenantAction(_prev: AdminState, form: FormData): Pro
   });
   if (done) redirect("/admin/workspaces");
   return state;
+}
+
+// ---- seller keys -------------------------------------------------------------------
+
+export type RevealedKeys = {
+  error?: string;
+  onbuy?: { consumerKey: string; secretKey: string } | null;
+  proxy?: { type: string; host: string; port: number; username: string; password: string } | null;
+};
+
+/**
+ * Decrypts a workspace's OnBuy keys and proxy login for an admin. Values go
+ * only to the admin's browser (never into a page's HTML) and every reveal is
+ * written to admin_audit.
+ */
+export async function revealTenantKeysAction(tenantId: number): Promise<RevealedKeys> {
+  try {
+    const admin = await adminForAction();
+    if (!Number.isInteger(tenantId) || tenantId <= 0) return { error: "Workspace not found." };
+    const { ip } = await requestInfo();
+    if (!(await hit(limitKey("admin-reveal", admin.email), LIMITS.adminRevealPerAdmin))) return { error: "Too many reveals. Wait a few minutes." };
+    const row = await one<{ credentials_enc: string }>("SELECT credentials_enc FROM marketplace_accounts WHERE tenant_id = ? AND marketplace = 'onbuy'", [tenantId]);
+    let onbuy: RevealedKeys["onbuy"] = null;
+    if (row) {
+      try {
+        onbuy = decryptJson<OnBuyCreds>(row.credentials_enc, secretContext.marketplaceCredentials(tenantId, "onbuy"));
+      } catch {
+        return { error: "The stored OnBuy keys can't be decrypted (was APP_ENCRYPTION_KEY changed?)." };
+      }
+    }
+    const p = await loadProxy(tenantId);
+    const proxy = p?.config
+      ? { type: p.config.type, host: p.config.host, port: p.config.port, username: p.config.username ?? "", password: p.config.password ?? "" }
+      : null;
+    await adminAudit(admin.email, "tenant.reveal_keys", tenantId, `${onbuy ? "OnBuy keys" : "no OnBuy keys"}${proxy ? " + proxy login" : ""}`, ip);
+    return { onbuy, proxy };
+  } catch (err) {
+    if (err instanceof AdminForbiddenError) return { error: err.message };
+    console.error("[admin] reveal failed:", err);
+    return { error: "Something went wrong. Check the server log." };
+  }
 }
 
 // ---- users ------------------------------------------------------------------------

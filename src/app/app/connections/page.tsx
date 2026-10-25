@@ -38,7 +38,7 @@ export default async function ConnectionsPage() {
       <PageHeader
         eyebrow="Connections"
         title="OnBuy"
-        intro="Your OnBuy keys are stored encrypted and never shown again after you save them."
+        intro="Your OnBuy keys are stored encrypted and never shown in your dashboard again. SellSail support can view them to help you, and every view is logged."
       />
 
       <Rise>

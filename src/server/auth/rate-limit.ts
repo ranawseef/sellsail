@@ -19,6 +19,7 @@ export const LIMITS = {
   resetPerIp: { max: 10, windowSec: 60 * 60 },
   codeCheckPerIp: { max: 30, windowSec: 15 * 60 },
   adminCodePerIp: { max: 10, windowSec: 15 * 60 },
+  adminRevealPerAdmin: { max: 30, windowSec: 15 * 60 },
 } satisfies Record<string, Limit>;
 
 /** Keys that carry personal data (emails) are hashed before storing. */

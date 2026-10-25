@@ -6,6 +6,7 @@ import { PageHeader, SectionCard, StatTile } from "@/components/app/page-bits";
 import { Rise } from "@/components/app/motion";
 import { DeleteTenantForm, FreeAccessForm, PlanForm } from "@/components/admin/admin-forms";
 import { statusBadge } from "@/components/admin/status-badge";
+import { RevealKeys } from "@/components/admin/reveal-keys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { tenantDetail } from "@/server/admin/repo";
@@ -139,6 +140,12 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           ) : (
             <FreeAccessForm tenantId={t.id} tomorrow={tomorrowIso()} plans={Object.values(PLANS).filter((p) => p.id !== "trial").map((p) => ({ id: p.id, name: p.name }))} />
           )}
+        </SectionCard>
+      </Rise>
+
+      <Rise delay={0.095}>
+        <SectionCard title="API keys" intro="This workspace's OnBuy keys and proxy login, decrypted only when you ask. Use them for support only; they hide again after a minute.">
+          <RevealKeys tenantId={t.id} />
         </SectionCard>
       </Rise>
 
