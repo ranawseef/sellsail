@@ -1,7 +1,9 @@
 // Subscription plans. Prices and listing limits match the marketing pricing
 // page (src/content/pricing.ts).
 //
-// Stripe price ids come from env vars so test and live mode can differ.
+// Stripe prices are found by lookup key (sellsail_<plan>_monthly), so the same
+// code works in the sandbox and live once the products exist there. An env
+// var (STRIPE_PRICE_STARTER, ...) overrides the lookup when set.
 
 export type PlanId = "trial" | "starter" | "growth" | "pro";
 
@@ -16,6 +18,8 @@ export type Plan = {
   /** Seconds before a listing's competition is checked again. */
   competeIntervalS: number;
   stripePriceEnv?: string;
+  /** Stripe price lookup key for the monthly price. */
+  lookupKey?: string;
 };
 
 export const TRIAL_DAYS = 14;
@@ -30,6 +34,7 @@ export const PLANS: Record<PlanId, Plan> = {
     pushIntervalS: 300,
     competeIntervalS: 1800,
     stripePriceEnv: "STRIPE_PRICE_STARTER",
+    lookupKey: "sellsail_starter_monthly",
   },
   growth: {
     id: "growth",
@@ -39,6 +44,7 @@ export const PLANS: Record<PlanId, Plan> = {
     pushIntervalS: 180,
     competeIntervalS: 900,
     stripePriceEnv: "STRIPE_PRICE_GROWTH",
+    lookupKey: "sellsail_growth_monthly",
   },
   pro: {
     id: "pro",
@@ -48,6 +54,7 @@ export const PLANS: Record<PlanId, Plan> = {
     pushIntervalS: 120,
     competeIntervalS: 600,
     stripePriceEnv: "STRIPE_PRICE_PRO",
+    lookupKey: "sellsail_pro_monthly",
   },
 };
 
@@ -57,7 +64,13 @@ export function planFor(id: string | null | undefined): Plan {
   return PLANS[(id ?? "trial") as PlanId] ?? PLANS.trial;
 }
 
-/** The Stripe price id configured for a plan, or null when not set up. */
+/** The plan a Stripe price lookup key belongs to. */
+export function planForLookupKey(key: string | null | undefined): PlanId | null {
+  if (!key) return null;
+  return PAID_PLANS.find((id) => PLANS[id].lookupKey === key) ?? null;
+}
+
+/** The Stripe price id set in env for a plan, or null (then the lookup key is used). */
 export function stripePriceId(plan: PlanId): string | null {
   const env = PLANS[plan].stripePriceEnv;
   return (env && process.env[env]) || null;

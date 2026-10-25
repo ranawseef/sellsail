@@ -18,6 +18,7 @@ const STATUS = [
   ["all", "All"],
   ["trialing", "Trialing"],
   ["active", "Paying"],
+  ["free", "Free access"],
   ["past_due", "Past due"],
   ["churned", "Ended"],
   ["paused", "Paused"],
@@ -93,6 +94,7 @@ export default async function WorkspacesPage({ searchParams }: { searchParams: P
                       <td className="py-2.5 pr-3">
                         <span className="flex flex-wrap items-center gap-1.5">
                           {planFor(t.plan).name} {statusBadge(t.planStatus, t.trialEndsAt)}
+                          {t.free && <Badge variant="sky" size="sm">Free</Badge>}
                           {t.paused && <Badge variant="danger" size="sm">Paused</Badge>}
                         </span>
                       </td>

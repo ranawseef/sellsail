@@ -3,7 +3,7 @@
 import { useActionState, useId } from "react";
 import { TextField } from "@/components/app/field";
 import { FormMessage, SubmitButton } from "@/components/app/form-bits";
-import { changePasswordAction, deleteWorkspaceAction, updateWorkspaceAction } from "@/server/actions/app";
+import { changePasswordAction, updateWorkspaceAction } from "@/server/actions/app";
 
 export function WorkspaceForm({ name }: { name: string }) {
   const id = useId();
@@ -37,30 +37,6 @@ export function PasswordForm() {
             Change password
           </SubmitButton>
         </div>
-      </div>
-    </form>
-  );
-}
-
-export function DeleteWorkspaceForm({ name }: { name: string }) {
-  const id = useId();
-  const [state, action] = useActionState(deleteWorkspaceAction, undefined);
-  return (
-    <form action={action} className="flex flex-col gap-4">
-      <TextField
-        id={`${id}-confirm`}
-        name="confirm"
-        label={`Type “${name}” to confirm`}
-        autoComplete="off"
-        required
-        error={state?.fieldErrors?.confirm}
-        className="max-w-md"
-      />
-      <FormMessage state={state?.error ? state : undefined} />
-      <div>
-        <SubmitButton variant="outline" size="sm" pendingLabel="Deleting…" className="border-danger text-danger hover:bg-danger hover:text-white">
-          Delete workspace and all its data
-        </SubmitButton>
       </div>
     </form>
   );

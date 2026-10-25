@@ -16,6 +16,7 @@ export type PlatformStats = {
   pastDue: number;
   churned: number;
   paused: number;
+  free: number;
   mrrPence: number;
   listings: number;
   inStock: number;
@@ -36,6 +37,7 @@ export async function platformStats(): Promise<PlatformStats> {
               SUM(plan_status = 'past_due') AS past_due,
               SUM(plan_status IN ('canceled','expired') OR (plan_status = 'trialing' AND trial_ends_at <= NOW(3))) AS churned,
               SUM(paused = 1) AS paused,
+              SUM(comp_until IS NOT NULL) AS free,
               SUM(created_at > NOW(3) - INTERVAL 7 DAY) AS signups7d
          FROM tenants`,
     ),
@@ -51,7 +53,7 @@ export async function platformStats(): Promise<PlatformStats> {
               SUM(enabled = 1 AND next_run_at < NOW(3) - INTERVAL 15 MINUTE AND (lease_until IS NULL OR lease_until < NOW(3))) AS overdue
          FROM jobs`,
     ),
-    q<{ plan: string; n: number }>("SELECT plan, COUNT(*) AS n FROM tenants WHERE plan_status IN ('active','past_due') GROUP BY plan"),
+    q<{ plan: string; n: number }>("SELECT plan, COUNT(*) AS n FROM tenants WHERE plan_status IN ('active','past_due') AND comp_until IS NULL GROUP BY plan"),
     one<Record<string, unknown>>(
       `SELECT (SELECT COUNT(*) FROM marketplace_accounts WHERE marketplace = 'onbuy' AND status = 'connected') AS connected,
               (SELECT COUNT(*) FROM repricer_settings WHERE compete_enabled = 1) AS competing`,
@@ -68,6 +70,7 @@ export async function platformStats(): Promise<PlatformStats> {
     pastDue: n(t?.past_due),
     churned: n(t?.churned),
     paused: n(t?.paused),
+    free: n(t?.free),
     mrrPence: mrr,
     listings: n(p?.total),
     inStock: n(p?.in_stock),
@@ -124,6 +127,7 @@ export type TenantRow = {
   listings: number;
   onbuy: string | null;
   competing: boolean;
+  free: boolean;
   lastActivity: Date | null;
   failing: number;
 };
@@ -138,8 +142,9 @@ export async function listTenants(search: string, status: string, page: number):
     const like = `%${search.replace(/[%_\\]/g, "\\$&")}%`;
     args.push(like, like, Number(search) || 0);
   }
-  if (status === "trialing") where.push("t.plan_status = 'trialing' AND t.trial_ends_at > NOW(3)");
-  else if (status === "active") where.push("t.plan_status = 'active'");
+  if (status === "free") where.push("t.comp_until IS NOT NULL");
+  else if (status === "trialing") where.push("t.plan_status = 'trialing' AND t.trial_ends_at > NOW(3)");
+  else if (status === "active") where.push("t.plan_status = 'active' AND t.comp_until IS NULL");
   else if (status === "past_due") where.push("t.plan_status = 'past_due'");
   else if (status === "churned") where.push("(t.plan_status IN ('canceled','expired') OR (t.plan_status = 'trialing' AND t.trial_ends_at <= NOW(3)))");
   else if (status === "paused") where.push("t.paused = 1");
@@ -147,7 +152,7 @@ export async function listTenants(search: string, status: string, page: number):
   const offset = Math.max(0, page - 1) * ADMIN_PAGE;
   const [rows, total] = await Promise.all([
     q<Record<string, unknown>>(
-      `SELECT t.id, t.name, t.plan, t.plan_status, t.trial_ends_at, t.paused, t.created_at,
+      `SELECT t.id, t.name, t.plan, t.plan_status, t.trial_ends_at, t.paused, t.created_at, t.comp_until,
               (SELECT u.email FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.tenant_id = t.id ORDER BY m.role = 'owner' DESC, m.created_at LIMIT 1) AS owner_email,
               (SELECT COUNT(*) FROM products p WHERE p.tenant_id = t.id) AS listings,
               (SELECT ma.status FROM marketplace_accounts ma WHERE ma.tenant_id = t.id AND ma.marketplace = 'onbuy' LIMIT 1) AS onbuy,
@@ -174,6 +179,7 @@ export async function listTenants(search: string, status: string, page: number):
       listings: n(r.listings),
       onbuy: (r.onbuy as string | null) ?? null,
       competing: Boolean(n(r.competing)),
+      free: r.comp_until !== null,
       lastActivity: (r.last_activity as Date | null) ?? null,
       failing: n(r.failing),
     })),
@@ -216,6 +222,9 @@ export async function tenantDetail(id: number) {
     createdAt: t.created_at as Date,
     onboardedAt: (t.onboarded_at as Date | null) ?? null,
     stripeCustomerId: (t.stripe_customer_id as string | null) ?? null,
+    stripeSubscriptionId: (t.stripe_subscription_id as string | null) ?? null,
+    compUntil: (t.comp_until as Date | null) ?? null,
+    compNote: (t.comp_note as string | null) ?? null,
     members: members.map((m) => ({
       id: n(m.id),
       email: String(m.email),

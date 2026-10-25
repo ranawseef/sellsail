@@ -3,7 +3,7 @@ import { LogOut, Monitor } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { Rise } from "@/components/app/motion";
 import { ActionButton } from "@/components/app/action-button";
-import { DeleteWorkspaceForm, PasswordForm, WorkspaceForm } from "@/components/app/settings-forms";
+import { PasswordForm, WorkspaceForm } from "@/components/app/settings-forms";
 import { Badge } from "@/components/ui/badge";
 import { requireAuth } from "@/server/auth/context";
 import { listUserSessions } from "@/server/auth/sessions";
@@ -91,12 +91,9 @@ export default async function SettingsPage() {
       {auth.role === "owner" && (
         <Rise delay={0.2}>
           <SectionCard
-            title="Delete workspace"
-            intro="Deletes every listing, key, token, price history and log for this workspace straight away. It can't be undone. Cancel any paid plan first."
-            className="border-danger/30"
-          >
-            <DeleteWorkspaceForm name={auth.tenantName} />
-          </SectionCard>
+            title="Close your workspace"
+            intro="To close this workspace and delete its data, email hello@sellsail.io from your account address. Cancel any paid plan in Billing first."
+          />
         </Rise>
       )}
     </>

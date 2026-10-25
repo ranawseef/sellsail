@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useId, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { KeyRound, Mail } from "lucide-react";
 import { TextField, SelectField } from "@/components/app/field";
 import { FormMessage, SubmitButton } from "@/components/app/form-bits";
-import { extendTrialAction, requestAdminCodeAction, setTenantPlanAction, verifyAdminCodeAction, type AdminState } from "@/server/admin/actions";
+import { deleteTenantAction, grantFreeAccessAction, requestAdminCodeAction, setTenantPlanAction, verifyAdminCodeAction, type AdminState } from "@/server/admin/actions";
 
 function Message({ state }: { state: AdminState }) {
   return <FormMessage state={state?.error ? { error: state.error } : state?.message ? { ok: true, message: state.message } : undefined} />;
@@ -89,17 +89,74 @@ export function PlanForm({ tenantId, plan, status, plans }: { tenantId: number; 
   );
 }
 
-export function TrialForm({ tenantId }: { tenantId: number }) {
+/** Give a workspace a paid plan free, or a free trial, for a set period. */
+export function FreeAccessForm({ tenantId, plans, tomorrow }: { tenantId: number; plans: { id: string; name: string }[]; tomorrow: string }) {
   const id = useId();
-  const [state, action] = useActionState(extendTrialAction, undefined);
+  const [state, action] = useActionState(grantFreeAccessAction, undefined);
+  const [kind, setKind] = useState<"plan" | "trial">("plan");
+  const [by, setBy] = useState<"days" | "until">("days");
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="tenantId" value={tenantId} />
+      <fieldset className="grid gap-2 sm:grid-cols-2">
+        <legend className="mb-2 text-sm font-bold">Give</legend>
+        {(
+          [
+            ["plan", "A plan, free of charge", "Full plan limits; no card needed."],
+            ["trial", "A free trial", "Trial limits (1,000 listings)."],
+          ] as const
+        ).map(([k, title, text]) => (
+          <label key={k} className={`flex cursor-pointer flex-col rounded-2xl border-2 p-3 transition-colors ${kind === k ? "border-sea bg-mint/50" : "border-line bg-white hover:border-sea/40"}`}>
+            <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => setKind(k)} className="sr-only" />
+            <span className="text-sm font-bold">{title}</span>
+            <span className="text-[13px] text-muted">{text}</span>
+          </label>
+        ))}
+      </fieldset>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {kind === "plan" ? (
+          <SelectField id={`${id}-plan`} name="plan" label="Plan" defaultValue="growth">
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <input type="hidden" name="plan" value="starter" />
+        )}
+        <SelectField id={`${id}-by`} label="For" value={by} onChange={(e) => setBy(e.target.value as "days" | "until")}>
+          <option value="days">A number of days</option>
+          <option value="until">Until a date</option>
+        </SelectField>
+        {by === "days" ? (
+          <TextField id={`${id}-days`} name="days" type="number" min={1} max={3650} defaultValue={30} label="Days" required />
+        ) : (
+          <TextField id={`${id}-until`} name="until" type="date" min={tomorrow} defaultValue={tomorrow} label="Until (inclusive)" required />
+        )}
+      </div>
+      <TextField id={`${id}-note`} name="note" label="Note (optional)" placeholder="e.g. Beta tester, partner deal" maxLength={255} />
+      <Message state={state} />
+      <div>
+        <SubmitButton variant="sea" size="sm" pendingLabel="Granting…">
+          Grant free access
+        </SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+export function DeleteTenantForm({ tenantId, name }: { tenantId: number; name: string }) {
+  const id = useId();
+  const [state, action] = useActionState(deleteTenantAction, undefined);
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="tenantId" value={tenantId} />
-      <TextField id={`${id}-days`} name="days" type="number" min={1} max={90} defaultValue={7} label="Add trial days" className="max-w-[160px]" />
-      <Message state={state} />
+      <TextField id={`${id}-confirm`} name="confirm" label={`Type “${name}” to confirm`} autoComplete="off" required className="max-w-md" />
+      <Message state={state?.error ? state : undefined} />
       <div>
-        <SubmitButton variant="outline" size="sm" pendingLabel="Extending…">
-          Extend trial
+        <SubmitButton variant="outline" size="sm" pendingLabel="Deleting…" className="border-danger text-danger hover:bg-danger hover:text-white">
+          Delete workspace and all its data
         </SubmitButton>
       </div>
     </form>

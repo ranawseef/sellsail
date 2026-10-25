@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pause, Play, RefreshCw } from "lucide-react";
+import { ArrowLeft, Gift, Pause, Play, RefreshCw } from "lucide-react";
 import { PageHeader, SectionCard, StatTile } from "@/components/app/page-bits";
 import { Rise } from "@/components/app/motion";
-import { PlanForm, TrialForm } from "@/components/admin/admin-forms";
+import { DeleteTenantForm, FreeAccessForm, PlanForm } from "@/components/admin/admin-forms";
 import { statusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { tenantDetail } from "@/server/admin/repo";
-import { runTenantJobAction, setTenantPausedAction } from "@/server/admin/actions";
+import { endFreeAccessAction, runTenantJobAction, setTenantPausedAction } from "@/server/admin/actions";
 import { PLANS, planFor } from "@/config/plans";
 import { formatCount, formatDateTime, timeAgo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Workspace" };
+
+/** Tomorrow as YYYY-MM-DD, the earliest end date for free access. */
+function tomorrowIso(): string {
+  return new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
+}
 
 const JOB = { reprice: "Reprice", push: "Send to OnBuy", import: "Import", compete: "Competition" } as Record<string, string>;
 
@@ -36,6 +41,7 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           <span className="flex flex-wrap items-center gap-3">
             {t.name}
             {statusBadge(t.planStatus, t.trialEndsAt)}
+            {t.compUntil && <Badge variant="sky">Free until {formatDateTime(t.compUntil)}</Badge>}
             {t.paused && <Badge variant="danger">Paused</Badge>}
           </span>
         }
@@ -70,11 +76,6 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
         <Rise delay={0.05}>
           <SectionCard title="Subscription">
             <PlanForm tenantId={t.id} plan={t.plan} status={t.planStatus} plans={Object.values(PLANS).map((p) => ({ id: p.id, name: p.name }))} />
-            {!["active", "past_due"].includes(t.planStatus) && (
-              <div className="mt-6 border-t border-line pt-5">
-                <TrialForm tenantId={t.id} />
-              </div>
-            )}
             {t.stripeCustomerId && <p className="mt-4 text-[13px] text-muted">Stripe customer {t.stripeCustomerId}</p>}
           </SectionCard>
         </Rise>
@@ -111,6 +112,35 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           </SectionCard>
         </Rise>
       </div>
+
+      <Rise delay={0.09}>
+        <SectionCard
+          title={
+            <span className="flex items-center gap-2.5">
+              <Gift aria-hidden="true" className="size-5 text-sea" /> Free access
+            </span>
+          }
+          intro="Give this workspace a plan at no charge, or a free trial, for a set period. It ends by itself on the date; if they subscribe through Stripe before then, the subscription takes over."
+        >
+          {t.compUntil && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sky p-4 text-sm text-[#1f5f8b]">
+              <span>
+                <span className="block font-bold">Free {plan.name} until {formatDateTime(t.compUntil)}</span>
+                {t.compNote && <span className="block">{t.compNote}</span>}
+              </span>
+              <form action={endFreeAccessAction}>
+                <input type="hidden" name="tenantId" value={t.id} />
+                <Button type="submit" variant="outline" size="sm">End now</Button>
+              </form>
+            </div>
+          )}
+          {t.stripeSubscriptionId && ["active", "past_due"].includes(t.planStatus) && !t.compUntil ? (
+            <p className="rounded-xl bg-sun-soft p-3 text-sm font-semibold text-sun-ink">This workspace pays through Stripe. Use a coupon in Stripe instead, or cancel the subscription first.</p>
+          ) : (
+            <FreeAccessForm tenantId={t.id} tomorrow={tomorrowIso()} plans={Object.values(PLANS).filter((p) => p.id !== "trial").map((p) => ({ id: p.id, name: p.name }))} />
+          )}
+        </SectionCard>
+      </Rise>
 
       <Rise delay={0.1}>
         <SectionCard title="Jobs">
@@ -191,6 +221,16 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           </SectionCard>
         </Rise>
       </div>
+
+      <Rise delay={0.16}>
+        <SectionCard
+          title="Delete workspace"
+          intro="Deletes every listing, key, token, price history and log for this workspace, and members with no other workspace. It can't be undone."
+          className="border-danger/30"
+        >
+          <DeleteTenantForm tenantId={t.id} name={t.name} />
+        </SectionCard>
+      </Rise>
     </>
   );
 }

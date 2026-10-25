@@ -496,4 +496,15 @@ export const migrations: Migration[] = [
       ) ${T}`,
     ],
   },
+  {
+    id: "010_free_access",
+    statements: [
+      // Free access granted by an admin: the workspace is 'active' on a plan
+      // until comp_until, then the hourly maintenance sets it to 'expired'.
+      // A real Stripe subscription clears it.
+      `ALTER TABLE tenants
+         ADD COLUMN IF NOT EXISTS comp_until DATETIME(3)  NULL,
+         ADD COLUMN IF NOT EXISTS comp_note  VARCHAR(255) NULL`,
+    ],
+  },
 ];

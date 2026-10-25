@@ -10,13 +10,13 @@
 import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { authForAction, appUrl, clearSessionCookie, ForbiddenError, requestInfo } from "../auth/context.ts";
+import { authForAction, appUrl, ForbiddenError, requestInfo } from "../auth/context.ts";
 import { hit, LIMITS } from "../auth/rate-limit.ts";
 import { deleteUserSessions } from "../auth/sessions.ts";
 import { passwordProblem, PASSWORD_MAX } from "../auth/password.ts";
 import { changePassword } from "../tenants/accounts.ts";
 import { audit, logEvent } from "../audit.ts";
-import { exec, one, tx } from "../db/pool.ts";
+import { exec, one } from "../db/pool.ts";
 import { loadProxy, parseProxyInput, removeProxy, routeForTenant, saveProxy, testProxy } from "../connections/proxy.ts";
 import { connectOnBuy, disconnectOnBuy, getOnBuyAccount, parseOnBuyKeys } from "../connections/onbuy.ts";
 import { repriceLocally, saveBands, saveCompete, saveSettings, getSettings } from "../repos/pricing.ts";
@@ -24,7 +24,7 @@ import { startOnBuyImport, upsertListings } from "../jobs/import.ts";
 import { runJobNow } from "../jobs/registry.ts";
 import { requestFullPush } from "../jobs/push.ts";
 import { ensureSchedulerStarted, pollOnce } from "../jobs/scheduler.ts";
-import { checkoutUrl, portalUrl } from "../billing/stripe.ts";
+import { BillingError, checkoutUrl, portalUrl } from "../billing/stripe.ts";
 import { EgressBlockedError, ProxyFailureError } from "../net/egress.ts";
 import { OnBuyError } from "../integrations/onbuy/client.ts";
 import { AmazonError } from "../integrations/amazon/spapi.ts";
@@ -37,7 +37,7 @@ import type { PricingBand } from "../../lib/pricing.ts";
 export type ActionState = { ok?: boolean; message?: string; error?: string; fieldErrors?: Record<string, string> } | undefined;
 
 // Errors whose message is written for the seller and safe to show.
-const SHOWABLE = [ForbiddenError, EgressBlockedError, ProxyFailureError, OnBuyError, AmazonError, SecretsConfigError];
+const SHOWABLE = [ForbiddenError, EgressBlockedError, ProxyFailureError, OnBuyError, AmazonError, SecretsConfigError, BillingError];
 
 async function attempt(fn: () => Promise<ActionState>): Promise<ActionState> {
   try {
@@ -479,28 +479,4 @@ export async function logoutOtherSessionsAction(): Promise<ActionState> {
     refreshApp();
     return { ok: true, message: "Logged out of every other browser." };
   });
-}
-
-export async function deleteWorkspaceAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  let done = false;
-  const state = await attempt(async () => {
-    const auth = await authForAction("owner");
-    if (str(form, "confirm").trim() !== auth.tenantName) return { fieldErrors: { confirm: "Type the workspace name exactly as shown." } };
-    const t = await one<{ plan_status: string; stripe_subscription_id: string | null }>("SELECT plan_status, stripe_subscription_id FROM tenants WHERE id = ?", [auth.tenantId]);
-    if (t?.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
-      return { error: "Cancel your subscription in Billing first, so you aren't charged for a deleted workspace." };
-    }
-    await tx(async (c) => {
-      // Every seller table cascades from tenants, so this removes products,
-      // keys, tokens, history and logs in one go.
-      await c.exec("DELETE FROM tenants WHERE id = ?", [auth.tenantId]);
-      await c.exec("DELETE FROM users WHERE id = ? AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = users.id)", [auth.userId]);
-    });
-    console.log(`[account] workspace ${auth.tenantId} deleted by its owner`);
-    await clearSessionCookie();
-    done = true;
-    return undefined;
-  });
-  if (done) redirect("/?deleted=1");
-  return state;
 }

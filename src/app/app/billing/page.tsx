@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Check, CreditCard } from "lucide-react";
+import { Check, CreditCard, Download, ExternalLink } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/app/page-bits";
 import { ProgressBar, Rise } from "@/components/app/motion";
 import { ActionButton } from "@/components/app/action-button";
@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { requireAuth } from "@/server/auth/context";
 import { usage } from "@/server/repos/dashboard";
 import { checkoutAction, portalAction } from "@/server/actions/app";
-import { stripeConfigured } from "@/server/billing/stripe";
+import { listInvoices, stripeConfigured } from "@/server/billing/stripe";
 import { one } from "@/server/db/pool";
-import { PAID_PLANS, PLANS, planFor, stripePriceId, formatPence } from "@/config/plans";
+import { PAID_PLANS, PLANS, planFor, formatPence } from "@/config/plans";
 import { daysLeft, formatCount, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +26,13 @@ const STATUS: Record<string, { label: string; variant: "mint" | "sun" | "danger"
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
-  const [use, tenant] = await Promise.all([
+  const [use, tenant, invoices] = await Promise.all([
     usage(auth.tenantId),
-    one<{ stripe_customer_id: string | null; stripe_subscription_id: string | null }>("SELECT stripe_customer_id, stripe_subscription_id FROM tenants WHERE id = ?", [auth.tenantId]),
+    one<{ stripe_customer_id: string | null; stripe_subscription_id: string | null; comp_until: Date | null }>(
+      "SELECT stripe_customer_id, stripe_subscription_id, comp_until FROM tenants WHERE id = ?",
+      [auth.tenantId],
+    ),
+    listInvoices(auth.tenantId),
   ]);
   const plan = planFor(auth.plan);
   const status = STATUS[auth.planStatus] ?? STATUS.expired;
@@ -59,7 +63,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           intro={
             auth.planStatus === "trialing"
               ? `Ends ${formatDateTime(auth.trialEndsAt)}. Choose a plan to keep repricing after that.`
-              : auth.planStatus === "past_due"
+              : tenant?.comp_until
+                ? `Free of charge until ${formatDateTime(tenant.comp_until)}, courtesy of SellSail. Choose a plan below to keep it after that.`
+                : auth.planStatus === "past_due"
                 ? "Your last payment failed. Update your card in the billing portal to keep syncing."
                 : undefined
           }
@@ -133,7 +139,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                     ) : null
                   ) : (
                     canPay && (
-                      <ActionButton action={checkoutAction} fields={{ plan: id }} variant={featured ? "sea" : "ink"} pendingLabel="Opening checkout…" disabled={!live || !stripePriceId(id)}>
+                      <ActionButton action={checkoutAction} fields={{ plan: id }} variant={featured ? "sea" : "ink"} pendingLabel="Opening checkout…" disabled={!live}>
                         Choose {p.name}
                       </ActionButton>
                     )
@@ -144,6 +150,41 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           })}
         </ul>
       </Rise>
+      {invoices.length > 0 && (
+        <Rise delay={0.08}>
+          <SectionCard title="Invoices" intro="Every invoice Stripe has sent you. Your VAT number, if you added one, is on each.">
+            <ul className="flex flex-col divide-y divide-line">
+              {invoices.map((inv) => (
+                <li key={inv.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{inv.number ?? "Invoice"}</span>
+                    <span className="block text-[13px] text-muted">{formatDateTime(inv.created)}</span>
+                  </span>
+                  <span className="font-semibold tabular-nums">
+                    {new Intl.NumberFormat("en-GB", { style: "currency", currency: inv.currency.toUpperCase() }).format(inv.total / 100)}
+                  </span>
+                  <Badge variant={inv.status === "paid" ? "mint" : inv.status === "open" ? "sun" : "grey"} size="sm">
+                    {inv.status === "paid" ? "Paid" : inv.status === "open" ? "Due" : inv.status === "void" ? "Void" : "Unpaid"}
+                  </Badge>
+                  <span className="flex gap-1">
+                    {inv.url && (
+                      <a href={inv.url} target="_blank" rel="noopener noreferrer" className="inline-flex size-9 items-center justify-center rounded-full text-sea-dark hover:bg-mint" aria-label={`Open ${inv.number ?? "invoice"} on Stripe`}>
+                        <ExternalLink aria-hidden="true" className="size-4" />
+                      </a>
+                    )}
+                    {inv.pdf && (
+                      <a href={inv.pdf} className="inline-flex size-9 items-center justify-center rounded-full text-sea-dark hover:bg-mint" aria-label={`Download ${inv.number ?? "invoice"} as PDF`}>
+                        <Download aria-hidden="true" className="size-4" />
+                      </a>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </SectionCard>
+        </Rise>
+      )}
+
       <p className="text-[13px] text-muted">
         Need several OnBuy accounts? The Agency plan starts at £249 a month: email us.
       </p>

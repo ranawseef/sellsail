@@ -18,7 +18,7 @@ export default async function AdminOverview() {
     recentProblems(8),
     amazonPoolStatus(),
   ]);
-  const paying = s.active + s.pastDue;
+  const paying = s.active - s.free + s.pastDue;
 
   return (
     <>
@@ -45,7 +45,8 @@ export default async function AdminOverview() {
             <dl className="mt-5 grid grid-cols-2 gap-2 text-sm">
               {[
                 ["Trialing", s.trialing],
-                ["Active", s.active],
+                ["Paying", s.active - s.free],
+                ["Free access", s.free],
                 ["Past due", s.pastDue],
                 ["Ended", s.churned],
               ].map(([k, v]) => (

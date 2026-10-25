@@ -1,6 +1,7 @@
 // Stripe webhook. Point Stripe at https://sellsail.io/api/stripe/webhook and
-// send at least: checkout.session.completed, customer.subscription.created,
-// customer.subscription.updated, customer.subscription.deleted.
+// send: checkout.session.completed, customer.subscription.created/updated/
+// deleted/paused/resumed, invoice.paid, invoice.payment_failed and
+// invoice.payment_action_required.
 
 import { handleWebhook, WebhookSignatureError } from "@/server/billing/stripe";
 

@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requestInfo } from "../auth/context.ts";
 import { hit, limitKey, LIMITS } from "../auth/rate-limit.ts";
-import { exec, one } from "../db/pool.ts";
+import { exec, one, q, tx } from "../db/pool.ts";
 import { sendCodeEmail } from "../mail/send.ts";
 import { PLANS, type PlanId } from "../../config/plans.ts";
 import { AdminForbiddenError, adminAudit, adminForAction, consumeAdminCode, endAdminSession, isAdminEmail, issueAdminCode, startAdminSession } from "./auth.ts";
@@ -94,24 +94,67 @@ export async function setTenantPlanAction(_prev: AdminState, form: FormData): Pr
   });
 }
 
-export async function extendTrialAction(_prev: AdminState, form: FormData): Promise<AdminState> {
+const grantSchema = z.object({
+  tenantId: z.coerce.number().int().positive(),
+  kind: z.enum(["plan", "trial"]),
+  plan: z.enum(["starter", "growth", "pro"]),
+  days: z.coerce.number().int().min(1).max(3650).optional(),
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  note: z.string().max(255),
+});
+
+/**
+ * Free access for a set period: either a paid plan at no charge ("plan") or a
+ * free trial ("trial", the trial plan's limits). Ends by itself on the date.
+ */
+export async function grantFreeAccessAction(_prev: AdminState, form: FormData): Promise<AdminState> {
   return attempt(async () => {
     const admin = await adminForAction();
-    const tenantId = Number(str(form, "tenantId"));
-    const days = Number(str(form, "days"));
-    if (!Number.isInteger(tenantId) || tenantId <= 0 || !Number.isInteger(days) || days < 1 || days > 90) return { error: "Days must be 1 to 90." };
-    const res = await exec(
-      `UPDATE tenants SET plan_status = 'trialing', plan = 'trial',
-         trial_ends_at = GREATEST(COALESCE(trial_ends_at, NOW(3)), NOW(3)) + INTERVAL ? DAY
-       WHERE id = ? AND plan_status NOT IN ('active','past_due')`,
-      [days, tenantId],
-    );
-    if (res.affectedRows === 0) return { error: "Only workspaces without a paid subscription can get trial days." };
+    const p = grantSchema.safeParse({
+      tenantId: str(form, "tenantId"),
+      kind: str(form, "kind"),
+      plan: str(form, "plan") || "starter",
+      days: str(form, "days") || undefined,
+      until: str(form, "until") || undefined,
+      note: str(form, "note").trim(),
+    });
+    if (!p.success) return { error: "Check the period: a number of days (1 to 3650) or a date." };
+    const d = p.data;
+    let end: Date;
+    if (d.until) end = new Date(`${d.until}T23:59:59Z`);
+    else if (d.days) end = new Date(Date.now() + d.days * 86400_000);
+    else return { error: "Give a number of days or an end date." };
+    if (!(end.getTime() > Date.now() + 60_000) || end.getTime() > Date.now() + 3650 * 86400_000) return { error: "The end date must be in the future, within 10 years." };
+
+    const t = await one<{ stripe_subscription_id: string | null; plan_status: string }>("SELECT stripe_subscription_id, plan_status FROM tenants WHERE id = ?", [d.tenantId]);
+    if (!t) return { error: "Workspace not found." };
+    if (t.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
+      return { error: "This workspace pays through Stripe. Cancel or pause that subscription in Stripe first, or give a discount there." };
+    }
+    if (d.kind === "plan") {
+      await exec("UPDATE tenants SET plan = ?, plan_status = 'active', comp_until = ?, comp_note = ?, trial_ends_at = NULL WHERE id = ?", [d.plan, end, d.note || null, d.tenantId]);
+    } else {
+      await exec("UPDATE tenants SET plan = 'trial', plan_status = 'trialing', trial_ends_at = ?, comp_until = NULL, comp_note = ? WHERE id = ?", [end, d.note || null, d.tenantId]);
+    }
+    const until = end.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
+    const what = d.kind === "plan" ? `Free ${PLANS[d.plan].name}` : "Free trial";
     const { ip } = await requestInfo();
-    await adminAudit(admin.email, "tenant.trial", tenantId, `+${days} days`, ip);
-    revalidatePath(`/admin/workspaces/${tenantId}`);
-    return { ok: true, message: `Trial extended by ${days} day${days === 1 ? "" : "s"}.` };
+    await adminAudit(admin.email, d.kind === "plan" ? "tenant.free_plan" : "tenant.free_trial", d.tenantId, `${what} until ${until}${d.note ? ` (${d.note})` : ""}`, ip);
+    revalidatePath(`/admin/workspaces/${d.tenantId}`);
+    return { ok: true, message: `${what} until ${until}.` };
   });
+}
+
+export async function endFreeAccessAction(form: FormData): Promise<void> {
+  const admin = await adminForAction();
+  const tenantId = Number(str(form, "tenantId"));
+  if (!Number.isInteger(tenantId) || tenantId <= 0) return;
+  const res = await exec("UPDATE tenants SET plan_status = 'expired', comp_until = NULL, comp_note = NULL WHERE id = ? AND comp_until IS NOT NULL", [tenantId]);
+  if (res.affectedRows) {
+    const { ip } = await requestInfo();
+    await adminAudit(admin.email, "tenant.free_end", tenantId, "", ip);
+  }
+  revalidatePath(`/admin/workspaces/${tenantId}`);
 }
 
 export async function setTenantPausedAction(form: FormData): Promise<void> {
@@ -136,6 +179,39 @@ export async function runTenantJobAction(form: FormData): Promise<void> {
     await adminAudit(admin.email, "job.run", tenantId, `job ${jobId}`, ip);
   }
   revalidatePath(`/admin/workspaces/${tenantId}`);
+}
+
+/** Deletes a workspace and everything in it. Only admins can do this. */
+export async function deleteTenantAction(_prev: AdminState, form: FormData): Promise<AdminState> {
+  let done = false;
+  const state = await attempt(async () => {
+    const admin = await adminForAction();
+    const tenantId = Number(str(form, "tenantId"));
+    if (!Number.isInteger(tenantId) || tenantId <= 0) return { error: "Workspace not found." };
+    const t = await one<{ name: string; plan_status: string; stripe_subscription_id: string | null }>(
+      "SELECT name, plan_status, stripe_subscription_id FROM tenants WHERE id = ?",
+      [tenantId],
+    );
+    if (!t) return { error: "Workspace not found." };
+    if (str(form, "confirm").trim() !== t.name) return { error: "Type the workspace name exactly as shown." };
+    if (t.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
+      return { error: "This workspace still has a Stripe subscription. Cancel it in Stripe first so they aren't charged." };
+    }
+    const members = await q<{ user_id: number }>("SELECT user_id FROM memberships WHERE tenant_id = ?", [tenantId]);
+    await tx(async (c) => {
+      // Every seller table cascades from tenants.
+      await c.exec("DELETE FROM tenants WHERE id = ?", [tenantId]);
+      if (members.length) {
+        await c.exec("DELETE FROM users WHERE id IN (?) AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = users.id)", [members.map((m) => m.user_id)]);
+      }
+    });
+    const { ip } = await requestInfo();
+    await adminAudit(admin.email, "tenant.delete", null, `#${tenantId} ${t.name}`, ip);
+    done = true;
+    return { ok: true };
+  });
+  if (done) redirect("/admin/workspaces");
+  return state;
 }
 
 // ---- users ------------------------------------------------------------------------

@@ -65,7 +65,7 @@ const RUNNERS: Record<JobKind, (ctx: JobCtx) => Promise<RunResult>> = {
 const JOB_LABEL: Record<JobKind, string> = { reprice: "Repricing", push: "OnBuy sync", import: "Import", compete: "Competition" };
 
 // The SQL form of canRunJobs() in config/plans.ts.
-const TENANT_MAY_RUN = `t.paused = 0 AND (t.plan_status IN ('active', 'past_due') OR (t.plan_status = 'trialing' AND t.trial_ends_at > NOW(3)))`;
+const TENANT_MAY_RUN = `t.paused = 0 AND (t.comp_until IS NULL OR t.comp_until > NOW(3)) AND (t.plan_status IN ('active', 'past_due') OR (t.plan_status = 'trialing' AND t.trial_ends_at > NOW(3)))`;
 
 export async function dueJobs(limit = 20): Promise<DueJob[]> {
   return q<DueJob>(
@@ -231,6 +231,8 @@ export function schedulerStatus() {
 /** Deletes old rows in small chunks, once an hour, by one process at a time. */
 export async function maintenance(): Promise<void> {
   const sweeps = [
+    // Free access granted in the admin panel ends on its date.
+    "UPDATE tenants SET plan_status = 'expired', comp_until = NULL, comp_note = NULL WHERE comp_until IS NOT NULL AND comp_until < NOW(3) LIMIT 5000",
     "DELETE FROM sessions WHERE expires_at < NOW(3) LIMIT 5000",
     "DELETE FROM rate_limits WHERE window_start < NOW(3) - INTERVAL 1 DAY LIMIT 5000",
     "DELETE FROM oauth_states WHERE expires_at < NOW(3) LIMIT 5000",
