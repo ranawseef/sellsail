@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { CtaBand, Faq, FaqJsonLd, PageHero, SectionHeading } from "@/components/sections";
-import { PricingCards } from "@/components/home/misc";
-import { planIncludes } from "@/content/pricing";
+import { PlanCompareTable, PricingCards } from "@/components/home/pricing";
 import { faqText } from "@/content/faq";
 
 export const metadata: Metadata = {
@@ -31,15 +30,11 @@ export default function PricingPage() {
       <section className="mx-auto max-w-[1200px] px-6 py-20">
         <PricingCards />
       </section>
-      <section className="mx-auto max-w-[1200px] px-6 pb-16">
-        <div className="rounded-[36px] bg-mint p-8 sm:p-12">
-          <h2 className="font-display text-[36px] leading-none font-extrabold tracking-[-0.04em]">Every plan includes</h2>
-          <ul className="mt-6 grid gap-3 font-semibold sm:grid-cols-2 lg:grid-cols-3">
-            {planIncludes.map((i) => (
-              <li key={i} className="flex gap-2.5"><span aria-hidden="true" className="text-sea">✓</span>{i}</li>
-            ))}
-          </ul>
-        </div>
+      <section className="mx-auto max-w-[1200px] px-6 pb-16" aria-labelledby="compare-plans">
+        <h2 id="compare-plans" className="mb-8 text-center font-display text-[clamp(30px,4vw,44px)] leading-none font-extrabold tracking-[-0.04em]">
+          Every plan, side by side
+        </h2>
+        <PlanCompareTable />
       </section>
       <section className="mx-auto max-w-[820px] px-6 py-16">
         <SectionHeading title="Pricing questions" />

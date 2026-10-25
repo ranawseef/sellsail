@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { FeeCalculator } from "@/components/fee-calculator";
-import { plans, planIncludes } from "@/content/pricing";
-import { TRIAL_DAYS } from "@/config/plans";
 import { cn } from "@/lib/utils";
 
 export function HowItWorks() {
@@ -86,48 +84,5 @@ export function Included() {
         </div>
       </div>
     </section>
-  );
-}
-
-export function PricingCards() {
-  return (
-    <>
-      <ul className="grid gap-4.5 sm:grid-cols-2 lg:grid-cols-4">
-        {plans.map((p) => (
-          <li
-            key={p.name}
-            className={cn(
-              "relative flex flex-col gap-2.5 rounded-3xl p-7",
-              p.featured ? "bg-ink text-white" : p.name === "Agency" ? "bg-mint" : "border border-line bg-white",
-            )}
-          >
-            {p.featured && (
-              <span className="absolute -top-3.5 right-5 rounded-full bg-sun px-3 py-1 text-[13px] font-bold text-ink">
-                Most sellers
-              </span>
-            )}
-            <h3 className="font-display text-2xl font-bold">{p.name}</h3>
-            <div>
-              <span className="font-display text-5xl font-extrabold tracking-[-0.04em]">{p.price}</span>
-              <span className={p.featured ? "text-[#c9ddd5]" : "text-muted"}>/mo</span>
-            </div>
-            <p className={p.featured ? "text-[#c9ddd5]" : "text-muted"}>{p.note}</p>
-            <Link
-              href={p.href}
-              className={cn(
-                buttonVariants({ variant: p.featured ? "sun" : p.name === "Agency" ? "sea" : "outline" }),
-                "mt-auto",
-              )}
-            >
-              {p.cta}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-6 text-center text-muted">
-        Monthly, excluding VAT. {TRIAL_DAYS}-day free trial, no card needed. Every plan includes{" "}
-        {planIncludes.slice(0, 4).join(", ").toLowerCase()}.
-      </p>
-    </>
   );
 }
