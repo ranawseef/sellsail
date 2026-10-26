@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Automation" };
 
 const KIND: Record<string, { title: string; what: string }> = {
-  reprice: { title: "Reprice", what: "Reads Amazon offers, 20 ASINs per call, and sets each listing's price and stock." },
-  push: { title: "Send to OnBuy", what: "Sends changed prices and stock to OnBuy, up to 1,000 per request." },
+  reprice: { title: "Reprice", what: "Reads live Amazon prices and sets each listing's OnBuy price and stock from your rules." },
+  push: { title: "Send to OnBuy", what: "Sends changed prices and stock to OnBuy in batches." },
   import: { title: "Import from OnBuy", what: "Reads your OnBuy listings, 500 at a time." },
   compete: { title: "Competition", what: "Asks OnBuy who is winning each listing, 100 at a time, and undercuts cheaper sellers down to your floor." },
 };
@@ -59,7 +59,7 @@ export default async function AutomationPage() {
       </Rise>
 
       <Rise delay={0.05}>
-        <SectionCard title="Jobs" intro="Each Amazon account has its own reprice job, so several accounts reprice a big catalogue faster.">
+        <SectionCard title="Jobs" intro="The background jobs that keep your listings priced and in stock. They run on their own.">
           {jobs.length === 0 ? (
             <EmptyState icon={<RefreshCw className="size-5" />} title="No jobs yet">
               Jobs appear when you connect OnBuy and Amazon.

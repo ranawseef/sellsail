@@ -49,7 +49,7 @@ export default async function ConnectionsPage() {
               <Store aria-hidden="true" className="size-5 text-sea" /> OnBuy
             </span>
           }
-          intro="Marketplace. Prices and stock are sent with PUT /listings/by-sku, up to 1,000 per request."
+          intro="Marketplace. SellSail sends your new prices and stock to OnBuy in fast batches."
           actions={
             <>
               <Badge variant={!onbuy ? "grey" : onbuy.status === "connected" ? "mint" : "danger"}>
