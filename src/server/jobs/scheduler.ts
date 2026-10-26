@@ -155,6 +155,7 @@ export async function execute(job: DueJob, via: string, owner = OWNER, budgetMs 
         owner,
       ],
     );
+    if (result.quiet) return result;
     await exec("INSERT INTO job_runs (job_id, tenant_id, started_at, finished_at, ok, msg, via) VALUES (?, ?, ?, NOW(3), ?, ?, ?)", [
       job.id,
       job.tenant_id,

@@ -19,6 +19,12 @@ export type RunResult = {
   msg: string;
   /** Seconds until the next run; defaults to the job's interval. */
   nextInS?: number;
+  /**
+   * Waiting on something outside the seller's control (e.g. platform Amazon
+   * pricing not started yet): update the job's status but leave no run row
+   * or event, so the seller's history isn't filled with non-failures.
+   */
+  quiet?: boolean;
   /** Disable the job after this run (a finished import, a deleted account). */
   disable?: boolean;
   state?: Record<string, unknown>;

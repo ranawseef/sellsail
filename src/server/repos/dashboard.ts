@@ -124,7 +124,8 @@ export type RunRow = { id: number; kind: string; startedAt: Date; finishedAt: Da
 export async function recentRuns(tenantId: number, limit = 20): Promise<RunRow[]> {
   const rows = await q<Record<string, unknown>>(
     `SELECT r.id, j.kind, r.started_at, r.finished_at, r.ok, r.msg, r.via FROM job_runs r JOIN jobs j ON j.id = r.job_id
-      WHERE r.tenant_id = ? ORDER BY r.started_at DESC, r.id DESC LIMIT ?`,
+      WHERE r.tenant_id = ? AND r.msg NOT LIKE '%Amazon keys are not set up%'
+      ORDER BY r.started_at DESC, r.id DESC LIMIT ?`,
     [tenantId, Math.min(Math.max(limit, 1), 100)],
   );
   return rows.map((r) => ({
@@ -142,7 +143,7 @@ export type EventRow = { id: number; level: "info" | "warn" | "error"; kind: str
 
 export async function recentEvents(tenantId: number, limit = 20, levels: EventRow["level"][] = ["info", "warn", "error"]): Promise<EventRow[]> {
   const rows = await q<Record<string, unknown>>(
-    "SELECT id, level, kind, message, created_at FROM events WHERE tenant_id = ? AND level IN (?) ORDER BY created_at DESC, id DESC LIMIT ?",
+    "SELECT id, level, kind, message, created_at FROM events WHERE tenant_id = ? AND level IN (?) AND message NOT LIKE '%Amazon keys are not set up%' ORDER BY created_at DESC, id DESC LIMIT ?",
     [tenantId, levels, Math.min(Math.max(limit, 1), 100)],
   );
   return rows.map((r) => ({

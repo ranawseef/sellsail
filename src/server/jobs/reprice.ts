@@ -45,7 +45,7 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
   const { tenantId } = ctx;
 
   if (repriceDeps.configuredApps().length === 0) {
-    return { ok: false, msg: "Amazon pricing isn't switched on yet (SellSail's Amazon keys are not set up)", nextInS: 900 };
+    return { ok: true, quiet: true, msg: "Waiting for Amazon pricing to start", nextInS: 900 };
   }
   const { route, reason } = repriceDeps.amazonRoute();
   if (!route) return { ok: false, msg: `Nothing sent: ${reason}`, nextInS: 900 };
