@@ -1,4 +1,4 @@
-import { publishedPosts } from "@/content/posts";
+import { publishedAt, publishedPosts } from "@/content/posts";
 import { site } from "@/lib/site";
 
 export const revalidate = 3600;
@@ -14,7 +14,7 @@ export function GET() {
       <title>${esc(p.title)}</title>
       <link>${site.url}/blog/${p.slug}</link>
       <guid isPermaLink="true">${site.url}/blog/${p.slug}</guid>
-      <pubDate>${new Date(`${p.date}T07:00:00Z`).toUTCString()}</pubDate>
+      <pubDate>${publishedAt(p).toUTCString()}</pubDate>
       <category>${esc(p.category)}</category>
       <description>${esc(p.description)}</description>
     </item>`,

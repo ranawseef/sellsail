@@ -71,10 +71,9 @@ Takeaways:
 
 ## Publishing calendar
 
-All 50 posts published on 25 Oct 2026. From 26 Oct, new posts go out Mon/Wed/Fri
-(batch11 onwards), dated ahead; they
-will appear on their date
-automatically (`isPublished`), so the cadence needs no manual work.
+The first five guides are live. Every other guide goes out three a day (07:00, 12:00, 17:00 UTC)
+from 26 Oct 2026 to 13 Nov 2026; the schedule is computed in src/content/posts/index.ts.
+Posts appear on their slot automatically (`isPublished`), so the cadence needs no manual work.
 
 The full list, with keyword, volume tier, intent and date, is in
 `src/content/posts/md/*.ts` (each post's `keyword`, `secondary` and `date`).

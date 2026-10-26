@@ -21,13 +21,15 @@ export { unsplash } from "./types";
 
 export const CATEGORIES = ["Selling on OnBuy", "Fees and profit", "Pricing", "Repricing", "Dropshipping", "Marketplaces", "Growth", "Guides"] as const;
 
-/** Every post, newest first, including ones scheduled for later. */
-export const posts: Post[] = [
-  onbuyRepricerGuide,
-  amazonToOnbuyStepByStep,
-  onbuyFeesExplained,
-  howToPriceOnbuyDropshipping,
-  amazonAliexpressToOnbuy,
+// Publishing schedule. The first five guides stay live with their own dates.
+// Every other guide goes out three a day (07:00, 12:00 and 17:00 UTC) from
+// SCHEDULE_START, in the order below (highest search volume first); the
+// `date` written in the batch files is replaced by its slot.
+const PINNED = [onbuyRepricerGuide, amazonToOnbuyStepByStep, onbuyFeesExplained, howToPriceOnbuyDropshipping, amazonAliexpressToOnbuy];
+const SCHEDULE_START = "2026-10-26";
+const SLOTS_UTC = ["07:00", "12:00", "17:00"];
+
+const QUEUE: Post[] = [
   ...batch01,
   ...batch02,
   ...batch03,
@@ -39,11 +41,26 @@ export const posts: Post[] = [
   ...batch09,
   ...batch10,
   ...batch11,
-].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+];
 
-/** Scheduled posts go live at 7am UK time on their date. */
+function slot(i: number): string {
+  const day = new Date(`${SCHEDULE_START}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + Math.floor(i / SLOTS_UTC.length));
+  return `${day.toISOString().slice(0, 10)}T${SLOTS_UTC[i % SLOTS_UTC.length]}:00Z`;
+}
+
+/** Every post, newest first, including ones scheduled for later. */
+export const posts: Post[] = [...PINNED, ...QUEUE.map((p, i) => ({ ...p, date: slot(i), updated: undefined }))].sort((a, b) =>
+  a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+);
+
+/** When a post goes live: its date and time (a bare date means 07:00 UTC). */
+export function publishedAt(p: Post): Date {
+  return new Date(p.date.includes("T") ? p.date : `${p.date}T07:00:00Z`);
+}
+
 export function isPublished(p: Post, now = new Date()): boolean {
-  return new Date(`${p.date}T07:00:00Z`).getTime() <= now.getTime();
+  return publishedAt(p).getTime() <= now.getTime();
 }
 
 export function publishedPosts(now = new Date()): Post[] {
