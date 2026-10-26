@@ -122,7 +122,7 @@ export default async function CompetitionPage({ searchParams }: { searchParams: 
             <div className="relative overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-[13px] text-muted">
+                  <tr className="border-b border-canvas-line text-[13px] text-muted">
                     <th scope="col" className="py-2 pr-3 font-semibold">Listing</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Status</th>
                     <th scope="col" className="py-2 pr-3 text-right font-semibold">Amazon</th>
@@ -136,7 +136,7 @@ export default async function CompetitionPage({ searchParams }: { searchParams: 
                   {list.rows.map((r) => {
                     const gap = r.competitorPrice !== null && r.price !== null ? r.price - r.competitorPrice : null;
                     return (
-                      <tr key={r.id} className="border-b border-line/70 last:border-0">
+                      <tr key={r.id} className="border-b border-canvas-line last:border-0">
                         <td className="max-w-[280px] py-2.5 pr-3">
                           <p className="truncate font-semibold" title={r.title ?? r.sku}>{r.title || r.sku}</p>
                           <p className="truncate font-mono text-[12px] text-muted">{r.sku}</p>

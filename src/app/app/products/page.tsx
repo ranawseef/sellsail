@@ -120,7 +120,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-line text-[13px] text-muted">
+                    <tr className="border-b border-canvas-line text-[13px] text-muted">
                       <th scope="col" className="py-2 pr-3 font-semibold">SKU</th>
                       <th scope="col" className="py-2 pr-3 font-semibold">OnBuy said</th>
                       <th scope="col" className="py-2 font-semibold">Archived</th>
@@ -128,7 +128,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   </thead>
                   <tbody>
                     {archived.map((a) => (
-                      <tr key={a.sku} className="border-b border-line last:border-0">
+                      <tr key={a.sku} className="border-b border-canvas-line last:border-0">
                         <td className="py-3 pr-3 font-mono text-[13px]">{a.sku}</td>
                         <td className="py-3 pr-3 text-body">{a.reason}</td>
                         <td className="py-3 text-muted">{formatDateTime(a.archived_at)}</td>
@@ -158,7 +158,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               <table className="w-full min-w-[820px] text-left text-sm">
                 <caption className="sr-only">Listings, page {page} of {pages}</caption>
                 <thead>
-                  <tr className="border-b border-line text-[13px] text-muted">
+                  <tr className="border-b border-canvas-line text-[13px] text-muted">
                     <th scope="col" className="py-2 pr-3 font-semibold">Product</th>
                     <th scope="col" className="py-2 pr-3 text-right font-semibold">Amazon</th>
                     <th scope="col" className="py-2 pr-3 text-right font-semibold">OnBuy price</th>
@@ -172,7 +172,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     const st = status(p);
                     const changed = p.needsPush && p.pushedPrice !== null && p.price !== null && p.pushedPrice !== p.price;
                     return (
-                      <tr key={p.id} className="border-b border-line align-top last:border-0">
+                      <tr key={p.id} className="border-b border-canvas-line align-top last:border-0">
                         <td className="max-w-[320px] py-3 pr-3">
                           <span className="line-clamp-1 font-semibold">{p.title || p.sku}</span>
                           <span className="block font-mono text-[12px] text-muted">

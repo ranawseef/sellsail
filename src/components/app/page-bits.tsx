@@ -1,9 +1,8 @@
-import { Eyebrow } from "@/components/sections";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-// Page header, section card and empty state for /app pages: the marketing
-// site's display type and cards, sized for a working screen.
+// Page header, section card, empty state and stat tile for /app pages: a
+// calm dashboard look (white cards on a light canvas, hairline borders,
+// compact type) in the brand colours.
 
 export function PageHeader({
   eyebrow,
@@ -19,11 +18,11 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="mt-2 font-display text-[clamp(30px,3.6vw,40px)] leading-none font-extrabold tracking-[-0.04em]">{title}</h1>
-        {intro && <p className="mt-3 max-w-2xl leading-relaxed text-body">{intro}</p>}
+        {eyebrow && <p className="text-[12px] font-bold tracking-[0.12em] text-sea-dark uppercase">{eyebrow}</p>}
+        <h1 className="mt-1.5 font-display text-[26px] leading-tight font-extrabold tracking-[-0.03em] sm:text-[30px]">{title}</h1>
+        {intro && <p className="mt-1.5 max-w-2xl text-[15px] leading-relaxed text-muted">{intro}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2.5">{actions}</div>}
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
@@ -44,23 +43,26 @@ export function SectionCard({
   id?: string;
 }) {
   return (
-    <Card className={cn("p-6", className)} id={id}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section
+      id={id}
+      className={cn("rounded-2xl border border-canvas-line bg-white shadow-[0_1px_2px_rgba(16,35,28,0.04)]", className)}
+    >
+      <div className={cn("flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6", !children && "pb-5")}>
         <div className="min-w-0">
-          <h2 className="font-display text-xl font-bold">{title}</h2>
-          {intro && <p className="mt-1 text-sm leading-relaxed text-muted">{intro}</p>}
+          <h2 className="font-display text-[17px] font-bold tracking-[-0.01em]">{title}</h2>
+          {intro && <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{intro}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {children && <div className="mt-5">{children}</div>}
-    </Card>
+      {children && <div className="px-5 pt-4 pb-5 sm:px-6 sm:pb-6">{children}</div>}
+    </section>
   );
 }
 
 export function EmptyState({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-line px-6 py-10 text-center">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-mint text-sea-dark" aria-hidden="true">
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-canvas-line bg-canvas/60 px-6 py-12 text-center">
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-sea-dark shadow-sm ring-1 ring-canvas-line" aria-hidden="true">
         {icon}
       </span>
       <p className="mt-3 font-bold">{title}</p>
@@ -70,14 +72,14 @@ export function EmptyState({ icon, title, children }: { icon: React.ReactNode; t
 }
 
 const tiles = {
-  mint: { box: "bg-mint", label: "text-sea-dark", value: "text-sea-dark" },
-  sun: { box: "bg-sun-soft", label: "text-sun-ink", value: "text-ink" },
-  mist: { box: "bg-mist", label: "text-body", value: "text-ink" },
-  sky: { box: "bg-sky", label: "text-[#1f5f8b]", value: "text-ink" },
-  danger: { box: "bg-danger-soft", label: "text-danger", value: "text-danger" },
+  mint: { chip: "bg-mint text-sea-dark", value: "text-ink", bar: "bg-sea" },
+  sun: { chip: "bg-sun-soft text-sun-ink", value: "text-ink", bar: "bg-sun" },
+  mist: { chip: "bg-mist text-body", value: "text-ink", bar: "bg-muted/40" },
+  sky: { chip: "bg-sky text-[#1f5f8b]", value: "text-ink", bar: "bg-[#5b9fd1]" },
+  danger: { chip: "bg-danger-soft text-danger", value: "text-danger", bar: "bg-danger" },
 };
 
-/** A figure in a tinted tile, as the fee calculator and import mock-up show them. */
+/** A key figure: icon chip, label, big number and a short note. */
 export function StatTile({
   label,
   value,
@@ -93,13 +95,18 @@ export function StatTile({
 }) {
   const t = tiles[tone];
   return (
-    <div className={cn("rounded-2xl p-4", t.box)}>
-      <div className={cn("flex items-center justify-between gap-2 text-[13px] font-semibold", t.label)}>
-        {label}
-        {icon && <span aria-hidden="true">{icon}</span>}
+    <div className="relative overflow-hidden rounded-2xl border border-canvas-line bg-white p-4 shadow-[0_1px_2px_rgba(16,35,28,0.04)] sm:p-5">
+      <span aria-hidden="true" className={cn("absolute inset-x-0 top-0 h-[3px]", t.bar)} />
+      <div className="flex items-center gap-2.5">
+        {icon && (
+          <span aria-hidden="true" className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", t.chip)}>
+            {icon}
+          </span>
+        )}
+        <span className="min-w-0 truncate text-[13px] font-semibold text-muted">{label}</span>
       </div>
-      <div className={cn("mt-1 font-display text-[28px] leading-tight font-extrabold", t.value)}>{value}</div>
-      {sub && <div className="mt-0.5 text-[13px] text-muted">{sub}</div>}
+      <div className={cn("mt-3 font-display text-[26px] leading-none font-extrabold tracking-[-0.02em] tabular-nums sm:text-[30px]", t.value)}>{value}</div>
+      {sub && <div className="mt-1.5 truncate text-[12px] text-muted">{sub}</div>}
     </div>
   );
 }

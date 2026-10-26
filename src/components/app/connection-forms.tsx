@@ -130,7 +130,7 @@ export function CsvImportForm() {
           accept=".csv,text/csv,text/plain"
           required
           aria-describedby={`${id}-file-hint`}
-          className="block w-full rounded-xl border-2 border-dashed border-line bg-white p-3 text-sm text-body file:mr-3 file:rounded-full file:border-0 file:bg-mint file:px-4 file:py-2 file:font-semibold file:text-sea-dark"
+          className="block w-full rounded-xl border-2 border-dashed border-canvas-line bg-white p-3 text-sm text-body file:mr-3 file:rounded-full file:border-0 file:bg-mint file:px-4 file:py-2 file:font-semibold file:text-sea-dark"
         />
         <p id={`${id}-file-hint`} className="text-[13px] text-muted">
           A <strong>sku</strong> column is required; <strong>asin</strong> and <strong>title</strong> are optional. Up to 50,000 rows, 5 MB.

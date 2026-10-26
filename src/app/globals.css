@@ -22,6 +22,9 @@
   --color-mist: #f3f5f4;
   --color-danger: #9b1c1c;
   --color-danger-soft: #fde8e8;
+  /* Dashboard canvas and the hairlines on it. */
+  --color-canvas: #f4f6f5;
+  --color-canvas-line: #e3e8e6;
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-display: var(--font-jakarta), var(--font-inter), system-ui, sans-serif;
@@ -136,3 +139,23 @@ details[open] .faq-icon { transform: rotate(45deg); }
 
 /* Never let a stray wide element scroll the whole page sideways. */
 html, body { overflow-x: clip; }
+
+/* Dashboard tables: a tinted header row, roomier rows and a hover state.
+   Unlayered, so it sets the rhythm over the per-page utility classes. */
+.app-main table thead th {
+  background: var(--color-canvas);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.app-main table thead th:first-child { padding-left: 12px; border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.app-main table thead th:last-child { padding-right: 12px; border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+.app-main table thead tr { border-bottom: 0; }
+.app-main table tbody td:first-child { padding-left: 12px; }
+.app-main table tbody td:last-child { padding-right: 12px; }
+.app-main table tbody tr { transition: background-color 0.15s; }
+.app-main table tbody tr:hover { background: #fafbfa; }

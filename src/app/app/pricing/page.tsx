@@ -52,7 +52,7 @@ export default async function PricingPage() {
             <div className="relative overflow-x-auto">
               <table className="w-full min-w-[480px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-line text-[13px] text-muted">
+                  <tr className="border-b border-canvas-line text-[13px] text-muted">
                     <th scope="col" className="py-2 font-semibold">Up to</th>
                     <th scope="col" className="py-2 font-semibold">Profit %</th>
                     <th scope="col" className="py-2 font-semibold">Fixed</th>
@@ -61,7 +61,7 @@ export default async function PricingPage() {
                 </thead>
                 <tbody>
                   {bands.map((b) => (
-                    <tr key={b.upTo} className="border-b border-line last:border-0">
+                    <tr key={b.upTo} className="border-b border-canvas-line last:border-0">
                       <td className="py-2">{formatGBP(b.upTo)}</td>
                       <td className="py-2">{b.profitPct}%</td>
                       <td className="py-2">{formatGBP(b.fixedProfit)}</td>

@@ -75,7 +75,7 @@ export function CompeteForm({ settings, fees, bands, canEdit }: { settings: Comp
           htmlFor={`${id}-on`}
           className={cn(
             "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-4 transition-colors",
-            enabled ? "border-sea bg-mint/60" : "border-line bg-white",
+            enabled ? "border-sea bg-mint/60" : "border-canvas-line bg-white",
           )}
         >
           <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", enabled ? "bg-sea text-white" : "bg-mist text-muted")} aria-hidden="true">
@@ -111,7 +111,7 @@ export function CompeteForm({ settings, fees, bands, canEdit }: { settings: Comp
                   key={s.id}
                   className={cn(
                     "relative flex cursor-pointer flex-col gap-2 rounded-2xl border-2 p-4 transition-all",
-                    active ? "border-sea bg-white shadow-[0_8px_24px_-12px_rgba(14,124,102,0.45)]" : "border-line bg-white hover:border-sea/40",
+                    active ? "border-sea bg-white shadow-[0_8px_24px_-12px_rgba(14,124,102,0.45)]" : "border-canvas-line bg-white hover:border-sea/40",
                   )}
                 >
                   <input type="radio" name="strategy" value={s.id} checked={active} onChange={() => setStrategy(s.id)} className="sr-only" />
@@ -186,7 +186,7 @@ export function CompeteForm({ settings, fees, bands, canEdit }: { settings: Comp
         )}
       </div>
 
-      <aside aria-label="Try it" className="rounded-3xl bg-ink p-5 text-white">
+      <aside aria-label="Try it" className="rounded-2xl bg-ink p-5 text-white">
         <p className="flex items-center gap-2 text-sm font-bold text-sun">
           <Trophy aria-hidden="true" className="size-4" /> Try it
         </p>

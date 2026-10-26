@@ -150,7 +150,7 @@ export default async function ConnectionsPage() {
             { name: "AliExpress", role: "Source", text: "Source products from AliExpress and reprice them with the same bands and brakes." },
             { name: "eBay", role: "Marketplace", text: "List and reprice on eBay alongside OnBuy, from one catalogue." },
           ].map((c) => (
-            <li key={c.name} className="rounded-3xl border-2 border-dashed border-line bg-white/60 p-6">
+            <li key={c.name} className="rounded-2xl border-2 border-dashed border-canvas-line bg-white/60 p-6">
               <div className="flex items-center justify-between gap-3">
                 <p className="flex items-center gap-2.5 font-display text-xl font-bold">
                   <KeyRound aria-hidden="true" className="size-5 text-muted" /> {c.name}

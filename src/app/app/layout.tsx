@@ -108,6 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         planLabel={planLabel}
         planTone={planTone}
         onboarded={Boolean(auth.onboardedAt)}
+        paused={auth.paused}
         banners={banners.length ? <div className="flex flex-col gap-3">{banners}</div> : null}
       >
         {children}

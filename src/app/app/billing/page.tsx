@@ -102,7 +102,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Billing period" className="inline-flex rounded-full border border-line bg-white p-1 text-sm font-semibold">
+        <nav aria-label="Billing period" className="inline-flex rounded-full border border-canvas-line bg-white p-1 text-sm font-semibold">
           <Link href="/app/billing" aria-current={!yearly ? "page" : undefined} className={cn("rounded-full px-4 py-2 no-underline", !yearly ? "bg-ink text-white" : "text-body hover:bg-mint")}>
             Monthly
           </Link>
@@ -119,7 +119,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             const current = subscribed && auth.plan === id;
             const featured = id === "growth";
             return (
-              <li key={id} className={cn("flex flex-col rounded-3xl border bg-white p-6", featured ? "border-2 border-sea" : "border-line")}>
+              <li key={id} className={cn("flex flex-col rounded-2xl border bg-white p-6", featured ? "border-2 border-sea" : "border-canvas-line")}>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="font-display text-xl font-bold">{p.name}</h2>
                   {current ? <Badge variant="mint" size="sm">Your plan</Badge> : featured && <Badge variant="solid" size="sm">Most popular</Badge>}

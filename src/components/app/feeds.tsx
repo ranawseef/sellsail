@@ -49,7 +49,7 @@ export function RunHistory({ runs }: { runs: RunRow[] }) {
       {runs.map((r) => {
         const secs = Math.max(0, Math.round((new Date(r.finishedAt).getTime() - new Date(r.startedAt).getTime()) / 1000));
         return (
-          <li key={r.id} className="flex items-start justify-between gap-3 border-b border-line py-3 last:border-0">
+          <li key={r.id} className="flex items-start justify-between gap-3 border-b border-canvas-line py-3 last:border-0">
             <span className="flex min-w-0 items-start gap-3">
               {r.ok ? (
                 <CheckCircle2 aria-label="Succeeded" className="mt-0.5 size-4 shrink-0 text-sea" />

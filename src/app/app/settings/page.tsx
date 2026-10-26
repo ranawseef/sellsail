@@ -71,7 +71,7 @@ export default async function SettingsPage() {
         >
           <ul className="flex flex-col">
             {sessions.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 border-b border-line py-3 last:border-0">
+              <li key={s.id} className="flex items-center justify-between gap-3 border-b border-canvas-line py-3 last:border-0">
                 <span className="flex items-center gap-3">
                   <Monitor aria-hidden="true" className="size-4 text-muted" />
                   <span className="text-sm">

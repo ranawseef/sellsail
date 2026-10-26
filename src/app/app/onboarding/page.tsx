@@ -148,7 +148,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                 )}
 
                 {canEdit && (
-                  <details className="group mt-8 rounded-2xl border border-line bg-paper/60" open={state.proxySaved}>
+                  <details className="group mt-8 rounded-2xl border border-canvas-line bg-paper/60" open={state.proxySaved}>
                     <summary className="flex min-h-12 items-center gap-3 px-4 py-3 font-semibold">
                       <Globe aria-hidden="true" className="size-4 text-sea" />
                       Use your own proxy
@@ -157,7 +157,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                       {state.proxyBlocking && <Badge variant="danger" size="sm">Not working</Badge>}
                       <ChevronDown aria-hidden="true" className="ml-auto size-4 text-muted transition-transform group-open:rotate-180" />
                     </summary>
-                    <div className="border-t border-line p-4">
+                    <div className="border-t border-canvas-line p-4">
                       <p className="mb-4 text-sm text-body">
                         By default OnBuy requests go straight from SellSail. If you run several OnBuy accounts or want OnBuy to see your own
                         fixed IP address, send them through your own static-IP proxy instead. Once a proxy is saved, SellSail never goes
@@ -170,7 +170,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                       )}
                       <ProxyForm hostHint={proxy?.hostHint} savedType={proxy?.config?.type} savedPort={proxy?.config?.port} next={step("onbuy")} />
                       {state.proxySaved && (
-                        <div className="mt-4 border-t border-line pt-4">
+                        <div className="mt-4 border-t border-canvas-line pt-4">
                           <ActionButton action={removeProxyAction} pendingLabel="Removing…" confirm="Remove the proxy? OnBuy requests will go direct from SellSail.">
                             Remove proxy and connect directly
                           </ActionButton>
@@ -191,7 +191,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
 
             {current === "import" && (
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-line p-5">
+                <div className="rounded-2xl border border-canvas-line p-5">
                   <h3 className="font-bold">From OnBuy</h3>
                   <p className="mt-1 mb-4 text-sm text-muted">Reads every listing on your account, 500 at a time. SKUs that aren&apos;t an ASIN (or prefix + ASIN) are skipped.</p>
                   {importJob && (importJob.enabled || importJob.progTotal > 0) && (
@@ -203,7 +203,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                   {canEdit && <OnBuyImportForm disabled={!state.onbuyConnected} />}
                   {!state.onbuyConnected && <p className="mt-3 text-[13px] text-muted">Connect OnBuy first.</p>}
                 </div>
-                <div className="rounded-2xl border border-line p-5">
+                <div className="rounded-2xl border border-canvas-line p-5">
                   <h3 className="font-bold">From a CSV file</h3>
                   <p className="mt-1 mb-4 text-sm text-muted">For listings you&apos;re about to create, or a subset to start with.</p>
                   {canEdit && <CsvImportForm />}

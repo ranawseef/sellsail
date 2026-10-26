@@ -31,12 +31,12 @@ export function ChangesChart({ data }: { data: { hour: string; changes: number }
           <span>0</span>
         </div>
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 border-t border-dashed border-line" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-x-0 top-20 border-t border-dashed border-line" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 border-t border-dashed border-canvas-line" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-x-0 top-20 border-t border-dashed border-canvas-line" aria-hidden="true" />
           {total === 0 && (
             <p className="absolute inset-x-0 top-14 text-center text-sm font-semibold text-muted">No changes in the last 24 hours</p>
           )}
-          <ol className="relative flex h-40 items-end gap-[2px] border-b border-line" aria-hidden="true">
+          <ol className="relative flex h-40 items-end gap-[2px] border-b border-canvas-line" aria-hidden="true">
             {data.map((d, i) => (
               <li
                 key={d.hour}
@@ -74,7 +74,7 @@ export function ChangesChart({ data }: { data: { hour: string; changes: number }
           </thead>
           <tbody>
             {data.map((d) => (
-              <tr key={d.hour} className="border-t border-line">
+              <tr key={d.hour} className="border-t border-canvas-line">
                 <td className="py-1">{d.hour}</td>
                 <td className="py-1 text-right tabular-nums">{d.changes}</td>
               </tr>
@@ -124,7 +124,7 @@ export function Pipeline({ stages }: { stages: [Stage, Stage, Stage] }) {
         return (
           <li key={s.title} className="contents">
             {i > 0 && <Connector live={stages[i - 1].state === "ok" || stages[i - 1].state === "working"} />}
-            <div className="rounded-2xl border border-line bg-white p-4 md:w-[30%] md:shrink-0">
+            <div className="rounded-2xl border border-canvas-line bg-white p-4 md:w-[30%] md:shrink-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 font-bold">
                   <span className="flex size-8 items-center justify-center rounded-xl bg-mint text-sea-dark" aria-hidden="true">

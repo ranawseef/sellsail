@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Check, Crown, TrendingUp } from "lucide-react";
 import { Logo, LogoMark } from "@/components/logo";
 import { TRIAL_DAYS } from "@/config/plans";
-import { companyLine, site } from "@/lib/site";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = { robots: { index: false, follow: true } };
 
@@ -30,9 +30,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <main id="main" className="flex flex-1 items-start justify-center px-6 pt-6 pb-12 sm:px-10 sm:pt-12 lg:items-center lg:pt-0">
           {children}
         </main>
-        <footer className="px-6 py-6 text-xs leading-relaxed text-muted sm:px-10">
-          <p className="max-w-xl">{companyLine}</p>
-        </footer>
       </div>
 
       {/* Brand side */}

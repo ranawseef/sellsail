@@ -35,7 +35,7 @@ export default async function AutomationPage() {
       />
 
       <Rise>
-        <div className={cn("flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6", auth.paused ? "bg-sun" : "bg-ink text-white")}>
+        <div className={cn("flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6", auth.paused ? "bg-sun" : "bg-ink text-white")}>
           <div>
             <p className="font-display text-xl font-bold">{auth.paused ? "Syncing is paused" : allowed ? "Syncing is on" : "Syncing is stopped"}</p>
             <p className={cn("mt-1 text-sm", auth.paused ? "text-sun-ink" : "text-[#c9ddd5]")}>
@@ -67,7 +67,7 @@ export default async function AutomationPage() {
           ) : (
             <ul className="flex flex-col gap-3">
               {jobs.map((j) => (
-                <li key={j.id} className="rounded-2xl border border-line p-4">
+                <li key={j.id} className="rounded-2xl border border-canvas-line p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="flex flex-wrap items-center gap-2 font-bold">

@@ -99,20 +99,21 @@ export default async function OverviewPage() {
 
       {nextStep && (
         <Rise>
-          <section aria-labelledby="setup-title" className="rounded-3xl bg-sun p-6">
+          <section aria-labelledby="setup-title" className="relative overflow-hidden rounded-2xl border border-canvas-line bg-white p-5 shadow-[0_1px_2px_rgba(16,35,28,0.04)] sm:p-6">
+            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-sun to-sea" />
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-white" aria-hidden="true">
-                  <Rocket className="size-6" />
+                <span className="flex size-11 items-center justify-center rounded-xl bg-sun-soft text-sun-ink" aria-hidden="true">
+                  <Rocket className="size-5" />
                 </span>
                 <div>
-                  <h2 id="setup-title" className="font-display text-xl font-bold">
+                  <h2 id="setup-title" className="font-display text-[17px] font-bold">
                     Get set up: {doneCount} of {checklist.length} done
                   </h2>
-                  <p className="text-sun-ink">Next: {nextStep.label.toLowerCase()}.</p>
+                  <p className="text-[13px] text-muted">Next: {nextStep.label.toLowerCase()}.</p>
                 </div>
               </div>
-              <Link href={nextStep.href} className={buttonVariants({ variant: "ink" })}>
+              <Link href={nextStep.href} className={buttonVariants({ variant: "ink", size: "sm" })}>
                 {nextStep.label} <span aria-hidden="true">→</span>
               </Link>
             </div>
@@ -126,15 +127,15 @@ export default async function OverviewPage() {
                     href={c.href}
                     className={cn(
                       "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold no-underline transition-colors",
-                      c.done ? "bg-white/50 text-sun-ink" : "bg-white text-ink hover:bg-mint",
+                      c.done ? "bg-canvas text-muted" : "border border-canvas-line bg-white text-ink hover:border-sea hover:bg-mint/40",
                     )}
                   >
                     {c.done ? (
                       <CircleCheck aria-hidden="true" className="size-5 shrink-0 text-sea" />
                     ) : (
-                      <span aria-hidden="true" className="size-5 shrink-0 rounded-full border-2 border-sun-ink/40" />
+                      <span aria-hidden="true" className="size-5 shrink-0 rounded-full border-2 border-canvas-line" />
                     )}
-                    <span className={c.done ? "line-through decoration-sun-ink/40" : undefined}>{c.label}</span>
+                    <span className={c.done ? "line-through decoration-muted/40" : undefined}>{c.label}</span>
                     <span className="sr-only">{c.done ? "(done)" : "(to do)"}</span>
                   </Link>
                 </li>
@@ -210,7 +211,7 @@ export default async function OverviewPage() {
               { name: "AliExpress", role: "Source", soon: true, note: "Import and reprice from AliExpress" },
               { name: "eBay", role: "Marketplace", soon: true, note: "List and reprice on eBay" },
             ].map((c) => (
-              <li key={c.name} className={c.soon ? "rounded-2xl border-2 border-dashed border-line p-4" : "rounded-2xl border border-line p-4"}>
+              <li key={c.name} className={c.soon ? "rounded-2xl border-2 border-dashed border-canvas-line p-4" : "rounded-2xl border border-canvas-line p-4"}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold">{c.name}</span>
                   {c.soon ? (
