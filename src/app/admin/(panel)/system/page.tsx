@@ -126,7 +126,7 @@ export default async function SystemPage() {
   // The (panel) layout checks too, but layouts can be skipped on client
   // navigation; this page shows env names, so it checks for itself.
   await requireAdmin();
-  const apps = configuredApps();
+  const apps = await configuredApps();
   const keyReport = describeSpapiEnv();
   const keyProblem =
     apps.length === 0 ||

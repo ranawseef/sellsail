@@ -18,10 +18,13 @@ export type LwaClient = { clientId: string; clientSecret: string };
 
 export class AmazonError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** Login with Amazon's error code (e.g. "invalid_client", "invalid_grant"), when it gave one. */
+  code: string;
+  constructor(message: string, status: number, code = "") {
     super(message);
     this.name = "AmazonError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -41,7 +44,10 @@ async function lwaToken(route: Route, form: Record<string, string>): Promise<Rec
     body: new URLSearchParams(form).toString(),
     timeoutMs: 30_000,
   });
-  if (res.status !== 200 || !res.json || typeof res.json !== "object") throw new AmazonError(errorText(res), res.status);
+  if (res.status !== 200 || !res.json || typeof res.json !== "object") {
+    const code = (res.json as { error?: unknown } | null)?.error;
+    throw new AmazonError(errorText(res), res.status, typeof code === "string" ? code.slice(0, 40) : "");
+  }
   return res.json as Record<string, unknown>;
 }
 

@@ -44,7 +44,7 @@ type Product = {
 export async function runReprice(ctx: JobCtx): Promise<RunResult> {
   const { tenantId } = ctx;
 
-  if (repriceDeps.configuredApps().length === 0) {
+  if ((await repriceDeps.configuredApps()).length === 0) {
     return { ok: true, quiet: true, msg: "Waiting for Amazon pricing to start", nextInS: 900 };
   }
   const { route, reason } = repriceDeps.amazonRoute();
