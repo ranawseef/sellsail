@@ -72,6 +72,17 @@ export function isActivityType(t: unknown): t is ActivityType {
 /** Types shown as problems (red) in the timeline and in "recent errors". */
 export const PROBLEM_TYPES = ACTIVITY_TYPE_LIST.filter((t) => (ACTIVITY_TYPES[t] as TypeInfo).problem);
 
+/** The small label on each timeline row. */
+export const CATEGORY_BADGE: Record<ActivityCategory, string> = {
+  account: "Account",
+  onbuy: "OnBuy",
+  listings: "Listings",
+  repricer: "Repricer",
+  stock: "OnBuy sync",
+  billing: "Billing",
+  errors: "Error",
+};
+
 export const CATEGORY_LABEL: Record<ActivityCategory, string> = {
   account: "Account",
   onbuy: "OnBuy and proxy",
@@ -195,4 +206,93 @@ export function parseDetail(raw: unknown): ActivityDetail {
   } catch {
     return {};
   }
+}
+
+// ---- display ----------------------------------------------------------------------------
+
+const num = (v: DetailValue | undefined) => (typeof v === "number" ? v : 0);
+const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;
+const list = (v: DetailValue | undefined) => (Array.isArray(v) ? v.filter((x) => typeof x === "string").join(", ") : "");
+
+/** One line for the timeline: what happened, in words, from the type and its detail. */
+export function describeActivity(type: string, d: ActivityDetail): string {
+  switch (type) {
+    case "reprice.hourly":
+      return [
+        plural(num(d.runs), "run"),
+        `${num(d.checked).toLocaleString("en-GB")} checked`,
+        `${num(d.changed).toLocaleString("en-GB")} changed`,
+        num(d.skipped) ? `${num(d.skipped)} to retry` : "",
+        num(d.errors) ? plural(num(d.errors), "batch refused", "batches refused") : "",
+        num(d.failedRuns) ? `${num(d.failedRuns)} failed` : "",
+      ].filter(Boolean).join(" · ");
+    case "stock_sync.hourly":
+      return [
+        plural(num(d.runs), "run"),
+        `${num(d.checked).toLocaleString("en-GB")} sent`,
+        `${num(d.changed).toLocaleString("en-GB")} confirmed`,
+        num(d.errors) ? `${num(d.errors)} rejected` : "",
+        num(d.skipped) ? `${num(d.skipped)} archived` : "",
+        num(d.failedRuns) ? `${num(d.failedRuns)} failed` : "",
+      ].filter(Boolean).join(" · ");
+    case "listings.imported":
+      return `${plural(num(d.imported), "listing")} imported, ${num(d.skipped)} skipped, of ${num(d.listingsOnOnBuy).toLocaleString("en-GB")} on OnBuy${num(d.overPlanLimit) ? ` · ${num(d.overPlanLimit)} over the plan limit` : ""}`;
+    case "listings.csv_uploaded":
+      return `${plural(num(d.rows), "row")}: ${num(d.imported)} imported, ${num(d.skipped)} skipped${num(d.overPlanLimit) ? `, ${num(d.overPlanLimit)} over the plan limit` : ""}`;
+    case "repricer.settings_changed":
+    case "repricer.competition_changed": {
+      const changed = list(d.changed);
+      const parts = [changed ? `Changed: ${changed}` : "Saved with no changes"];
+      if (type === "repricer.competition_changed") parts.unshift(`${d.enabled ? "On" : "Off"}, ${d.strategy === "aggressive" ? "win the sale" : "protect profit"}`);
+      if (num(d.pricesChanged)) parts.push(`${plural(num(d.pricesChanged), "price")} changed`);
+      return parts.join(" · ");
+    }
+    case "repricer.bands_changed":
+      return `${plural(num(d.bands), "band")} saved${num(d.pricesChanged) ? ` · ${plural(num(d.pricesChanged), "price")} changed` : ""}`;
+    case "auth.sign_in_failed":
+      return d.reason === "rate_limited" ? "Too many attempts: blocked for 15 minutes" : "Wrong password";
+    case "error.shown":
+      return [String(d.action ?? ""), String(d.message ?? ""), d.errorCode ? `(${String(d.errorCode)})` : "", list(d.fields) ? `fields: ${list(d.fields)}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+    case "billing.subscription_changed":
+      return `${String(d.previousPlan ?? "?")} / ${String(d.previousStatus ?? "?")} → ${String(d.plan ?? d.previousPlan ?? "?")} / ${String(d.status ?? "?")}`;
+    case "billing.payment_failed":
+    case "billing.payment_action_required":
+      return `£${(num(d.amountPence) / 100).toFixed(2)}`;
+    case "billing.checkout_started":
+      return `${String(d.plan ?? "")}, ${d.interval === "year" ? "yearly" : "monthly"}`;
+    case "billing.admin_change":
+      return [String(d.change ?? "").replace(/_/g, " "), d.plan ? String(d.plan) : "", d.status ? String(d.status).replace("_", " ") : "", d.until ? `until ${String(d.until)}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+    case "reprice.first_success":
+      return `${plural(num(d.checked), "listing")} checked`;
+    case "reprice.first_price_change":
+      return `${plural(num(d.changed), "price")} changed`;
+    case "stock_sync.stale_out_of_stock":
+      return `${plural(num(d.listings), "listing")} had no fresh Amazon price for ${num(d.hours)}h`;
+    case "onbuy.test_failed":
+    case "proxy.test_failed":
+      return `${String(d.message ?? "")}${d.errorCode ? ` (${String(d.errorCode)})` : ""}`;
+    case "listings.import_started":
+      return d.includeArchived ? "Including archived SKUs" : "";
+    case "proxy.saved":
+      return d.proxyType ? `${String(d.proxyType).toUpperCase()} proxy` : "";
+    default: {
+      if (typeof d.message === "string" && Object.keys(d).length === 1) return d.message;
+      if (d.by === "admin") return Object.keys(d).length === 1 ? "By SellSail" : `By SellSail · ${plural(num(d.sessions), "session")} ended`;
+      if (d.by === "code") return "With the emailed code";
+      // Anything else: its fields as "name: value", which is all a row holds.
+      return Object.entries(d)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v !== null && typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+        .join(" · ");
+    }
+  }
+}
+
+/** Whether a row should stand out: a problem type, or a summary that includes failures. */
+export function isProblem(type: string, d: ActivityDetail): boolean {
+  if ((PROBLEM_TYPES as string[]).includes(type)) return true;
+  return (type === "reprice.hourly" || type === "stock_sync.hourly") && num(d.failedRuns) > 0;
 }

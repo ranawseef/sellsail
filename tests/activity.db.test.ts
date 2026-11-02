@@ -8,6 +8,7 @@ import { closePool, exec, one, q } from "../src/server/db/pool.ts";
 import { createAccount } from "../src/server/tenants/accounts.ts";
 import { maintenance } from "../src/server/jobs/scheduler.ts";
 import { noteJobRun, recordActivity } from "../src/server/activity.ts";
+import { accountFacts, activityTimeline, needsAttention, parseTimelineFilter, recentProblems, repricerHealth } from "../src/server/admin/activity-repo.ts";
 
 let n = 0;
 let tenantId = 0;
@@ -121,4 +122,43 @@ test("free access that ends is noted before the sweep clears it", { skip: skipDb
   assert.equal(ended.length, 1);
   assert.deepEqual(JSON.parse(ended[0].detail), { plan: "growth" });
   assert.equal((await one<{ plan_status: string }>("SELECT plan_status FROM tenants WHERE id = ?", [tenantId]))?.plan_status, "expired");
+});
+
+test("admin views: facts, needs attention, recent problems and the timeline's filters", { skip: skipDb }, async () => {
+  await exec("UPDATE users SET created_at = NOW(3) - INTERVAL 3 DAY WHERE id = ?", [userId]);
+  await exec("UPDATE users SET email_verified_at = NULL WHERE id = ?", [userId]);
+
+  const facts = await accountFacts(tenantId);
+  assert.equal(facts?.userId, userId);
+  assert.equal(facts?.listings, 0);
+  assert.equal(facts?.repriceJobEnabled, true);
+  const flagged = (await needsAttention()).find((i) => i.facts.tenantId === tenantId);
+  assert.deepEqual(flagged?.reasons.map((r) => r.key), ["never_logged_in"]);
+
+  await recordActivity({ type: "auth.signed_in", userId, tenantId, ip: "203.0.113.5" });
+  await recordActivity({ type: "error.shown", userId, tenantId, detail: { action: "onbuy.connect", errorCode: "OnBuyError", message: "OnBuy refused the keys" } });
+  await recordActivity({ type: "reprice.failing", tenantId, detail: { message: "Amazon call failed" } }); // a system row, no user
+  assert.equal((await needsAttention()).find((i) => i.facts.tenantId === tenantId), undefined, "signed in now");
+
+  const scope = { userId, tenantIds: [tenantId] };
+  const all = await activityTimeline(scope, parseTimelineFilter({}));
+  assert.deepEqual(all.rows.map((r) => r.type), ["reprice.failing", "error.shown", "auth.signed_in"], "newest first, the workspace's system rows included");
+  assert.equal(all.total, 3);
+  const problemsOnly = await activityTimeline(scope, parseTimelineFilter({ type: "errors" }));
+  assert.deepEqual(problemsOnly.rows.map((r) => r.type), ["reprice.failing", "error.shown"]);
+  const account = await activityTimeline(scope, parseTimelineFilter({ type: "account" }));
+  assert.deepEqual(account.rows.map((r) => r.type), ["auth.signed_in"]);
+  const tomorrow = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
+  assert.equal((await activityTimeline(scope, parseTimelineFilter({ from: tomorrow }))).total, 0);
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal((await activityTimeline(scope, parseTimelineFilter({ from: today, to: today }))).total, 3, "the 'to' day is included");
+  // Junk in the URL is ignored, not passed to SQL.
+  assert.deepEqual(parseTimelineFilter({ type: "x' OR 1=1", from: "2026-13-45", page: "-3" }), { type: "", from: "", to: "", page: 1 });
+
+  const problems = await recentProblems(scope, [tenantId]);
+  assert.deepEqual(problems.map((p) => p.type), ["reprice.failing", "error.shown"]);
+
+  const health = await repricerHealth(tenantId);
+  assert.equal(health.jobEnabled, true);
+  assert.equal(health.runs7d, 0);
 });

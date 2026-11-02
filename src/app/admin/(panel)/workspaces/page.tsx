@@ -11,6 +11,7 @@ import { planFor } from "@/config/plans";
 import { formatCount, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { statusBadge } from "@/components/admin/status-badge";
+import { requireAdmin } from "@/server/admin/auth";
 
 export const metadata: Metadata = { title: "Workspaces" };
 
@@ -25,6 +26,8 @@ const STATUS = [
 ] as const;
 
 export default async function WorkspacesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
+  // The (panel) layout checks too, but layouts can be skipped on client navigation.
+  await requireAdmin();
   const sp = await searchParams;
   const search = (sp.q ?? "").slice(0, 100).trim();
   const status = STATUS.some(([k]) => k === sp.status) ? (sp.status as string) : "all";

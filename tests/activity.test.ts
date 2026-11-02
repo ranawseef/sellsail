@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ACTIVITY_TYPE_LIST, ACTIVITY_TYPES, changedKeys, cleanDetail, DETAIL_MAX_CHARS, parseDetail, PROBLEM_TYPES, scrubText, typesForFilter } from "../src/lib/activity.ts";
+import { ACTIVITY_TYPE_LIST, ACTIVITY_TYPES, changedKeys, cleanDetail, describeActivity, isProblem, DETAIL_MAX_CHARS, parseDetail, PROBLEM_TYPES, scrubText, typesForFilter } from "../src/lib/activity.ts";
 
 // No database for this file, whatever the shell has set.
 delete process.env.DATABASE_URL;
@@ -133,4 +133,16 @@ test("changedKeys names the settings that changed, not their values", () => {
   assert.deepEqual(changedKeys({ fee: 18, boost: null, prefixes: "AB" }, { fee: 15, boost: null, prefixes: "AB" }), ["fee"]);
   assert.deepEqual(changedKeys({ a: 1 }, { a: 1, b: 2 }), ["b"]);
   assert.deepEqual(changedKeys({ a: [1, 2] }, { a: [1, 2] }), []);
+});
+
+test("timeline lines read as words, and failures stand out", () => {
+  assert.equal(describeActivity("reprice.hourly", { runs: 28, failedRuns: 1, checked: 5400, changed: 220, skipped: 14, errors: 1 }), "28 runs · 5,400 checked · 220 changed · 14 to retry · 1 batch refused · 1 failed");
+  assert.equal(describeActivity("repricer.settings_changed", { changed: ["boostPct", "marketplaceFeePct"], pricesChanged: 31 }), "Changed: boostPct, marketplaceFeePct · 31 prices changed");
+  assert.equal(describeActivity("billing.subscription_changed", { previousPlan: "trial", previousStatus: "trialing", plan: "growth", status: "active" }), "trial / trialing → growth / active");
+  assert.equal(describeActivity("reprice.failing", { message: "Amazon call failed: timeout" }), "Amazon call failed: timeout");
+  assert.equal(describeActivity("auth.email_verified", { by: "admin" }), "By SellSail");
+  assert.equal(describeActivity("auth.signed_in", {}), "");
+  assert.equal(isProblem("reprice.hourly", { failedRuns: 0 }), false);
+  assert.equal(isProblem("reprice.hourly", { failedRuns: 2 }), true);
+  assert.equal(isProblem("error.shown", {}), true);
 });

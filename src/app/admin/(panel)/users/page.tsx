@@ -8,11 +8,14 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ADMIN_PAGE, listUsers } from "@/server/admin/repo";
 import { signOutUserAction, verifyUserEmailAction } from "@/server/admin/actions";
+import { requireAdmin } from "@/server/admin/auth";
 import { formatCount, timeAgo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Users" };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  // The (panel) layout checks too, but layouts can be skipped on client navigation.
+  await requireAdmin();
   const sp = await searchParams;
   const search = (sp.q ?? "").slice(0, 100).trim();
   const page = Math.max(1, Math.min(10_000, Number(sp.page) || 1));
@@ -56,7 +59,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   {rows.map((u) => (
                     <tr key={u.id} className="border-b border-line/70 last:border-0">
                       <td className="max-w-[240px] py-2.5 pr-3">
-                        <span className="block truncate font-semibold">{u.name}</span>
+                        <Link href={`/admin/users/${u.id}`} prefetch={false} className="block truncate font-semibold text-ink">
+                          {u.name}
+                        </Link>
                         <span className="block truncate text-[13px] text-muted">{u.email}</span>
                       </td>
                       <td className="py-2.5 pr-3">
@@ -78,6 +83,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                       <td className="py-2.5 pr-3 text-[13px] text-muted">{timeAgo(u.createdAt)}</td>
                       <td className="py-2.5">
                         <span className="flex justify-end gap-1">
+                          <Link href={`/admin/users/${u.id}`} prefetch={false} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                            Activity
+                          </Link>
                           {!u.verified && (
                             <form action={verifyUserEmailAction}>
                               <input type="hidden" name="userId" value={u.id} />
