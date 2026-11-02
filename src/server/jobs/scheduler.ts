@@ -17,6 +17,7 @@ import { hostname } from "node:os";
 import { randomBytes } from "node:crypto";
 import { exec, one, q, withConnection } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
+import { noteJobRun, PRUNE_ACTIVITY_SQL, recordFreeAccessEnding, recordHourlySummaries } from "../activity.ts";
 import { planFor } from "../../config/plans.ts";
 import { runReprice } from "./reprice.ts";
 import { runPush } from "./push.ts";
@@ -156,14 +157,31 @@ export async function execute(job: DueJob, via: string, owner = OWNER, budgetMs 
       ],
     );
     if (result.quiet) return result;
-    await exec("INSERT INTO job_runs (job_id, tenant_id, started_at, finished_at, ok, msg, via) VALUES (?, ?, ?, NOW(3), ?, ?, ?)", [
-      job.id,
-      job.tenant_id,
-      started,
-      result.ok ? 1 : 0,
-      result.msg.slice(0, 255),
-      via.slice(0, 12),
-    ]);
+    const count = (v: number | undefined) => Math.max(0, Math.round(v ?? 0));
+    await exec(
+      `INSERT INTO job_runs (job_id, tenant_id, started_at, finished_at, ok, msg, via, n_checked, n_changed, n_skipped, n_errors)
+       VALUES (?, ?, ?, NOW(3), ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        job.id,
+        job.tenant_id,
+        started,
+        result.ok ? 1 : 0,
+        result.msg.slice(0, 255),
+        via.slice(0, 12),
+        count(result.stats?.checked),
+        count(result.stats?.changed),
+        count(result.stats?.skipped),
+        count(result.stats?.errors),
+      ],
+    );
+    await noteJobRun({
+      tenantId: job.tenant_id,
+      kind: job.kind,
+      ok: result.ok,
+      msg: result.msg,
+      prevOk: prev?.last_ok === null || prev?.last_ok === undefined ? null : Boolean(prev.last_ok),
+      stats: result.stats,
+    });
     // Tell the seller when a job starts failing, not on every failed run.
     if (!result.ok && prev?.last_ok !== 0 && !result.disable) {
       await logEvent(job.tenant_id, "error", job.kind, `${JOB_LABEL[job.kind]} problem: ${result.msg}`);
@@ -246,18 +264,22 @@ export async function maintenance(): Promise<void> {
     "DELETE FROM job_runs WHERE started_at < NOW(3) - INTERVAL 14 DAY LIMIT 5000",
     "DELETE FROM price_history WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",
     "DELETE FROM events WHERE created_at < NOW(3) - INTERVAL 30 DAY LIMIT 5000",
+    PRUNE_ACTIVITY_SQL,
   ];
   // GET_LOCK belongs to a connection, so take and release it on the same one.
   await withConnection(async (c) => {
     const [lock] = await c.q<{ got: number }>("SELECT GET_LOCK('sellsail_maintenance', 0) AS got");
     if (lock?.got !== 1) return;
     try {
+      // Activity rows for the timeline; a failure here must not stop the sweeps.
+      await recordFreeAccessEnding(c).catch((err) => console.error("[activity] free access note failed:", (err as Error).message));
       for (const sql of sweeps) {
         for (let i = 0; i < 20; i++) {
           const res = await c.exec(sql);
           if (res.affectedRows < 5000) break;
         }
       }
+      await recordHourlySummaries(c).catch((err) => console.error("[activity] hourly summaries failed:", (err as Error).message));
     } finally {
       await c.q("SELECT RELEASE_LOCK('sellsail_maintenance')");
     }

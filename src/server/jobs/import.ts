@@ -11,6 +11,7 @@ import { skuImportReason, skuToAsin } from "../../lib/sku.ts";
 import { EgressBlockedError } from "../net/egress.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
+import { recordActivity } from "../activity.ts";
 import { routeForTenant, reportProxyError } from "../connections/proxy.ts";
 import { markOnBuyStatus, onbuyTokens } from "../connections/onbuy.ts";
 import { getRepriceConfig } from "../repos/pricing.ts";
@@ -166,5 +167,10 @@ export async function runImport(ctx: JobCtx): Promise<RunResult> {
   await exec("UPDATE tenants SET onboarded_at = COALESCE(onboarded_at, NOW(3)) WHERE id = ?", [tenantId]);
   const limitNote = state.overLimit ? ` ${state.overLimit} not imported: your plan allows ${maxSkus} SKUs.` : "";
   await logEvent(tenantId, state.overLimit ? "warn" : "info", "import", `OnBuy import finished: ${state.imported} listings imported, ${state.skipped} skipped.${limitNote}`);
+  await recordActivity({
+    type: "listings.imported",
+    tenantId,
+    detail: { source: "onbuy", listingsOnOnBuy: state.total, imported: state.imported, skipped: state.skipped, overPlanLimit: state.overLimit },
+  });
   return { ok: true, msg: `Import finished: ${state.imported} imported, ${state.skipped} skipped${state.overLimit ? `, ${state.overLimit} over plan limit` : ""}`, disable: true, state, progress };
 }

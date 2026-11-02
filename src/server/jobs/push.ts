@@ -11,6 +11,7 @@ import { isAuthFailure, isMissingSkuError, splitPushResults } from "../integrati
 import { EgressBlockedError } from "../net/egress.ts";
 import { exec, one, q, tx } from "../db/pool.ts";
 import { logEvent } from "../audit.ts";
+import { recordActivity } from "../activity.ts";
 import { routeForTenant, reportProxyError } from "../connections/proxy.ts";
 import { markOnBuyStatus, onbuyTokens } from "../connections/onbuy.ts";
 import { getSettings } from "../repos/pricing.ts";
@@ -58,6 +59,7 @@ async function stopStaleListings(tenantId: number): Promise<number> {
     );
   });
   await logEvent(tenantId, "warn", "stale", `${stale.length} listing(s) had no fresh Amazon price for ${STALE_HOURS}h and were set out of stock.`);
+  await recordActivity({ type: "stock_sync.stale_out_of_stock", tenantId, detail: { listings: stale.length, hours: STALE_HOURS } });
   return stale.length;
 }
 
@@ -87,6 +89,8 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
   let archived = 0;
   let batches = 0;
   const attempted: number[] = [];
+  // Counts for job_runs and the activity summaries; see migration 013.
+  const stats = () => ({ checked: attempted.length, changed: applied, skipped: archived, errors: rejected });
 
   while (batches < BATCHES_PER_RUN && timeLeft(ctx) > 30_000) {
     if (await ctx.shouldStop()) break;
@@ -109,15 +113,15 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
     try {
       res = await pushDeps.updateListingsBySku(route, tokens, sent, settings.boostPct);
     } catch (err) {
-      if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed mid-run; stopped", nextInS: 300 };
-      if (err instanceof EgressBlockedError) return { ok: false, msg: err.message, nextInS: 300 };
+      if (await reportProxyError(tenantId, err)) return { ok: false, msg: "Proxy failed mid-run; stopped", nextInS: 300, stats: stats() };
+      if (err instanceof EgressBlockedError) return { ok: false, msg: err.message, nextInS: 300, stats: stats() };
       if (err instanceof OnBuyError) {
         // The token request itself was refused: keys revoked or wrong.
         await markOnBuyStatus(tenantId, false, err.message);
         await logEvent(tenantId, "error", "onbuy", `OnBuy login failed: ${err.message}`);
-        return { ok: false, msg: err.message, nextInS: 900 };
+        return { ok: false, msg: err.message, nextInS: 900, stats: stats() };
       }
-      return { ok: false, msg: `OnBuy call failed: ${(err as Error).message}`, nextInS: 120 };
+      return { ok: false, msg: `OnBuy call failed: ${(err as Error).message}`, nextInS: 120, stats: stats() };
     }
 
     if (isAuthFailure(res.status, res.json)) {
@@ -125,10 +129,10 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
       const msg = `OnBuy refused the update after a fresh login (${onbuyErrorText(res)}). Check the keys, and if you use a proxy, that its IP is stable.`;
       await markOnBuyStatus(tenantId, false, msg);
       await logEvent(tenantId, "error", "onbuy", msg);
-      return { ok: false, msg, nextInS: 900 };
+      return { ok: false, msg, nextInS: 900, stats: stats() };
     }
     if (res.status === 429) {
-      return { ok: false, msg: "OnBuy rate limit reached; will try again later", nextInS: 900 };
+      return { ok: false, msg: "OnBuy rate limit reached; will try again later", nextInS: 900, stats: stats() };
     }
 
     const outcome = splitPushResults(res.status === 200 ? res.json : null, sent.map((s) => s.sku));
@@ -174,7 +178,7 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
 
     if (res.status !== 200) {
       await logEvent(tenantId, "warn", "onbuy", `Price update not accepted: ${onbuyErrorText(res)}`);
-      return { ok: false, msg: onbuyErrorText(res), nextInS: 300 };
+      return { ok: false, msg: onbuyErrorText(res), nextInS: 300, stats: stats() };
     }
     if (!(await ctx.heartbeat())) break;
   }
@@ -190,6 +194,7 @@ export async function runPush(ctx: JobCtx): Promise<RunResult> {
     progress: { done: applied, total: applied + Number(left?.n ?? 0), note: `${batches} request${batches === 1 ? "" : "s"}` },
     // Rejected rows stay pending; only hurry back when real work is queued.
     nextInS: Number(left?.n ?? 0) > rejected ? 60 : undefined,
+    stats: stats(),
   };
 }
 

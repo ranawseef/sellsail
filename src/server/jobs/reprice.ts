@@ -56,7 +56,11 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
   let oos = 0;
   let retry = 0;
   let batches = 0;
+  let refused = 0;
+  let priceMoved = 0;
   const tried = new Set<string>();
+  // Counts for job_runs and the activity summaries; see migration 013.
+  const stats = () => ({ checked: read, changed, skipped: retry, errors: refused, priceChanged: priceMoved });
 
   while (batches < BATCHES_PER_RUN && timeLeft(ctx) > 25_000) {
     if (await ctx.shouldStop()) break;
@@ -95,20 +99,22 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
       }
     } catch (err) {
       if (err instanceof EgressBlockedError || err instanceof ProxyFailureError) {
-        return { ok: false, msg: `Amazon call not sent: ${(err as Error).message}`, nextInS: 300 };
+        return { ok: false, msg: `Amazon call not sent: ${(err as Error).message}`, nextInS: 300, stats: stats() };
       }
       if (err instanceof AmazonError && [400, 401, 403].includes(err.status)) {
         // The token refresh was refused, so this key set is broken. It sits
         // out for a while and the run carries on with the other apps.
         await repriceDeps.markAmazonApp(app.slot, false, err.message);
+        refused++;
         for (const a of asins) tried.delete(a);
         continue;
       }
-      return { ok: false, msg: `Amazon call failed: ${(err as Error).message}`, nextInS: 120 };
+      return { ok: false, msg: `Amazon call failed: ${(err as Error).message}`, nextInS: 120, stats: stats() };
     }
 
     if (res.status === 401 || res.status === 403) {
       await repriceDeps.markAmazonApp(app.slot, false, `Pricing call refused (HTTP ${res.status}); the app needs the Pricing role`);
+      refused++;
       for (const a of asins) tried.delete(a);
       continue;
     }
@@ -162,6 +168,7 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
         );
         if (listingChanged(state, d)) {
           changed++;
+          if (state.price !== d.price) priceMoved++;
           await t.exec(
             "INSERT INTO price_history (tenant_id, product_id, source_price, old_price, new_price, old_stock, new_stock) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [tenantId, p.id, d.sourcePrice, state.price, d.price, state.stock, d.stock],
@@ -193,5 +200,6 @@ export async function runReprice(ctx: JobCtx): Promise<RunResult> {
     // answering; otherwise wait a minute rather than spin.
     nextInS: backlog > 0 ? (read > 0 ? 5 : 60) : undefined,
     progress: { done: read, total: read + backlog, note: `${batches} batch${batches === 1 ? "" : "es"}` },
+    stats: stats(),
   };
 }
