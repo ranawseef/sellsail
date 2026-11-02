@@ -49,6 +49,18 @@ const organizationJsonLd = {
   },
 };
 
+// WebSite schema tells Google the site name to show in search results instead of the bare domain.
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${site.url}/#website`,
+  name: site.name,
+  alternateName: ["sellsail.io", "SellSail repricer"],
+  url: `${site.url}/`,
+  publisher: { "@id": `${site.url}/#organization` },
+  inLanguage: "en-GB",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB" className={`${inter.variable} ${jakarta.variable} antialiased`}>
@@ -63,6 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </body>
     </html>
