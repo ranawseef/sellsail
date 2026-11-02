@@ -97,6 +97,9 @@ export const secretContext = {
   marketplaceToken: (tenantId: number, marketplace: string) => `tenant:${tenantId}:market:${marketplace}:token`,
   // SellSail's own Amazon app keys, shared by every workspace.
   amazonAppToken: (slot: number) => `platform:amazon:${slot}:token`,
+  // The key set itself (client id, secret, refresh token), when an admin
+  // stores it in the database rather than env.
+  amazonAppKeys: (slot: number) => `platform:amazon:${slot}:keys`,
 };
 
 /** "abcd1234wxyz" -> "••••wxyz". Short values are fully hidden. */
