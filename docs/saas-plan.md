@@ -110,6 +110,29 @@ Orders and dispatch, profit reports from local snapshots (no live API paging), t
 - **Home page:** `InsideLook`, an animated dashboard preview with demo data.
 
 
+## Change (2026-11-02, later): customer activity in the admin panel
+
+- **Recording** (`src/server/activity.ts`, types in `src/lib/activity.ts`):
+  `recordActivity()` writes one `user_activity` row (migration 013) and never
+  throws. Server-side only: sign-in events, OnBuy/proxy changes and failed
+  tests, imports and CSV results, repricer settings (names, never values),
+  pause/resume, billing changes from the Stripe webhook, and every error a
+  dashboard action shows. Details are cleaned (secret-sounding keys dropped,
+  key/token/card/email-looking text masked); IP only on `auth.*` rows.
+- **Jobs**: `job_runs` now stores per-run counts. Instead of a row per run,
+  the hourly maintenance writes one `reprice.hourly` / `stock_sync.hourly`
+  summary per workspace and hour with work in it, plus rows when a job starts
+  failing or recovers and the first reprice / first price change
+  (`tenants.first_reprice_at`, `first_price_change_at`).
+- **Retention**: 12 months, by the hourly maintenance. Rows cascade from
+  `users` and `tenants`, so `deleteWorkspace()` removes them.
+- **Admin**: `/admin/users/[id]` and `/admin/workspaces/[id]/activity`
+  (summary, onboarding checklist, repricer health, recent problems, filtered
+  timeline); "Needs attention" on `/admin` (rules in
+  `src/server/admin/activity-rules.ts`). Every admin page checks the session
+  itself; each activity view writes `admin_audit`.
+- **Amazon key sets**: Test now records the set's status, last OK and last error.
+
 ## Change (2026-10-25, later): competition and admin
 
 - **Competition** (`src/lib/competition.ts`, `src/server/jobs/compete.ts`,

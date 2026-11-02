@@ -15,7 +15,7 @@ import {
   replaceKeySet,
   setKeySetEnabled,
 } from "../src/server/connections/amazon-keys.ts";
-import { amazonKeyAdminData, amazonPoolStatus, configuredApps, invalidateAmazonApps, reserveAmazonApp } from "../src/server/connections/amazon.ts";
+import { amazonKeyAdminData, amazonPoolStatus, configuredApps, invalidateAmazonApps, recordKeySetTest, reserveAmazonApp } from "../src/server/connections/amazon.ts";
 
 process.env.APP_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
@@ -183,4 +183,43 @@ test("paused and deleted sets leave the pool; reservations only hand out live se
   await addKeySet(set(3), "a@example.com", []); // slot 2 again
   assert.equal(await deleteKeySet(2, [2]), true);
   assert.equal((await q("SELECT slot FROM amazon_apps WHERE slot = 2")).length, 1);
+});
+
+test("a Test result becomes the set's status, last OK and last error on the admin card", { skip: skipDb }, async () => {
+  await addKeySet(set(1), "a@example.com", []); // slot 1, "untested"
+  let view = (await amazonKeyAdminData()).sets.find((s) => s.slot === 1);
+  assert.equal(view?.status, "untested");
+  assert.equal(view?.lastOkAt, null);
+
+  await recordKeySetTest(1, true);
+  view = (await amazonKeyAdminData()).sets.find((s) => s.slot === 1);
+  assert.equal(view?.status, "ok");
+  assert.ok(view?.lastOkAt instanceof Date);
+  assert.equal(view?.lastError, null);
+
+  await recordKeySetTest(1, false, "Amazon refused the refresh token (invalid_grant).");
+  view = (await amazonKeyAdminData()).sets.find((s) => s.slot === 1);
+  assert.equal(view?.status, "error");
+  assert.equal(view?.lastError, "Amazon refused the refresh token (invalid_grant).");
+  assert.ok(view?.lastOkAt instanceof Date, "last OK is kept after a failure");
+
+  // A pass after an error ends repricing's 15-minute backoff, so the fixed set is used again.
+  await exec("UPDATE amazon_apps SET next_allowed_at = NOW(3) + INTERVAL 15 MINUTE WHERE slot = 1");
+  await recordKeySetTest(1, true);
+  const row = await one<{ status: string; waiting: number }>("SELECT status, next_allowed_at > NOW(3) AS waiting FROM amazon_apps WHERE slot = 1");
+  assert.equal(row?.status, "ok");
+  assert.equal(Number(row?.waiting), 0);
+
+  // A slot with no state row yet (e.g. an env set never used) gets one.
+  await recordKeySetTest(5, true);
+  assert.equal((await one<{ status: string }>("SELECT status FROM amazon_apps WHERE slot = 5"))?.status, "ok");
+});
+
+test("the pool status counts stored sets that aren't in use", { skip: skipDb }, async () => {
+  await addKeySet(set(1), "a@example.com", []);
+  await setKeySetEnabled(1, false, "a@example.com");
+  invalidateAmazonApps();
+  const status = await amazonPoolStatus();
+  assert.equal(status.configured, 0);
+  assert.equal(status.idle, 1);
 });

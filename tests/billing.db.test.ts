@@ -4,7 +4,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import Stripe from "stripe";
 import { resetDatabase, skipDb } from "./helpers/db.ts";
-import { closePool, exec, one } from "../src/server/db/pool.ts";
+import { closePool, exec, one, q } from "../src/server/db/pool.ts";
 import { createAccount } from "../src/server/tenants/accounts.ts";
 import { handleWebhook, mapStatus, WebhookSignatureError } from "../src/server/billing/stripe.ts";
 import { canRunJobs, planForStripePrice } from "../src/config/plans.ts";
@@ -70,6 +70,13 @@ test("a cancellation applies once; a redelivery changes nothing", { skip: skipDb
   assert.equal(await handleWebhook(body, sig), "duplicate");
   t = await one("SELECT plan_status FROM tenants WHERE id = ?", [tenantId]);
   assert.equal(t?.plan_status, "active");
+
+  // The change is on the workspace's activity timeline once, with no Stripe ids or card data.
+  const acts = await q<{ detail: string; user_id: number | null }>("SELECT detail, user_id FROM user_activity WHERE tenant_id = ? AND type = 'billing.subscription_changed'", [tenantId]);
+  assert.equal(acts.length, 1);
+  assert.equal(acts[0].user_id, null);
+  assert.deepEqual(JSON.parse(acts[0].detail), { plan: "growth", status: "canceled", previousPlan: "growth", previousStatus: "active", stripeEvent: "customer.subscription.deleted" });
+  assert.ok(!acts[0].detail.includes("cus_1") && !acts[0].detail.includes("sub_1"));
 });
 
 test("cancelling an old subscription doesn't touch a newer one", { skip: skipDb }, async () => {

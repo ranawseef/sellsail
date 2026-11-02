@@ -8,7 +8,8 @@ import { DeleteTenantForm, FreeAccessForm, PlanForm } from "@/components/admin/a
 import { statusBadge } from "@/components/admin/status-badge";
 import { RevealKeys } from "@/components/admin/reveal-keys";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { requireAdmin } from "@/server/admin/auth";
 import { tenantDetail } from "@/server/admin/repo";
 import { endFreeAccessAction, runTenantJobAction, setTenantPausedAction } from "@/server/admin/actions";
 import { PLANS, planFor } from "@/config/plans";
@@ -24,6 +25,9 @@ function tomorrowIso(): string {
 const JOB = { reprice: "Reprice", push: "Send to OnBuy", import: "Import", compete: "Competition" } as Record<string, string>;
 
 export default async function WorkspaceDetail({ params }: { params: Promise<{ id: string }> }) {
+  // The (panel) layout checks too, but layouts can be skipped on client
+  // navigation, and this page holds actions on a seller's workspace.
+  await requireAdmin();
   const { id } = await params;
   const tenantId = Number(id);
   if (!Number.isInteger(tenantId) || tenantId <= 0) notFound();
@@ -48,14 +52,19 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
         }
         intro={`${plan.name} plan · joined ${formatDateTime(t.createdAt)}${t.trialEndsAt && t.planStatus === "trialing" ? ` · trial ends ${formatDateTime(t.trialEndsAt)}` : ""}`}
         actions={
-          <form action={setTenantPausedAction}>
-            <input type="hidden" name="tenantId" value={t.id} />
-            <input type="hidden" name="paused" value={t.paused ? "0" : "1"} />
-            <Button type="submit" variant={t.paused ? "sea" : "outline"} size="sm">
-              {t.paused ? <Play aria-hidden="true" className="size-4" /> : <Pause aria-hidden="true" className="size-4" />}
-              {t.paused ? "Resume workspace" : "Pause workspace"}
-            </Button>
-          </form>
+          <>
+            <Link href={`/admin/workspaces/${t.id}/activity`} prefetch={false} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              Activity
+            </Link>
+            <form action={setTenantPausedAction}>
+              <input type="hidden" name="tenantId" value={t.id} />
+              <input type="hidden" name="paused" value={t.paused ? "0" : "1"} />
+              <Button type="submit" variant={t.paused ? "sea" : "outline"} size="sm">
+                {t.paused ? <Play aria-hidden="true" className="size-4" /> : <Pause aria-hidden="true" className="size-4" />}
+                {t.paused ? "Resume workspace" : "Pause workspace"}
+              </Button>
+            </form>
+          </>
         }
       />
 
@@ -86,7 +95,9 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
               {t.members.map((m) => (
                 <li key={m.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold">{m.name}</span>
+                    <Link href={`/admin/users/${m.id}`} prefetch={false} className="block truncate font-semibold text-ink">
+                      {m.name}
+                    </Link>
                     <span className="block truncate text-[13px] text-muted">{m.email}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5">
@@ -232,7 +243,7 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
       <Rise delay={0.16}>
         <SectionCard
           title="Delete workspace"
-          intro="Deletes every listing, key, token, price history and log for this workspace, and members with no other workspace. It can't be undone."
+          intro="Deletes every listing, key, token, price history, log and activity record for this workspace, and members with no other workspace (with their activity). It can't be undone."
           className="border-danger/30"
         >
           <DeleteTenantForm tenantId={t.id} name={t.name} />

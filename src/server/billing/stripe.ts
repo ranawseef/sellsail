@@ -11,6 +11,7 @@
 import Stripe from "stripe";
 import { exec, one, tx } from "../db/pool.ts";
 import { audit, logEvent } from "../audit.ts";
+import { recordActivity } from "../activity.ts";
 import { PAID_PLANS, PLANS, planFor, planForLookupKey, planForStripePrice, stripePriceId, type BillingInterval, type PlanId } from "../../config/plans.ts";
 
 let client: Stripe | null = null;
@@ -189,7 +190,7 @@ export async function handleWebhook(rawBody: string, signature: string | null): 
   if (await one("SELECT 1 FROM stripe_events WHERE id = ?", [event.id])) return "duplicate";
 
   let change: Change | null = null;
-  let notice: { tenantId: number; message: string } | null = null;
+  let notice: { tenantId: number; message: string; amountPence: number } | null = null;
   if (event.type === "invoice.payment_failed" || event.type === "invoice.payment_action_required") {
     // Tell the seller in the dashboard; the subscription events change the status.
     const inv = event.data.object as Stripe.Invoice;
@@ -199,6 +200,7 @@ export async function handleWebhook(rawBody: string, signature: string | null): 
       const amount = `£${(inv.amount_due / 100).toFixed(2)}`;
       notice = {
         tenantId: t.id,
+        amountPence: inv.amount_due,
         message:
           event.type === "invoice.payment_failed"
             ? `Your SellSail payment of ${amount} failed. Update your card under Billing → Manage billing to keep repricing.`
@@ -220,6 +222,7 @@ export async function handleWebhook(rawBody: string, signature: string | null): 
     change = await changeFromSubscription(fresh);
   }
 
+  let before: { plan: string; plan_status: string } | null = null;
   const outcome = await tx(async (t) => {
     const ins = await t.exec("INSERT IGNORE INTO stripe_events (id) VALUES (?)", [event.id]);
     if (ins.affectedRows === 0) return "duplicate"; // another delivery got here first
@@ -228,7 +231,11 @@ export async function handleWebhook(rawBody: string, signature: string | null): 
       return "noted";
     }
     if (!change) return "ignored";
-    const current = await t.q<{ stripe_subscription_id: string | null }>("SELECT stripe_subscription_id FROM tenants WHERE id = ? FOR UPDATE", [change.tenantId]);
+    const current = await t.q<{ stripe_subscription_id: string | null; plan: string; plan_status: string }>(
+      "SELECT stripe_subscription_id, plan, plan_status FROM tenants WHERE id = ? FOR UPDATE",
+      [change.tenantId],
+    );
+    before = current[0] ?? null;
     // A cancelled old subscription must not overwrite a newer active one.
     if (change.status === "canceled" && current[0]?.stripe_subscription_id && current[0].stripe_subscription_id !== change.subscriptionId) {
       return "stale";
@@ -242,5 +249,23 @@ export async function handleWebhook(rawBody: string, signature: string | null): 
     await audit({ tenantId: change.tenantId, userId: null, action: "billing.subscription", detail: `${change.plan ?? "plan unchanged"}: ${change.status} (${event.type})` }, t);
     return "applied";
   });
+
+  // Activity is written after the commit, so it can never roll back (or fail) the billing change.
+  if (outcome === "noted" && notice) {
+    const n = notice as { tenantId: number; amountPence: number };
+    await recordActivity({
+      type: event.type === "invoice.payment_failed" ? "billing.payment_failed" : "billing.payment_action_required",
+      tenantId: n.tenantId,
+      detail: { amountPence: n.amountPence, stripeEvent: event.type },
+    });
+  } else if (outcome === "applied" && change) {
+    const c = change as Change;
+    const was = before as { plan: string; plan_status: string } | null;
+    await recordActivity({
+      type: "billing.subscription_changed",
+      tenantId: c.tenantId,
+      detail: { plan: c.plan, status: c.status, previousPlan: was?.plan ?? null, previousStatus: was?.plan_status ?? null, stripeEvent: event.type },
+    });
+  }
   return outcome;
 }

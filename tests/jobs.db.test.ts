@@ -230,6 +230,15 @@ test("reprice prices FBA offers, takes unknown ASINs out of stock, writes histor
   );
   assert.equal(Number(app?.ahead), 1); // the call slot was reserved
   assert.equal(app?.status, "ok");
+
+  // The run's counts, for the activity summaries; and the workspace's first reprice milestones.
+  const run = await one<{ n_checked: number; n_changed: number; n_skipped: number; n_errors: number }>(
+    "SELECT n_checked, n_changed, n_skipped, n_errors FROM job_runs WHERE tenant_id = ? ORDER BY id DESC LIMIT 1",
+    [tenantId],
+  );
+  assert.deepEqual({ ...run }, { n_checked: 3, n_changed: 2, n_skipped: 1, n_errors: 0 });
+  const kinds = await q<{ type: string }>("SELECT type FROM user_activity WHERE tenant_id = ? AND type LIKE 'reprice.%' ORDER BY id", [tenantId]);
+  assert.deepEqual(kinds.map((k) => k.type), ["reprice.first_success", "reprice.first_price_change"]);
 });
 
 test("reprice: a key set Amazon refuses sits out, and nothing is priced from it", { skip: skipDb }, async () => {
@@ -292,4 +301,6 @@ test("import pages by offset until total_rows, skipping non-ASIN and archived SK
   assert.equal(Number(rows[0].pushed_price), 9.99); // what OnBuy shows now
   const job = await one<{ enabled: number }>("SELECT enabled FROM jobs WHERE tenant_id = ? AND kind = 'import'", [tenantId]);
   assert.equal(job?.enabled, 0);
+  const done = await one<{ detail: string }>("SELECT detail FROM user_activity WHERE tenant_id = ? AND type = 'listings.imported'", [tenantId]);
+  assert.deepEqual(JSON.parse(done!.detail), { source: "onbuy", listingsOnOnBuy: 600, imported: 2, skipped: 2, overPlanLimit: 0 });
 });

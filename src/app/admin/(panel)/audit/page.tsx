@@ -5,10 +5,13 @@ import { Rise } from "@/components/app/motion";
 import { Badge } from "@/components/ui/badge";
 import { adminAuditLog } from "@/server/admin/repo";
 import { formatDateTime } from "@/lib/format";
+import { requireAdmin } from "@/server/admin/auth";
 
 export const metadata: Metadata = { title: "Audit log" };
 
 export default async function AuditPage() {
+  // The (panel) layout checks too, but layouts can be skipped on client navigation.
+  await requireAdmin();
   const rows = await adminAuditLog(200);
   return (
     <>

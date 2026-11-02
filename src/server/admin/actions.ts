@@ -8,12 +8,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requestInfo } from "../auth/context.ts";
 import { hit, limitKey, LIMITS } from "../auth/rate-limit.ts";
-import { exec, one, q, tx } from "../db/pool.ts";
+import { exec, one } from "../db/pool.ts";
 import { sendCodeEmail } from "../mail/send.ts";
 import { decryptJson, secretContext } from "../crypto/secrets.ts";
 import { loadProxy } from "../connections/proxy.ts";
 import type { OnBuyCreds } from "../integrations/onbuy/client.ts";
 import { PLANS, type PlanId } from "../../config/plans.ts";
+import { primaryTenantOf, recordActivity } from "../activity.ts";
+import { deleteWorkspace } from "../tenants/accounts.ts";
 import { AdminForbiddenError, adminAudit, adminForAction, consumeAdminCode, endAdminSession, isAdminEmail, issueAdminCode, startAdminSession } from "./auth.ts";
 
 export type AdminState = { ok?: boolean; message?: string; error?: string; step?: "code"; email?: string } | undefined;
@@ -92,6 +94,7 @@ export async function setTenantPlanAction(_prev: AdminState, form: FormData): Pr
     if (res.affectedRows === 0) return { error: "Workspace not found." };
     const { ip } = await requestInfo();
     await adminAudit(admin.email, "tenant.plan", tenantId, `${plan} / ${status}`, ip);
+    await recordActivity({ type: "billing.admin_change", tenantId, detail: { change: "plan", plan, status } });
     revalidatePath(`/admin/workspaces/${tenantId}`);
     return { ok: true, message: `Plan set to ${PLANS[plan].name}, ${status.replace("_", " ")}.` };
   });
@@ -143,6 +146,7 @@ export async function grantFreeAccessAction(_prev: AdminState, form: FormData): 
     const what = d.kind === "plan" ? `Free ${PLANS[d.plan].name}` : "Free trial";
     const { ip } = await requestInfo();
     await adminAudit(admin.email, d.kind === "plan" ? "tenant.free_plan" : "tenant.free_trial", d.tenantId, `${what} until ${until}${d.note ? ` (${d.note})` : ""}`, ip);
+    await recordActivity({ type: "billing.admin_change", tenantId: d.tenantId, detail: { change: d.kind === "plan" ? "free_plan" : "free_trial", plan: d.kind === "plan" ? d.plan : "trial", until: end.toISOString().slice(0, 10) } });
     revalidatePath(`/admin/workspaces/${d.tenantId}`);
     return { ok: true, message: `${what} until ${until}.` };
   });
@@ -156,6 +160,7 @@ export async function endFreeAccessAction(form: FormData): Promise<void> {
   if (res.affectedRows) {
     const { ip } = await requestInfo();
     await adminAudit(admin.email, "tenant.free_end", tenantId, "", ip);
+    await recordActivity({ type: "billing.admin_change", tenantId, detail: { change: "free_access_ended" } });
   }
   revalidatePath(`/admin/workspaces/${tenantId}`);
 }
@@ -168,6 +173,7 @@ export async function setTenantPausedAction(form: FormData): Promise<void> {
   await exec("UPDATE tenants SET paused = ? WHERE id = ?", [paused ? 1 : 0, tenantId]);
   const { ip } = await requestInfo();
   await adminAudit(admin.email, paused ? "tenant.pause" : "tenant.resume", tenantId, "", ip);
+  await recordActivity({ type: paused ? "repricer.paused" : "repricer.resumed", tenantId, detail: { by: "admin" } });
   revalidatePath(`/admin/workspaces/${tenantId}`);
 }
 
@@ -200,14 +206,7 @@ export async function deleteTenantAction(_prev: AdminState, form: FormData): Pro
     if (t.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
       return { error: "This workspace still has a Stripe subscription. Cancel it in Stripe first so they aren't charged." };
     }
-    const members = await q<{ user_id: number }>("SELECT user_id FROM memberships WHERE tenant_id = ?", [tenantId]);
-    await tx(async (c) => {
-      // Every seller table cascades from tenants.
-      await c.exec("DELETE FROM tenants WHERE id = ?", [tenantId]);
-      if (members.length) {
-        await c.exec("DELETE FROM users WHERE id IN (?) AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = users.id)", [members.map((m) => m.user_id)]);
-      }
-    });
+    await deleteWorkspace(tenantId);
     const { ip } = await requestInfo();
     await adminAudit(admin.email, "tenant.delete", null, `#${tenantId} ${t.name}`, ip);
     done = true;
@@ -264,11 +263,12 @@ export async function verifyUserEmailAction(form: FormData): Promise<void> {
   const admin = await adminForAction();
   const userId = Number(str(form, "userId"));
   if (!Number.isInteger(userId) || userId <= 0) return;
-  const u = await one<{ email: string }>("SELECT email FROM users WHERE id = ?", [userId]);
+  const u = await one<{ email: string; email_verified_at: Date | null }>("SELECT email, email_verified_at FROM users WHERE id = ?", [userId]);
   if (!u) return;
   await exec("UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW(3)) WHERE id = ?", [userId]);
   const { ip } = await requestInfo();
   await adminAudit(admin.email, "user.verify", null, u.email, ip);
+  if (!u.email_verified_at) await recordActivity({ type: "auth.email_verified", userId, tenantId: await primaryTenantOf(userId), detail: { by: "admin" } });
   revalidatePath("/admin/users");
 }
 
@@ -278,8 +278,9 @@ export async function signOutUserAction(form: FormData): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0) return;
   const u = await one<{ email: string }>("SELECT email FROM users WHERE id = ?", [userId]);
   if (!u) return;
-  await exec("DELETE FROM sessions WHERE user_id = ?", [userId]);
+  const ended = await exec("DELETE FROM sessions WHERE user_id = ?", [userId]);
   const { ip } = await requestInfo();
   await adminAudit(admin.email, "user.signout", null, u.email, ip);
+  await recordActivity({ type: "auth.signed_out", userId, tenantId: await primaryTenantOf(userId), detail: { by: "admin", sessions: ended.affectedRows } });
   revalidatePath("/admin/users");
 }

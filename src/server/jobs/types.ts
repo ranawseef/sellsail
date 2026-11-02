@@ -1,5 +1,7 @@
 // What a job run receives and returns.
 
+import type { RunStats } from "../activity.ts";
+
 export type JobCtx = {
   jobId: number;
   tenantId: number;
@@ -29,6 +31,8 @@ export type RunResult = {
   disable?: boolean;
   state?: Record<string, unknown>;
   progress?: { done: number; total: number; note: string };
+  /** Counts for job_runs and the activity summaries (see migration 013 for what each means per kind). */
+  stats?: RunStats;
 };
 
 export function timeLeft(ctx: JobCtx): number {

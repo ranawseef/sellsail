@@ -546,4 +546,58 @@ export const migrations: Migration[] = [
       ) ${T}`,
     ],
   },
+  {
+    id: "013_user_activity",
+    statements: [
+      // What each seller did in the app and what their repricer did, for
+      // support on /admin (see server/activity.ts). Written server-side only,
+      // never updated; rows go after 12 months (maintenance) or with their
+      // user or workspace (the foreign keys cascade). user_id is NULL for
+      // system events such as job summaries and Stripe changes. detail is a
+      // small JSON object that never holds a secret; ip only for sign-in events.
+      `CREATE TABLE IF NOT EXISTS user_activity (
+        id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        tenant_id  INT UNSIGNED    NULL,
+        user_id    INT UNSIGNED    NULL,
+        type       VARCHAR(40)     NOT NULL,
+        detail     VARCHAR(1000)   NOT NULL DEFAULT '{}',
+        ip         VARCHAR(45)     NULL,
+        created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (id),
+        KEY ix_activity_user (user_id, created_at),
+        KEY ix_activity_tenant (tenant_id, created_at),
+        KEY ix_activity_created (created_at),
+        CONSTRAINT fk_activity_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
+        CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        CONSTRAINT ck_activity_owner CHECK (tenant_id IS NOT NULL OR user_id IS NOT NULL),
+        CONSTRAINT ck_activity_detail CHECK (JSON_VALID(detail))
+      ) ${T}`,
+      // Counts per job run, so the hourly activity summaries and repricer
+      // health don't parse last_msg. Meaning by kind:
+      //   reprice: checked = listings read from Amazon, changed = price/stock
+      //            changes, skipped = left to retry, errors = batches refused
+      //   push:    checked = listings sent to OnBuy, changed = confirmed,
+      //            skipped = archived (SKU gone), errors = rejected by OnBuy
+      `ALTER TABLE job_runs
+         ADD COLUMN IF NOT EXISTS n_checked INT UNSIGNED NOT NULL DEFAULT 0,
+         ADD COLUMN IF NOT EXISTS n_changed INT UNSIGNED NOT NULL DEFAULT 0,
+         ADD COLUMN IF NOT EXISTS n_skipped INT UNSIGNED NOT NULL DEFAULT 0,
+         ADD COLUMN IF NOT EXISTS n_errors  INT UNSIGNED NOT NULL DEFAULT 0,
+         ADD INDEX IF NOT EXISTS ix_runs_started (started_at)`,
+      // Onboarding milestones that outlive the 14-day job_runs and 30-day
+      // price_history windows, like onboarded_at and pricing_reviewed_at.
+      `ALTER TABLE tenants
+         ADD COLUMN IF NOT EXISTS first_reprice_at      DATETIME(3) NULL,
+         ADD COLUMN IF NOT EXISTS first_price_change_at DATETIME(3) NULL`,
+      // Existing workspaces: the best evidence still on hand (approximate).
+      `UPDATE tenants t SET first_reprice_at = (
+         SELECT MIN(p.priced_at) FROM products p
+          WHERE p.tenant_id = t.id AND p.source_price IS NOT NULL AND p.priced_at > '1970-01-02'
+       ) WHERE t.first_reprice_at IS NULL`,
+      `UPDATE tenants t SET first_price_change_at = COALESCE(
+         (SELECT MIN(h.created_at) FROM price_history h WHERE h.tenant_id = t.id AND NOT (h.new_price <=> h.old_price)),
+         (SELECT MIN(p.pushed_at) FROM products p WHERE p.tenant_id = t.id)
+       ) WHERE t.first_price_change_at IS NULL`,
+    ],
+  },
 ];

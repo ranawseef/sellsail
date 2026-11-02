@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="25 October 2026">
+    <LegalPage title="Privacy policy" updated="2 November 2026">
       <p>
         This policy explains how {site.company} (&quot;SellSail&quot;, &quot;we&quot;) uses personal data. SellSail is a trading name of{" "}
         {site.company}, registered in England and Wales, company number {site.companyNumber}, registered office {site.address}, United Kingdom. We are the data controller for the data described here. Contact us at{" "}
@@ -37,6 +37,13 @@ export default function PrivacyPage() {
           secure.
         </li>
         <li>
+          <strong>In-app activity:</strong> what happens in your SellSail account, such as signing up and signing in (with
+          the IP address, as above), connecting OnBuy, importing listings, changing repricer settings, the errors you are
+          shown, and how the repricer is doing (hourly summaries of its runs, price changes and failures). We record it on
+          our own servers to run the service and to help you when something goes wrong. We don&apos;t track your clicks or
+          browsing, record your screen or keystrokes, or pass it to analytics or advertising companies.
+        </li>
+        <li>
           <strong>Messages</strong> you send us.
         </li>
       </ul>
@@ -47,6 +54,11 @@ export default function PrivacyPage() {
         <li>To provide the service you signed up for: pricing your listings and sending updates to OnBuy (contract).</li>
         <li>To send account emails such as sign-up codes, password resets and payment problems (contract).</li>
         <li>To keep the service secure, prevent abuse and give support (legitimate interests).</li>
+        <li>
+          To run and support the service from your in-app activity: spotting where an account is stuck or failing, and
+          helping you fix it (legitimate interests). Only a small number of SellSail staff can see it, and every time they
+          look is recorded.
+        </li>
         <li>To keep accounting and tax records (legal obligation).</li>
       </ul>
 
@@ -90,6 +102,9 @@ export default function PrivacyPage() {
       <ul>
         <li>Account and store data: while your workspace is open. When it is closed, it is deleted straight away.</li>
         <li>Price history and activity logs: 30 days. Background job logs: 14 days.</li>
+        <li>
+          In-app activity: 12 months, then deleted automatically. It is deleted straight away with your account or workspace.
+        </li>
         <li>Invoices and billing records: 6 years, as UK tax law requires.</li>
       </ul>
 
