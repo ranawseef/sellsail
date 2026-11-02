@@ -16,6 +16,7 @@ import { z } from "zod";
 import { decryptJson, encryptJson, secretContext } from "../crypto/secrets.ts";
 import { exec, one, q } from "../db/pool.ts";
 
+// amazon_app_keys checks slot BETWEEN 1 AND 20 (migration 012): raising this needs a migration too.
 export const MAX_APPS = 20;
 
 /** The three values that make one key set, and what a real value starts with. */
