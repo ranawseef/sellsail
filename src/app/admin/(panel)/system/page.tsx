@@ -272,7 +272,9 @@ export default async function SystemPage() {
               detail={
                 keys.inUse
                   ? `${keys.inUse} key set${keys.inUse === 1 ? "" : "s"} in use (${keys.inUse - envInUse} database, ${envInUse} env).`
-                  : "Add a key set below to start repricing."
+                  : keys.sets.length
+                    ? `${keys.sets.length} key set${keys.sets.length === 1 ? "" : "s"} saved, none in use: see why below.`
+                    : "Add a key set below to start repricing."
               }
             />
             <Check ok={stripeConfigured()} warn label="Stripe" detail={stripeConfigured() ? "Checkout and webhooks enabled." : "Not set up yet: billing pages say so."} />

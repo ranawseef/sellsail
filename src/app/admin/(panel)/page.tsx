@@ -78,7 +78,7 @@ export default async function AdminOverview() {
               <li className="flex items-center justify-between gap-2">
                 Amazon keys
                 <Badge variant={pool.configured === 0 ? "sun" : pool.healthy === 0 ? "danger" : "mint"}>
-                  {pool.configured === 0 ? "Not set" : `${pool.healthy}/${pool.configured} healthy`}
+                  {pool.configured === 0 ? (pool.idle ? `${pool.idle} stored, none in use` : "Not set") : `${pool.healthy}/${pool.configured} healthy`}
                 </Badge>
               </li>
               <li className="flex items-center justify-between gap-2">

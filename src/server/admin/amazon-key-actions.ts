@@ -14,7 +14,7 @@ import { z } from "zod";
 import { requestInfo } from "../auth/context.ts";
 import { hit, limitKey, LIMITS } from "../auth/rate-limit.ts";
 import { encryptionConfigured } from "../crypto/secrets.ts";
-import { amazonRoute, envApps, invalidateAmazonApps, keyTestFailure, MAX_APPS, testKeySet, type AmazonApp } from "../connections/amazon.ts";
+import { amazonRoute, envApps, invalidateAmazonApps, keyTestFailure, MAX_APPS, recordKeySetTest, testKeySet, type AmazonApp } from "../connections/amazon.ts";
 import {
   addKeySet,
   clientIdHint,
@@ -167,6 +167,18 @@ export async function testAmazonKeySetAction(_prev: ActionState, form: FormData)
       console.warn(`[admin] Amazon key set ${slot} (${source}) test failed: ${failure}`);
     }
     await adminAudit(email, "amazon_keys.test", null, `set ${slot} (${source}): ${failure ? `failed: ${failure}` : "ok"}`, ip);
+    // The slot's health card shows this result. A stored set whose slot an env
+    // set has taken doesn't own that state, so its test leaves it alone.
+    const ownsState = source === "env" || !envApps().some((a) => a.slot === slot);
+    if (ownsState) {
+      try {
+        await recordKeySetTest(slot, failure === null, failure ?? undefined);
+      } catch (err) {
+        console.error(`[admin] could not record Amazon key set ${slot} test: ${(err as Error)?.name ?? "Error"}`);
+      }
+    }
+    revalidatePath("/admin/system");
+    revalidatePath("/admin");
     return failure ? { error: `Set ${slot}: ${failure}` } : { ok: true, message: `Set ${slot} works: Amazon issued an access token.` };
   });
 }

@@ -294,18 +294,48 @@ export async function markAmazonApp(slot: number, ok: boolean, error?: string): 
   );
 }
 
+/**
+ * The result of an admin's Test on /admin/system, kept as the slot's health
+ * so the card stops saying "untested". The message is keyTestFailure()'s own
+ * words, never Amazon's text. A pass also ends an error backoff, so a set
+ * whose keys were fixed is used again at once; a failure adds no backoff
+ * (repricing backs off by itself if Amazon refuses it there too).
+ */
+export async function recordKeySetTest(slot: number, ok: boolean, failure?: string): Promise<void> {
+  if (ok) {
+    // next_allowed_at is assigned first so it still sees the old status.
+    await exec(
+      `INSERT INTO amazon_apps (slot, status, last_ok_at) VALUES (?, 'ok', NOW(3))
+       ON DUPLICATE KEY UPDATE next_allowed_at = IF(status = 'error', LEAST(next_allowed_at, NOW(3)), next_allowed_at),
+         status = 'ok', last_error = NULL, last_ok_at = NOW(3)`,
+      [slot],
+    );
+    return;
+  }
+  await exec(
+    `INSERT INTO amazon_apps (slot, status, last_error) VALUES (?, 'error', ?)
+     ON DUPLICATE KEY UPDATE status = 'error', last_error = VALUES(last_error)`,
+    [slot, (failure ?? "Test failed").slice(0, 255)],
+  );
+}
+
 export type AmazonPoolStatus = {
   /** Key sets in the pool (env, plus enabled database sets). */
   configured: number;
   /** Of those, how many are currently working (or not yet tried). */
   healthy: number;
   lastOkAt: Date | null;
+  /** Database sets that exist but aren't in the pool (paused, unreadable, or their slot is taken by env). */
+  idle: number;
 };
 
 /** For the dashboard: is SellSail's Amazon pricing available right now? */
 export async function amazonPoolStatus(): Promise<AmazonPoolStatus> {
   const apps = await configuredApps();
-  if (apps.length === 0) return { configured: 0, healthy: 0, lastOkAt: null };
+  const stored = await one<{ n: number }>("SELECT COUNT(*) AS n FROM amazon_app_keys");
+  const inPoolFromDb = apps.filter((a) => a.source === "db").length;
+  const idle = Math.max(0, Number(stored?.n ?? 0) - inPoolFromDb);
+  if (apps.length === 0) return { configured: 0, healthy: 0, lastOkAt: null, idle };
   const rows = await q<{ slot: number; status: string; last_ok_at: Date | null }>(
     "SELECT slot, status, last_ok_at FROM amazon_apps WHERE slot IN (?)",
     [apps.map((a) => a.slot)],
@@ -318,7 +348,7 @@ export async function amazonPoolStatus(): Promise<AmazonPoolStatus> {
     if (!r || r.status !== "error") healthy++;
     if (r?.last_ok_at && (!lastOkAt || r.last_ok_at > lastOkAt)) lastOkAt = r.last_ok_at;
   }
-  return { configured: apps.length, healthy, lastOkAt };
+  return { configured: apps.length, healthy, lastOkAt, idle };
 }
 
 // --- Database sets on /admin/system --------------------------------------------
