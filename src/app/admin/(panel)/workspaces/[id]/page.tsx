@@ -243,7 +243,7 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
       <Rise delay={0.16}>
         <SectionCard
           title="Delete workspace"
-          intro="Deletes every listing, key, token, price history and log for this workspace, and members with no other workspace. It can't be undone."
+          intro="Deletes every listing, key, token, price history, log and activity record for this workspace, and members with no other workspace (with their activity). It can't be undone."
           className="border-danger/30"
         >
           <DeleteTenantForm tenantId={t.id} name={t.name} />

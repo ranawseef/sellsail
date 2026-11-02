@@ -77,6 +77,22 @@ export async function checkLogin(email: string, password: string): Promise<{ use
   return { userId: user.id, tenantId: m.tenant_id };
 }
 
+/**
+ * Closes a workspace for good: everything in it (listings, keys, tokens,
+ * price history, logs, activity: every seller table cascades from tenants),
+ * and each member who belongs to no other workspace, with that user's
+ * sessions and activity (they cascade from users).
+ */
+export async function deleteWorkspace(tenantId: number): Promise<void> {
+  await tx(async (c) => {
+    const members = await c.q<{ user_id: number }>("SELECT user_id FROM memberships WHERE tenant_id = ?", [tenantId]);
+    await c.exec("DELETE FROM tenants WHERE id = ?", [tenantId]);
+    if (members.length) {
+      await c.exec("DELETE FROM users WHERE id IN (?) AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = users.id)", [members.map((m) => m.user_id)]);
+    }
+  });
+}
+
 export async function changePassword(userId: number, current: string, next: string): Promise<boolean> {
   const user = await one<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", [userId]);
   if (!user || !(await verifyPassword(current, user.password_hash))) return false;

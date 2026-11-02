@@ -5,7 +5,7 @@ import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { resetDatabase, skipDb } from "./helpers/db.ts";
 import { closePool, exec, one, q } from "../src/server/db/pool.ts";
-import { createAccount } from "../src/server/tenants/accounts.ts";
+import { createAccount, deleteWorkspace } from "../src/server/tenants/accounts.ts";
 import { maintenance } from "../src/server/jobs/scheduler.ts";
 import { noteJobRun, recordActivity } from "../src/server/activity.ts";
 import { accountFacts, activityTimeline, needsAttention, parseTimelineFilter, recentProblems, repricerHealth } from "../src/server/admin/activity-repo.ts";
@@ -161,4 +161,26 @@ test("admin views: facts, needs attention, recent problems and the timeline's fi
   const health = await repricerHealth(tenantId);
   assert.equal(health.jobEnabled, true);
   assert.equal(health.runs7d, 0);
+});
+
+test("deleting a workspace deletes its activity and its only-member users' activity, nobody else's", { skip: skipDb }, async () => {
+  // A second seller who is also a member of this workspace keeps their own workspace's rows.
+  const other = await createAccount({ email: `other${n}@example.com`, name: "O", password: "a long password", workspace: `O${n}`, ip: "" });
+  await exec("INSERT INTO memberships (tenant_id, user_id, role) VALUES (?, ?, 'member')", [tenantId, other.userId]);
+
+  await recordActivity({ type: "auth.signed_in", userId, tenantId, ip: "203.0.113.1" });
+  await recordActivity({ type: "reprice.failing", tenantId, detail: { message: "x" } });
+  await recordActivity({ type: "auth.password_reset_requested", userId }); // no workspace on the row
+  await recordActivity({ type: "repricer.paused", userId: other.userId, tenantId }); // the other user, in this workspace
+  await recordActivity({ type: "auth.signed_in", userId: other.userId, tenantId: other.tenantId });
+
+  await deleteWorkspace(tenantId);
+
+  const left = await q<{ user_id: number | null; tenant_id: number | null; type: string }>(
+    "SELECT user_id, tenant_id, type FROM user_activity WHERE user_id IN (?) OR tenant_id IN (?) ORDER BY id",
+    [[userId, other.userId], [tenantId, other.tenantId]],
+  );
+  assert.deepEqual(left, [{ user_id: other.userId, tenant_id: other.tenantId, type: "auth.signed_in" }]);
+  assert.equal(await one("SELECT 1 FROM users WHERE id = ?", [userId]), null, "the only-member user is gone");
+  assert.ok(await one("SELECT 1 FROM users WHERE id = ?", [other.userId]), "a user with another workspace stays");
 });

@@ -8,13 +8,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requestInfo } from "../auth/context.ts";
 import { hit, limitKey, LIMITS } from "../auth/rate-limit.ts";
-import { exec, one, q, tx } from "../db/pool.ts";
+import { exec, one } from "../db/pool.ts";
 import { sendCodeEmail } from "../mail/send.ts";
 import { decryptJson, secretContext } from "../crypto/secrets.ts";
 import { loadProxy } from "../connections/proxy.ts";
 import type { OnBuyCreds } from "../integrations/onbuy/client.ts";
 import { PLANS, type PlanId } from "../../config/plans.ts";
 import { primaryTenantOf, recordActivity } from "../activity.ts";
+import { deleteWorkspace } from "../tenants/accounts.ts";
 import { AdminForbiddenError, adminAudit, adminForAction, consumeAdminCode, endAdminSession, isAdminEmail, issueAdminCode, startAdminSession } from "./auth.ts";
 
 export type AdminState = { ok?: boolean; message?: string; error?: string; step?: "code"; email?: string } | undefined;
@@ -205,14 +206,7 @@ export async function deleteTenantAction(_prev: AdminState, form: FormData): Pro
     if (t.stripe_subscription_id && (t.plan_status === "active" || t.plan_status === "past_due")) {
       return { error: "This workspace still has a Stripe subscription. Cancel it in Stripe first so they aren't charged." };
     }
-    const members = await q<{ user_id: number }>("SELECT user_id FROM memberships WHERE tenant_id = ?", [tenantId]);
-    await tx(async (c) => {
-      // Every seller table cascades from tenants.
-      await c.exec("DELETE FROM tenants WHERE id = ?", [tenantId]);
-      if (members.length) {
-        await c.exec("DELETE FROM users WHERE id IN (?) AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = users.id)", [members.map((m) => m.user_id)]);
-      }
-    });
+    await deleteWorkspace(tenantId);
     const { ip } = await requestInfo();
     await adminAudit(admin.email, "tenant.delete", null, `#${tenantId} ${t.name}`, ip);
     done = true;
