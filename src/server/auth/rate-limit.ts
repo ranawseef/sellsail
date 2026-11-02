@@ -20,6 +20,8 @@ export const LIMITS = {
   codeCheckPerIp: { max: 30, windowSec: 15 * 60 },
   adminCodePerIp: { max: 10, windowSec: 15 * 60 },
   adminRevealPerAdmin: { max: 30, windowSec: 15 * 60 },
+  // Each Amazon key set Test is a Login with Amazon call.
+  adminKeyTestPerAdmin: { max: 20, windowSec: 15 * 60 },
 } satisfies Record<string, Limit>;
 
 /** Keys that carry personal data (emails) are hashed before storing. */

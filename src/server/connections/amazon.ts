@@ -1,9 +1,13 @@
 // SellSail's own Amazon SP-API keys. Sellers don't connect Amazon: product
 // prices are public, so SellSail reads them for every workspace with its own
-// app credentials, set as numbered env vars (1..MAX_APPS):
+// app credentials. A key set comes from one of two places, by slot (1..MAX_APPS):
 //
-//   SPAPI_1_CLIENT_ID, SPAPI_1_CLIENT_SECRET, SPAPI_1_REFRESH_TOKEN
-//   SPAPI_2_CLIENT_ID, ...
+//   - the database (amazon_app_keys), added by an admin on /admin/system and
+//     stored encrypted (see amazon-keys.ts). The normal way: SPAPI_n_* vars
+//     saved in Hostinger's hPanel never reached the running app.
+//   - numbered env vars, still read if present, and they win a slot clash:
+//       SPAPI_1_CLIENT_ID, SPAPI_1_CLIENT_SECRET, SPAPI_1_REFRESH_TOKEN
+//       SPAPI_2_CLIENT_ID, ...
 //
 // Each set is one "app" with its own rate budget (getItemOffersBatch: one
 // call every 10 s). The apps form a pool shared by all workspaces: a reprice
@@ -14,54 +18,92 @@
 // calls through one proxy; without it they go direct from the server.
 //
 // Runtime state (cached token, next free slot, health) lives in amazon_apps,
-// one row per slot. The keys themselves never touch the database.
+// one row per slot, whichever source the set comes from.
 
-import { accessToken, type LwaClient } from "../integrations/amazon/spapi.ts";
-import { DIRECT, parseProxyUrl, viaProxy, type Route } from "../net/egress.ts";
+import { accessToken, AmazonError, type LwaClient } from "../integrations/amazon/spapi.ts";
+import { DIRECT, EgressBlockedError, parseProxyUrl, ProxyFailureError, viaProxy, type Route } from "../net/egress.ts";
 import { decryptString, encryptString, secretContext } from "../crypto/secrets.ts";
 import { exec, one, q } from "../db/pool.ts";
+import { cleanEnvValue, MAX_APPS, maskedClientId, clientIdHint, readStoredKeySets, SPAPI_FIELDS, type SpapiField, type StoredKeySet } from "./amazon-keys.ts";
 
-export const MAX_APPS = 20;
+export { cleanEnvValue, MAX_APPS, SPAPI_FIELDS, type SpapiField };
+
 /** How long an app that failed to log in sits out before it is tried again. */
 export const APP_ERROR_BACKOFF_S = 15 * 60;
 
-export type AmazonApp = { slot: number; client: LwaClient; refreshToken: string };
+export type KeySource = "env" | "db";
+export type AmazonApp = { slot: number; client: LwaClient; refreshToken: string; source: KeySource; label: string };
 
-/** The three env vars that make one key set, and what a real value starts with. */
-export const SPAPI_FIELDS = {
-  CLIENT_ID: "amzn1.application-oa2-client.",
-  CLIENT_SECRET: "amzn1.oa2-cs.",
-  REFRESH_TOKEN: "Atzr|",
-} as const;
-export type SpapiField = keyof typeof SPAPI_FIELDS;
 const FIELD_NAMES = Object.keys(SPAPI_FIELDS) as SpapiField[];
 
-/**
- * An env value as SellSail uses it: trimmed, with one pair of matching quotes
- * taken off. Hostinger's .env stores every value in single quotes; if those
- * ever reach the process, Amazon would get the keys with quotes attached.
- */
-export function cleanEnvValue(raw: string | undefined): string {
-  const v = (raw ?? "").trim();
-  if (v.length >= 2 && (v[0] === "'" || v[0] === '"') && v[v.length - 1] === v[0]) return v.slice(1, -1).trim();
-  return v;
-}
-
 /** The key sets configured in env, in slot order. */
-export function configuredApps(env: NodeJS.ProcessEnv = process.env): AmazonApp[] {
+export function envApps(env: NodeJS.ProcessEnv = process.env): AmazonApp[] {
   const apps: AmazonApp[] = [];
   for (let slot = 1; slot <= MAX_APPS; slot++) {
     const clientId = cleanEnvValue(env[`SPAPI_${slot}_CLIENT_ID`]);
     const clientSecret = cleanEnvValue(env[`SPAPI_${slot}_CLIENT_SECRET`]);
     const refreshToken = cleanEnvValue(env[`SPAPI_${slot}_REFRESH_TOKEN`]);
-    if (clientId && clientSecret && refreshToken) apps.push({ slot, client: { clientId, clientSecret }, refreshToken });
+    if (clientId && clientSecret && refreshToken) {
+      apps.push({ slot, client: { clientId, clientSecret }, refreshToken, source: "env", label: `SPAPI_${slot}_*` });
+    }
   }
   return apps;
 }
 
+/** Stored sets the pool may use: enabled, and readable. A set that can't be decrypted is skipped, not fatal. */
+export function dbApps(stored: StoredKeySet[]): AmazonApp[] {
+  const apps: AmazonApp[] = [];
+  for (const s of stored) {
+    if (!s.enabled || !s.values) continue;
+    apps.push({ slot: s.slot, client: { clientId: s.values.clientId, clientSecret: s.values.clientSecret }, refreshToken: s.values.refreshToken, source: "db", label: s.label });
+  }
+  return apps;
+}
+
+/** Env and database sets as one pool, in slot order. Env wins a slot both use. */
+export function mergeApps(env: AmazonApp[], db: AmazonApp[]): AmazonApp[] {
+  const bySlot = new Map<number, AmazonApp>();
+  for (const a of db) if (a.slot >= 1 && a.slot <= MAX_APPS) bySlot.set(a.slot, a);
+  for (const a of env) bySlot.set(a.slot, a);
+  return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
+}
+
+// Decrypted sets are kept in memory briefly so each reservation doesn't read
+// and decrypt every row. Admin changes clear it at once in this process; any
+// other process picks them up within CACHE_MS. On globalThis because the
+// scheduler and the admin actions can load this module in different bundles.
+export const APPS_CACHE_MS = 60_000;
+type AppsCache = { at: number; apps: Promise<AmazonApp[]> };
+const g = globalThis as unknown as { __ssAmazonApps?: AppsCache };
+
+export function invalidateAmazonApps(): void {
+  g.__ssAmazonApps = undefined;
+}
+
+async function loadApps(): Promise<AmazonApp[]> {
+  const stored = await readStoredKeySets();
+  for (const s of stored) {
+    if (s.enabled && !s.values) console.error(`[amazon] key set ${s.slot} can't be decrypted (was APP_ENCRYPTION_KEY changed?); skipped`);
+  }
+  return mergeApps(envApps(), dbApps(stored));
+}
+
+/** Every key set the pool uses now: env sets plus enabled database sets, in slot order. */
+export async function configuredApps(): Promise<AmazonApp[]> {
+  const cached = g.__ssAmazonApps;
+  if (cached && Date.now() - cached.at < APPS_CACHE_MS) return cached.apps;
+  const entry: AppsCache = { at: Date.now(), apps: loadApps() };
+  g.__ssAmazonApps = entry;
+  entry.apps.catch(() => {
+    if (g.__ssAmazonApps === entry) g.__ssAmazonApps = undefined; // don't cache a failure
+  });
+  return entry.apps;
+}
+
 // --- Key diagnostic for /admin/system ----------------------------------------
 // Explains why a key set isn't picked up without ever showing a key: only
-// facts about each value's shape, and the names of Amazon-looking env vars.
+// facts about each value's shape, and the names of Amazon-looking env vars
+// (plus the same shape facts for database sets, below).
 
 /** Facts about one env value. Never the value itself. */
 export type SpapiValueShape = {
@@ -85,7 +127,7 @@ export type SpapiValueShape = {
 
 export type SpapiSlotShape = {
   slot: number;
-  /** configuredApps() picks this set up. */
+  /** The env set is complete, so the pool picks it up. */
   used: boolean;
   fields: Record<SpapiField, SpapiValueShape>;
 };
@@ -181,7 +223,7 @@ export async function reserveAmazonApp(
   canWait: (waitMs: number) => boolean,
   sleep: (ms: number) => Promise<void>,
 ): Promise<AmazonApp | null> {
-  const apps = configuredApps();
+  const apps = await configuredApps();
   if (apps.length === 0) return null;
   await ensureRows(apps);
   const slots = apps.map((a) => a.slot);
@@ -253,7 +295,7 @@ export async function markAmazonApp(slot: number, ok: boolean, error?: string): 
 }
 
 export type AmazonPoolStatus = {
-  /** Key sets configured in env. */
+  /** Key sets in the pool (env, plus enabled database sets). */
   configured: number;
   /** Of those, how many are currently working (or not yet tried). */
   healthy: number;
@@ -262,7 +304,7 @@ export type AmazonPoolStatus = {
 
 /** For the dashboard: is SellSail's Amazon pricing available right now? */
 export async function amazonPoolStatus(): Promise<AmazonPoolStatus> {
-  const apps = configuredApps();
+  const apps = await configuredApps();
   if (apps.length === 0) return { configured: 0, healthy: 0, lastOkAt: null };
   const rows = await q<{ slot: number; status: string; last_ok_at: Date | null }>(
     "SELECT slot, status, last_ok_at FROM amazon_apps WHERE slot IN (?)",
@@ -277,4 +319,146 @@ export async function amazonPoolStatus(): Promise<AmazonPoolStatus> {
     if (r?.last_ok_at && (!lastOkAt || r.last_ok_at > lastOkAt)) lastOkAt = r.last_ok_at;
   }
   return { configured: apps.length, healthy, lastOkAt };
+}
+
+// --- Database sets on /admin/system --------------------------------------------
+// Everything below is built for a page, so it carries no key value: a client
+// id shows as its last four characters, and secrets not at all.
+
+/** Why a set the admin can see isn't in the pool. */
+export type KeySetIdle = "paused" | "undecryptable" | "env_slot";
+
+export type AmazonKeySetView = {
+  slot: number;
+  label: string;
+  source: KeySource;
+  enabled: boolean;
+  /** In the pool right now. */
+  inUse: boolean;
+  idle: KeySetIdle | null;
+  /** "••••abcd" */
+  clientId: string;
+  /** Health of the slot's runtime state; null when the slot belongs to another set. */
+  status: "untested" | "ok" | "error" | null;
+  lastOkAt: Date | null;
+  lastError: string | null;
+  createdAt: Date | null;
+  createdBy: string | null;
+  updatedAt: Date | null;
+  updatedBy: string | null;
+};
+
+export type AppStateRow = { slot: number; status: string; last_error: string | null; last_ok_at: Date | null };
+
+function health(state: AppStateRow | undefined): Pick<AmazonKeySetView, "status" | "lastOkAt" | "lastError"> {
+  const status = state?.status === "ok" || state?.status === "error" ? state.status : "untested";
+  return { status, lastOkAt: state?.last_ok_at ?? null, lastError: status === "error" ? (state?.last_error ?? null) : null };
+}
+
+/** One row per set the admin can see: env sets, then every stored set, by slot. */
+export function buildKeySetViews(env: AmazonApp[], stored: StoredKeySet[], state: AppStateRow[]): AmazonKeySetView[] {
+  const bySlot = new Map(state.map((r) => [r.slot, r]));
+  const envSlots = new Set(env.map((a) => a.slot));
+  const views: AmazonKeySetView[] = env.map((a) => ({
+    slot: a.slot,
+    label: a.label,
+    source: "env",
+    enabled: true,
+    inUse: true,
+    idle: null,
+    clientId: maskedClientId(clientIdHint(a.client.clientId)),
+    ...health(bySlot.get(a.slot)),
+    createdAt: null,
+    createdBy: null,
+    updatedAt: null,
+    updatedBy: null,
+  }));
+  for (const s of stored) {
+    const idle: KeySetIdle | null = envSlots.has(s.slot) ? "env_slot" : !s.values ? "undecryptable" : !s.enabled ? "paused" : null;
+    const own = idle !== "env_slot";
+    views.push({
+      slot: s.slot,
+      label: s.label,
+      source: "db",
+      enabled: s.enabled,
+      inUse: idle === null,
+      idle,
+      clientId: maskedClientId(s.clientIdHint),
+      ...(own ? health(bySlot.get(s.slot)) : { status: null, lastOkAt: null, lastError: null }),
+      createdAt: s.createdAt,
+      createdBy: s.createdBy,
+      updatedAt: s.updatedAt,
+      updatedBy: s.updatedBy,
+    });
+  }
+  return views.sort((a, b) => a.slot - b.slot || (a.source === b.source ? 0 : a.source === "env" ? -1 : 1));
+}
+
+export type DbKeyShape = {
+  slot: number;
+  label: string;
+  /** In the pool right now. */
+  used: boolean;
+  idle: KeySetIdle | null;
+  /** Shape facts for each stored value; null when the row can't be decrypted. */
+  fields: Record<SpapiField, SpapiValueShape> | null;
+};
+
+/** The Key check's view of stored sets: the same shape facts as for env values. */
+export function describeDbKeySets(stored: StoredKeySet[], env: AmazonApp[]): DbKeyShape[] {
+  const envSlots = new Set(env.map((a) => a.slot));
+  return stored.map((s) => {
+    const idle: KeySetIdle | null = envSlots.has(s.slot) ? "env_slot" : !s.values ? "undecryptable" : !s.enabled ? "paused" : null;
+    const v = s.values;
+    const fields = v
+      ? ({
+          CLIENT_ID: shapeOf(v.clientId, SPAPI_FIELDS.CLIENT_ID),
+          CLIENT_SECRET: shapeOf(v.clientSecret, SPAPI_FIELDS.CLIENT_SECRET),
+          REFRESH_TOKEN: shapeOf(v.refreshToken, SPAPI_FIELDS.REFRESH_TOKEN),
+        } satisfies Record<SpapiField, SpapiValueShape>)
+      : null;
+    return { slot: s.slot, label: s.label, used: idle === null, idle, fields };
+  });
+}
+
+export type AmazonKeyAdminData = { sets: AmazonKeySetView[]; dbShapes: DbKeyShape[]; envReport: SpapiEnvReport; inUse: number; freeSlots: number };
+
+/** Everything the Amazon key sets card on /admin/system shows. No key values. */
+export async function amazonKeyAdminData(env: NodeJS.ProcessEnv = process.env): Promise<AmazonKeyAdminData> {
+  const fromEnv = envApps(env);
+  const stored = await readStoredKeySets();
+  const slots = [...new Set([...fromEnv.map((a) => a.slot), ...stored.map((s) => s.slot)])];
+  const state = slots.length
+    ? await q<AppStateRow>("SELECT slot, status, last_error, last_ok_at FROM amazon_apps WHERE slot IN (?)", [slots])
+    : [];
+  const sets = buildKeySetViews(fromEnv, stored, state);
+  return {
+    sets,
+    dbShapes: describeDbKeySets(stored, fromEnv),
+    envReport: describeSpapiEnv(env),
+    inUse: sets.filter((s) => s.inUse).length,
+    freeSlots: MAX_APPS - slots.length,
+  };
+}
+
+/**
+ * What an admin is told when a key set's Test fails. Our own words only:
+ * Amazon's error text is never passed on, in case it ever echoes a value.
+ */
+export function keyTestFailure(err: unknown): string {
+  if (err instanceof AmazonError) {
+    const code = /^[a-z_]{1,40}$/.test(err.code) ? err.code : "";
+    if (code === "invalid_client") return "Amazon refused the client ID or client secret (invalid_client).";
+    if (code === "invalid_grant") return "Amazon refused the refresh token (invalid_grant). Authorise the app again in Seller Central and paste the new token.";
+    if (code === "unauthorized_client") return "Amazon says this app may not use that refresh token (unauthorized_client).";
+    if (err.status === 200) return "Amazon answered but gave no access token.";
+    return `Amazon refused the login (HTTP ${err.status}${code ? `, ${code}` : ""}).`;
+  }
+  if (err instanceof EgressBlockedError || err instanceof ProxyFailureError) return "Couldn't reach Amazon through SPAPI_PROXY. Check the proxy.";
+  return "Couldn't reach Amazon. Try again in a minute.";
+}
+
+/** Asks Login with Amazon for an access token with one set. Resolves when it works; the token is thrown away. */
+export async function testKeySet(app: Pick<AmazonApp, "client" | "refreshToken">, route: Route): Promise<void> {
+  await accessToken(route, app.client, app.refreshToken);
 }

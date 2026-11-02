@@ -88,6 +88,25 @@ Orders and dispatch, profit reports from local snapshots (no live API paging), t
   can fall back to direct by passing null.
 - **Wizard:** three steps (OnBuy, Pricing, Import); the proxy is an optional
   fold-out in the OnBuy step.
+
+## Change (2026-11-02): Amazon key sets in the database
+
+- SPAPI_n_* vars saved in Hostinger's hPanel never reached the running app
+  (the /admin/system Key check showed no SPAPI names while other vars
+  arrived), so key sets are now added by admins on /admin/system and kept in
+  `amazon_app_keys` (migration 012): one row per slot, a name, an enabled
+  flag, who/when, and the client id, client secret and refresh token sealed
+  together with APP_ENCRYPTION_KEY, bound to the slot. Only the client id's
+  last four characters are stored in the clear.
+- The pool (`configuredApps()`, now async) is env sets plus enabled stored
+  sets, by slot; an env set wins a clash. Decrypted sets are cached for 60 s
+  per process and the cache is cleared on every admin change (other processes
+  catch up within 60 s). Reservation, backoff and health are unchanged and
+  still live in `amazon_apps`.
+- Admin actions: add, replace keys, pause/resume, delete, and Test (asks
+  Login with Amazon for a token, reports only success or a fixed message).
+  Each checks the admin session, validates with zod and writes `admin_audit`
+  without any key value.
 - **Home page:** `InsideLook`, an animated dashboard preview with demo data.
 
 

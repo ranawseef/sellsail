@@ -247,12 +247,23 @@ test("reprice: a key set Amazon refuses sits out, and nothing is priced from it"
 
 test("reprice without SellSail's Amazon keys sends nothing", { skip: skipDb }, async () => {
   const saved = repriceDeps.configuredApps;
-  repriceDeps.configuredApps = () => [];
+  repriceDeps.configuredApps = async () => [];
+  const offers = repriceDeps.itemOffersBatch;
+  let calls = 0;
+  repriceDeps.itemOffersBatch = async (...args) => {
+    calls++;
+    return offers(...args);
+  };
   try {
+    await addProduct("SKB000000001");
+    // Waiting for keys is quiet: not a failed run the seller is told about.
     const r = await runJob("reprice", REPRICE_TARGET);
-    assert.equal(r.ok, false);
-    assert.match(r.msg, /not set up/);
+    assert.equal(r.ok, true);
+    assert.equal(r.quiet, true);
+    assert.match(r.msg, /Waiting for Amazon pricing/);
+    assert.equal(calls, 0);
   } finally {
+    repriceDeps.itemOffersBatch = offers;
     repriceDeps.configuredApps = saved;
   }
 });

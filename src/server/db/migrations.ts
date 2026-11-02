@@ -523,4 +523,27 @@ export const migrations: Migration[] = [
       `INSERT IGNORE INTO lifecycle_emails (tenant_id, kind) SELECT id, 'welcome' FROM tenants WHERE created_at < NOW(3) - INTERVAL 7 DAY`,
     ],
   },
+  {
+    id: "012_amazon_app_keys",
+    statements: [
+      // SellSail's Amazon key sets, added by admins on /admin/system, because
+      // SPAPI_n_* vars saved in hPanel never reached the app. One row per slot
+      // (the same slot numbers as amazon_apps, which keeps each set's runtime
+      // state). The three values are sealed together with APP_ENCRYPTION_KEY;
+      // only the client id's last four characters are kept in the clear.
+      `CREATE TABLE IF NOT EXISTS amazon_app_keys (
+        slot            TINYINT UNSIGNED NOT NULL,
+        label           VARCHAR(60)  NOT NULL,
+        enabled         TINYINT(1)   NOT NULL DEFAULT 1,
+        credentials_enc TEXT         NOT NULL,
+        client_id_hint  VARCHAR(4)   NOT NULL,
+        created_by      VARCHAR(190) NOT NULL,
+        updated_by      VARCHAR(190) NOT NULL,
+        created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (slot),
+        CONSTRAINT ck_amazon_app_keys_slot CHECK (slot BETWEEN 1 AND 20)
+      ) ${T}`,
+    ],
+  },
 ];

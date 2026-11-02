@@ -1,9 +1,9 @@
-// SellSail's Amazon key sets from env: quote stripping in configuredApps and
+// SellSail's Amazon key sets from env: quote stripping in envApps and
 // the shape-only diagnostic shown on /admin/system. Every value here is fake.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanEnvValue, configuredApps, describeSpapiEnv } from "../src/server/connections/amazon.ts";
+import { cleanEnvValue, describeSpapiEnv, envApps } from "../src/server/connections/amazon.ts";
 
 const ID = "amzn1.application-oa2-client.FAKEID0000";
 const SECRET = "amzn1.oa2-cs.v1.FAKESECRET0000";
@@ -27,19 +27,19 @@ test("cleanEnvValue trims and strips one pair of matching quotes", () => {
   assert.equal(cleanEnvValue("''"), "");
 });
 
-test("configuredApps strips Hostinger-style quotes from each value", () => {
-  const apps = configuredApps(
+test("envApps strips Hostinger-style quotes from each value", () => {
+  const apps = envApps(
     env({
       SPAPI_1_CLIENT_ID: `'${ID}'`,
       SPAPI_1_CLIENT_SECRET: `"${SECRET}"`,
       SPAPI_1_REFRESH_TOKEN: ` '${TOKEN}'\n`,
     }),
   );
-  assert.deepEqual(apps, [{ slot: 1, client: { clientId: ID, clientSecret: SECRET }, refreshToken: TOKEN }]);
+  assert.deepEqual(apps, [{ slot: 1, client: { clientId: ID, clientSecret: SECRET }, refreshToken: TOKEN, source: "env", label: "SPAPI_1_*" }]);
 });
 
-test("configuredApps still skips incomplete sets and keeps slot numbers", () => {
-  const apps = configuredApps(
+test("envApps still skips incomplete sets and keeps slot numbers", () => {
+  const apps = envApps(
     env({
       SPAPI_1_CLIENT_ID: ID,
       SPAPI_1_CLIENT_SECRET: SECRET,
