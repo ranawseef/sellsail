@@ -27,16 +27,128 @@ export const APP_ERROR_BACKOFF_S = 15 * 60;
 
 export type AmazonApp = { slot: number; client: LwaClient; refreshToken: string };
 
+/** The three env vars that make one key set, and what a real value starts with. */
+export const SPAPI_FIELDS = {
+  CLIENT_ID: "amzn1.application-oa2-client.",
+  CLIENT_SECRET: "amzn1.oa2-cs.",
+  REFRESH_TOKEN: "Atzr|",
+} as const;
+export type SpapiField = keyof typeof SPAPI_FIELDS;
+const FIELD_NAMES = Object.keys(SPAPI_FIELDS) as SpapiField[];
+
+/**
+ * An env value as SellSail uses it: trimmed, with one pair of matching quotes
+ * taken off. Hostinger's .env stores every value in single quotes; if those
+ * ever reach the process, Amazon would get the keys with quotes attached.
+ */
+export function cleanEnvValue(raw: string | undefined): string {
+  const v = (raw ?? "").trim();
+  if (v.length >= 2 && (v[0] === "'" || v[0] === '"') && v[v.length - 1] === v[0]) return v.slice(1, -1).trim();
+  return v;
+}
+
 /** The key sets configured in env, in slot order. */
 export function configuredApps(env: NodeJS.ProcessEnv = process.env): AmazonApp[] {
   const apps: AmazonApp[] = [];
   for (let slot = 1; slot <= MAX_APPS; slot++) {
-    const clientId = env[`SPAPI_${slot}_CLIENT_ID`]?.trim();
-    const clientSecret = env[`SPAPI_${slot}_CLIENT_SECRET`]?.trim();
-    const refreshToken = env[`SPAPI_${slot}_REFRESH_TOKEN`]?.trim();
+    const clientId = cleanEnvValue(env[`SPAPI_${slot}_CLIENT_ID`]);
+    const clientSecret = cleanEnvValue(env[`SPAPI_${slot}_CLIENT_SECRET`]);
+    const refreshToken = cleanEnvValue(env[`SPAPI_${slot}_REFRESH_TOKEN`]);
     if (clientId && clientSecret && refreshToken) apps.push({ slot, client: { clientId, clientSecret }, refreshToken });
   }
   return apps;
+}
+
+// --- Key diagnostic for /admin/system ----------------------------------------
+// Explains why a key set isn't picked up without ever showing a key: only
+// facts about each value's shape, and the names of Amazon-looking env vars.
+
+/** Facts about one env value. Never the value itself. */
+export type SpapiValueShape = {
+  /** The variable exists in the process environment (even if empty). */
+  present: boolean;
+  /** Raw length, before trimming or quote stripping. */
+  length: number;
+  emptyAfterTrim: boolean;
+  /** The trimmed value starts / ends with ' or ". */
+  startsWithQuote: boolean;
+  endsWithQuote: boolean;
+  hasPipe: boolean;
+  /** "edges" is harmless (trimmed off); "inside" breaks the key. */
+  whitespace: "none" | "edges" | "inside";
+  hasNewline: boolean;
+  /** Characters outside printable ASCII: curly quotes, zero-width spaces, etc. */
+  oddChars: boolean;
+  /** The value SellSail would use (trimmed, quotes stripped) starts as Amazon's do. */
+  prefixOk: boolean;
+};
+
+export type SpapiSlotShape = {
+  slot: number;
+  /** configuredApps() picks this set up. */
+  used: boolean;
+  fields: Record<SpapiField, SpapiValueShape>;
+};
+
+export type SpapiEnvName = {
+  /** The name, cut short if it looks like a key was pasted into it. */
+  name: string;
+  /** SellSail reads this exact name (SPAPI_<1..MAX_APPS>_<FIELD> or SPAPI_PROXY). */
+  recognised: boolean;
+  /** Part of the name was hidden because it looked like a key. */
+  hidden: boolean;
+};
+
+export type SpapiEnvReport = { slots: SpapiSlotShape[]; names: SpapiEnvName[] };
+
+const AMAZON_NAME = /sp[\s_-]?api|amazon/i;
+const KEY_IN_NAME = /amzn1\.|atzr\|/i;
+
+function shapeOf(raw: string | undefined, prefix: string): SpapiValueShape {
+  const value = raw ?? "";
+  const trimmed = value.trim();
+  const clean = cleanEnvValue(raw);
+  return {
+    present: raw !== undefined,
+    length: value.length,
+    emptyAfterTrim: trimmed === "",
+    startsWithQuote: /^['"]/.test(trimmed),
+    endsWithQuote: /['"]$/.test(trimmed),
+    hasPipe: value.includes("|"),
+    whitespace: /\s/.test(clean) ? "inside" : /\s/.test(value) ? "edges" : "none",
+    hasNewline: /[\r\n]/.test(value),
+    oddChars: /[^\x20-\x7e]/.test(clean),
+    prefixOk: clean.startsWith(prefix),
+  };
+}
+
+function isRecognisedName(name: string): boolean {
+  if (name === "SPAPI_PROXY") return true;
+  const m = /^SPAPI_([1-9]\d*)_(CLIENT_ID|CLIENT_SECRET|REFRESH_TOKEN)$/.exec(name);
+  return Boolean(m && Number(m[1]) <= MAX_APPS);
+}
+
+function safeName(name: string): { name: string; hidden: boolean } {
+  const key = KEY_IN_NAME.exec(name);
+  let shown = key ? name.slice(0, key.index) : name;
+  if (shown.length > 64) shown = shown.slice(0, 64);
+  return { name: shown === name ? name : `${shown}…`, hidden: Boolean(key) };
+}
+
+/** Shape facts for every key set with at least one var, plus Amazon-looking env names. */
+export function describeSpapiEnv(env: NodeJS.ProcessEnv = process.env): SpapiEnvReport {
+  const slots: SpapiSlotShape[] = [];
+  for (let slot = 1; slot <= MAX_APPS; slot++) {
+    const raw = (f: SpapiField) => env[`SPAPI_${slot}_${f}`];
+    if (FIELD_NAMES.every((f) => raw(f) === undefined)) continue;
+    const fields = Object.fromEntries(FIELD_NAMES.map((f) => [f, shapeOf(raw(f), SPAPI_FIELDS[f])])) as Record<SpapiField, SpapiValueShape>;
+    slots.push({ slot, used: FIELD_NAMES.every((f) => cleanEnvValue(raw(f)) !== ""), fields });
+  }
+  const names = Object.keys(env)
+    .filter((n) => AMAZON_NAME.test(n))
+    .sort()
+    .map((n) => ({ ...safeName(n), recognised: isRecognisedName(n) }));
+  return { slots, names };
 }
 
 /**
