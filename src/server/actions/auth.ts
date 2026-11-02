@@ -15,6 +15,7 @@ import { sendCodeEmail } from "../mail/send.ts";
 import { exec, one } from "../db/pool.ts";
 import { checkLogin, createAccount, EmailTakenError } from "../tenants/accounts.ts";
 import { audit } from "../audit.ts";
+import { primaryTenantOf, recordActivity } from "../activity.ts";
 import { clearSessionCookie, getAuth, readSessionToken, requestInfo, setSessionCookie } from "../auth/context.ts";
 
 export type FormState =
@@ -72,6 +73,7 @@ export async function signupAction(_prev: FormState, form: FormData): Promise<Fo
   }
   const token = await createSession(ids.userId, ids.tenantId, ip, userAgent);
   await setSessionCookie(token);
+  await recordActivity({ type: "auth.signed_up", userId: ids.userId, tenantId: ids.tenantId, ip });
   // The code is sent now; if the mail server is down the verify page offers a resend.
   await hit(limitKey("code:user", String(ids.userId)), LIMITS.codeEmailPerUser);
   await sendCodeEmail(parsed.data.email, "verify", await issueCode(ids.userId, "verify"));
@@ -96,11 +98,16 @@ export async function verifyEmailAction(_prev: FormState, form: FormData): Promi
   }
 
   const result = await consumeCode(auth.userId, "verify", parsed.data);
+  if (result !== "ok") {
+    // A seller stuck on this step shows up in their activity.
+    await recordActivity({ type: "error.shown", userId: auth.userId, tenantId: auth.tenantId, detail: { action: "auth.verify_email", errorCode: result === "wrong" ? "wrong_code" : "code_expired" } });
+  }
   if (result === "wrong") return { fieldErrors: { code: "That code isn't right. Check the email and try again." } };
   if (result === "expired") return { error: "That code has expired or was used too many times. Send a new one below." };
 
   await exec("UPDATE users SET email_verified_at = NOW(3) WHERE id = ? AND email_verified_at IS NULL", [auth.userId]);
   await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "auth.email_verified", ip });
+  await recordActivity({ type: "auth.email_verified", userId: auth.userId, tenantId: auth.tenantId, ip, detail: { by: "code" } });
   redirect("/app/onboarding");
 }
 
@@ -135,7 +142,10 @@ export async function forgotPasswordAction(_prev: FormState, form: FormData): Pr
   if (user && (await hit(limitKey("code:user", String(user.id)), LIMITS.codeEmailPerUser))) {
     const code = await issueCode(user.id, "reset");
     // Sent after the response, so how long the page takes doesn't give it away either.
-    after(() => sendCodeEmail(parsed.data, "reset", code));
+    after(async () => {
+      await sendCodeEmail(parsed.data, "reset", code);
+      await recordActivity({ type: "auth.password_reset_requested", userId: user.id, tenantId: await primaryTenantOf(user.id), ip });
+    });
   }
   redirect(`/reset-password?email=${encodeURIComponent(parsed.data)}`);
 }
@@ -173,6 +183,7 @@ export async function resetPasswordAction(_prev: FormState, form: FormData): Pro
     user.id,
   ]);
   if (m) await audit({ tenantId: m.tenant_id, userId: user.id, action: "auth.password_reset", ip });
+  await recordActivity({ type: "auth.password_reset", userId: user.id, tenantId: m?.tenant_id ?? null, ip });
   await resetLimit(limitKey("login:email", parsed.data.email));
   redirect("/login?reset=1");
 }
@@ -190,17 +201,35 @@ export async function loginAction(_prev: FormState, form: FormData): Promise<For
   const okIp = await hit(limitKey("login:ip", ip || "unknown"), LIMITS.loginPerIp);
   const okEmail = await hit(emailKey, LIMITS.loginPerEmail);
   if (!okIp || !okEmail) {
+    noteFailedSignIn(parsed.data.email, ip, "rate_limited");
     return { error: "Too many login attempts. Please wait 15 minutes and try again.", values };
   }
 
   const who = await checkLogin(parsed.data.email, parsed.data.password);
-  if (!who) return { error: "That email and password don't match an account.", values };
+  if (!who) {
+    noteFailedSignIn(parsed.data.email, ip, "wrong_password");
+    return { error: "That email and password don't match an account.", values };
+  }
 
   await resetLimit(emailKey);
   const token = await createSession(who.userId, who.tenantId, ip, userAgent);
   await setSessionCookie(token);
   await audit({ tenantId: who.tenantId, userId: who.userId, action: "auth.login", ip });
+  await recordActivity({ type: "auth.signed_in", userId: who.userId, tenantId: who.tenantId, ip });
   redirect(safeNext(form.get("next")));
+}
+
+/**
+ * A failed sign-in to an existing account, recorded after the response so
+ * the page takes as long whether or not the address has an account. Nothing
+ * is kept for addresses with no account.
+ */
+function noteFailedSignIn(email: string, ip: string, reason: "wrong_password" | "rate_limited"): void {
+  after(async () => {
+    const user = await one<{ id: number }>("SELECT id FROM users WHERE email = ?", [email]).catch(() => null);
+    if (!user) return;
+    await recordActivity({ type: "auth.sign_in_failed", userId: user.id, tenantId: await primaryTenantOf(user.id), ip, detail: { reason } });
+  });
 }
 
 export async function logoutAction(): Promise<void> {
@@ -210,6 +239,7 @@ export async function logoutAction(): Promise<void> {
   if (auth) {
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "auth.logout", ip });
+    await recordActivity({ type: "auth.signed_out", userId: auth.userId, tenantId: auth.tenantId, ip });
   }
   redirect("/login");
 }

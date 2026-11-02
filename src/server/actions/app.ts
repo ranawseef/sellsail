@@ -10,12 +10,14 @@
 import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { authForAction, appUrl, ForbiddenError, requestInfo } from "../auth/context.ts";
+import { authForAction, appUrl, ForbiddenError, getAuth, requestInfo } from "../auth/context.ts";
 import { hit, LIMITS } from "../auth/rate-limit.ts";
 import { deleteUserSessions } from "../auth/sessions.ts";
 import { passwordProblem, PASSWORD_MAX } from "../auth/password.ts";
 import { changePassword } from "../tenants/accounts.ts";
 import { audit, logEvent } from "../audit.ts";
+import { recordActivity } from "../activity.ts";
+import { changedKeys } from "../../lib/activity.ts";
 import { exec, one } from "../db/pool.ts";
 import { loadProxy, parseProxyInput, removeProxy, routeForTenant, saveProxy, testProxy } from "../connections/proxy.ts";
 import { connectOnBuy, disconnectOnBuy, getOnBuyAccount, parseOnBuyKeys } from "../connections/onbuy.ts";
@@ -39,15 +41,40 @@ export type ActionState = { ok?: boolean; message?: string; error?: string; fiel
 // Errors whose message is written for the seller and safe to show.
 const SHOWABLE = [ForbiddenError, EgressBlockedError, ProxyFailureError, OnBuyError, AmazonError, SecretsConfigError, BillingError];
 
-async function attempt(fn: () => Promise<ActionState>): Promise<ActionState> {
+/**
+ * Runs an action and turns a failure into a message for the seller. Every
+ * error the seller is shown is also recorded as activity (the action, a code
+ * and the message), so support can see who is stuck and where.
+ */
+async function attempt(action: string, fn: () => Promise<ActionState>): Promise<ActionState> {
+  let out: ActionState;
   try {
-    return await fn();
+    out = await fn();
   } catch (err) {
     unstable_rethrow(err); // let redirect() through
-    if (SHOWABLE.some((E) => err instanceof E)) return { error: (err as Error).message };
-    console.error("[action] failed:", err);
-    return { error: "Something went wrong on our side. Please try again in a minute." };
+    if (SHOWABLE.some((E) => err instanceof E)) {
+      out = { error: (err as Error).message };
+      await noteShownError(action, (err as Error).name, out.error!);
+    } else {
+      console.error("[action] failed:", err);
+      out = { error: "Something went wrong on our side. Please try again in a minute." };
+      await noteShownError(action, "internal", out.error!, (err as Error)?.name);
+    }
+    return out;
   }
+  if (out?.error || out?.fieldErrors) await noteShownError(action, "rejected", out.error ?? "", undefined, Object.keys(out.fieldErrors ?? {}));
+  return out;
+}
+
+async function noteShownError(action: string, errorCode: string, message: string, errorName?: string, fields?: string[]): Promise<void> {
+  const auth = await getAuth().catch(() => null);
+  if (!auth) return;
+  await recordActivity({
+    type: "error.shown",
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    detail: { action, errorCode, message, ...(errorName ? { errorName } : {}), ...(fields?.length ? { fields } : {}) },
+  });
 }
 
 function refreshApp() {
@@ -77,7 +104,7 @@ async function connectionTestAllowed(tenantId: number): Promise<boolean> {
 
 export async function saveProxyAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   let next: string | null = null;
-  const state = await attempt(async () => {
+  const state = await attempt("proxy.save", async () => {
     const auth = await authForAction("admin");
     if (!(await connectionTestAllowed(auth.tenantId))) return { error: "Too many connection tests this hour. Please wait a little." };
 
@@ -99,12 +126,14 @@ export async function saveProxyAction(_prev: ActionState, form: FormData): Promi
     await saveProxy(auth.tenantId, parsed.config);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "proxy.save", detail: `${parsed.config.type} proxy on port ${parsed.config.port}`, ip });
+    await recordActivity({ type: "proxy.saved", userId: auth.userId, tenantId: auth.tenantId, detail: { proxyType: parsed.config.type } });
     refreshApp();
     try {
       const egress = await testProxy(auth.tenantId);
       next = wizardNext(form);
       return { ok: true, message: `Proxy works. OnBuy will see the IP address ${egress}.` };
     } catch (err) {
+      await recordActivity({ type: "proxy.test_failed", userId: auth.userId, tenantId: auth.tenantId, detail: { errorCode: (err as Error).name, message: (err as Error).message } });
       return {
         error: `Saved, but the test failed: ${(err as Error).message}. Nothing is sent to OnBuy until it works, or until you remove the proxy.`,
       };
@@ -115,11 +144,12 @@ export async function saveProxyAction(_prev: ActionState, form: FormData): Promi
 }
 
 export async function removeProxyAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("proxy.remove", async () => {
     const auth = await authForAction("admin");
     if (!(await removeProxy(auth.tenantId))) return { error: "There was no proxy to remove." };
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "proxy.remove", ip });
+    await recordActivity({ type: "proxy.removed", userId: auth.userId, tenantId: auth.tenantId });
     await logEvent(auth.tenantId, "info", "proxy", "Proxy removed. OnBuy requests now go direct from SellSail.");
     refreshApp();
     kickScheduler();
@@ -128,10 +158,16 @@ export async function removeProxyAction(): Promise<ActionState> {
 }
 
 export async function testProxyAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("proxy.test", async () => {
     const auth = await authForAction("member");
     if (!(await connectionTestAllowed(auth.tenantId))) return { error: "Too many connection tests this hour. Please wait a little." };
-    const ip = await testProxy(auth.tenantId);
+    let ip: string;
+    try {
+      ip = await testProxy(auth.tenantId);
+    } catch (err) {
+      await recordActivity({ type: "proxy.test_failed", userId: auth.userId, tenantId: auth.tenantId, detail: { errorCode: (err as Error).name, message: (err as Error).message } });
+      throw err;
+    }
     refreshApp();
     return { ok: true, message: `Proxy works. Exit IP ${ip}.` };
   });
@@ -148,16 +184,23 @@ async function requireRoute(tenantId: number) {
 
 export async function connectOnBuyAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   let next: string | null = null;
-  const state = await attempt(async () => {
+  const state = await attempt("onbuy.connect", async () => {
     const auth = await authForAction("admin");
     if (!(await connectionTestAllowed(auth.tenantId))) return { error: "Too many connection tests this hour. Please wait a little." };
     const creds = parseOnBuyKeys(str(form, "consumerKey"), str(form, "secretKey"));
     if (typeof creds === "string") return { error: creds };
-    const route = await requireRoute(auth.tenantId);
-    const acc = await connectOnBuy(auth.tenantId, route, creds);
+    let acc;
+    try {
+      acc = await connectOnBuy(auth.tenantId, await requireRoute(auth.tenantId), creds);
+    } catch (err) {
+      // The keys were tested and refused (or couldn't be sent): nothing was saved.
+      await recordActivity({ type: "onbuy.test_failed", userId: auth.userId, tenantId: auth.tenantId, detail: { errorCode: (err as Error).name, message: (err as Error).message } });
+      throw err;
+    }
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "onbuy.connect", detail: `Consumer key ${acc.keyHint}`, ip });
     await logEvent(auth.tenantId, "info", "onbuy", "OnBuy connected.");
+    await recordActivity({ type: "onbuy.connected", userId: auth.userId, tenantId: auth.tenantId });
     refreshApp();
     next = wizardNext(form);
     return { ok: true, message: "Connected to OnBuy. Your keys are stored encrypted." };
@@ -167,11 +210,12 @@ export async function connectOnBuyAction(_prev: ActionState, form: FormData): Pr
 }
 
 export async function disconnectOnBuyAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("onbuy.disconnect", async () => {
     const auth = await authForAction("admin");
     await disconnectOnBuy(auth.tenantId);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "onbuy.disconnect", ip });
+    await recordActivity({ type: "onbuy.disconnected", userId: auth.userId, tenantId: auth.tenantId });
     refreshApp();
     return { ok: true, message: "OnBuy disconnected and its keys deleted." };
   });
@@ -198,7 +242,7 @@ function bandsFromForm(form: FormData): PricingBand[] | string {
 
 export async function saveBandsAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   let next: string | null = null;
-  const state = await attempt(async () => {
+  const state = await attempt("pricing.bands", async () => {
     const auth = await authForAction("admin");
     const bands = bandsFromForm(form);
     if (typeof bands === "string") return { error: bands };
@@ -208,6 +252,7 @@ export async function saveBandsAction(_prev: ActionState, form: FormData): Promi
     const changed = await repriceLocally(auth.tenantId);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "pricing.bands", detail: `${bands.length} bands saved; ${changed} prices changed`, ip });
+    await recordActivity({ type: "repricer.bands_changed", userId: auth.userId, tenantId: auth.tenantId, detail: { bands: bands.length, pricesChanged: changed } });
     refreshApp();
     next = wizardNext(form);
     return { ok: true, message: changed ? `Bands saved. ${changed} listing price${changed === 1 ? "" : "s"} updated and queued for OnBuy.` : "Bands saved." };
@@ -228,7 +273,7 @@ const settingsSchema = z.object({
 });
 
 export async function saveSettingsAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("pricing.settings", async () => {
     const auth = await authForAction("admin");
     const parsed = settingsSchema.safeParse({
       marketplaceFeePct: str(form, "marketplaceFeePct"),
@@ -242,18 +287,24 @@ export async function saveSettingsAction(_prev: ActionState, form: FormData): Pr
     });
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the fields." };
     const d = parsed.data;
-    const errors = await saveSettings(auth.tenantId, {
+    const before = await getSettings(auth.tenantId);
+    const next = {
       fees: { marketplaceFeePct: d.marketplaceFeePct, paymentFeePct: d.paymentFeePct, paymentFixedFee: d.paymentFixedFee },
       inStockQty: d.inStockQty,
       outOfStockPrice: d.outOfStockPrice,
       boostPct: d.boostPct === "" ? null : d.boostPct,
       skuPrefixes: parsePrefixes(d.skuPrefixes).join(", "),
       prefixedOnly: d.prefixedOnly,
-    });
+    };
+    const errors = await saveSettings(auth.tenantId, next);
     if (errors.length) return { error: errors.join(" ") };
+    // Which settings changed, by name; the values stay in repricer_settings.
+    const flat = (x: Omit<typeof before, "compete">) => ({ ...x.fees, inStockQty: x.inStockQty, outOfStockPrice: x.outOfStockPrice, boostPct: x.boostPct, skuPrefixes: x.skuPrefixes, prefixedOnly: x.prefixedOnly });
+    const settingsChanged = changedKeys(flat(before), flat(next));
     const changed = await repriceLocally(auth.tenantId);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "pricing.settings", detail: `Fees ${d.marketplaceFeePct}% + ${d.paymentFeePct}% + £${d.paymentFixedFee}; ${changed} prices changed`, ip });
+    await recordActivity({ type: "repricer.settings_changed", userId: auth.userId, tenantId: auth.tenantId, detail: { changed: settingsChanged, pricesChanged: changed } });
     refreshApp();
     return { ok: true, message: changed ? `Settings saved. ${changed} listing price${changed === 1 ? "" : "s"} updated.` : "Settings saved." };
   });
@@ -271,7 +322,7 @@ const competeSchema = z.object({
 });
 
 export async function saveCompeteAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("compete.settings", async () => {
     const auth = await authForAction("admin");
     const parsed = competeSchema.safeParse({
       enabled: form.get("enabled") === "on",
@@ -282,6 +333,7 @@ export async function saveCompeteAction(_prev: ActionState, form: FormData): Pro
       maxLoss: str(form, "maxLoss") || "0",
     });
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the fields." };
+    const before = (await getSettings(auth.tenantId)).compete;
     const errors = await saveCompete(auth.tenantId, parsed.data);
     if (errors.length) return { error: errors.join(" ") };
     const changed = await repriceLocally(auth.tenantId);
@@ -294,6 +346,12 @@ export async function saveCompeteAction(_prev: ActionState, form: FormData): Pro
       detail: `${parsed.data.enabled ? "On" : "Off"}, ${parsed.data.strategy}, beat by £${parsed.data.beatBy}; ${changed} prices changed`,
       ip,
     });
+    await recordActivity({
+      type: "repricer.competition_changed",
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      detail: { enabled: parsed.data.enabled, strategy: parsed.data.strategy, changed: changedKeys(before, parsed.data), pricesChanged: changed },
+    });
     if (parsed.data.enabled) kickScheduler();
     refreshApp();
     const base = parsed.data.enabled ? "Competition is on. The first check starts now." : "Competition is off. Listings go back to their band prices.";
@@ -302,7 +360,7 @@ export async function saveCompeteAction(_prev: ActionState, form: FormData): Pro
 }
 
 export async function checkCompetitionNowAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("compete.check", async () => {
     const auth = await authForAction();
     const res = await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'compete' AND enabled = 1", [auth.tenantId]);
     if (res.affectedRows === 0) return { error: "Connect OnBuy first." };
@@ -326,13 +384,14 @@ export async function setListingCompeteAction(form: FormData): Promise<void> {
 // ---- import ----------------------------------------------------------------------
 
 export async function startImportAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("import.onbuy", async () => {
     const auth = await authForAction("admin");
     const acc = await getOnBuyAccount(auth.tenantId);
     if (!acc) return { error: "Connect OnBuy first." };
     await startOnBuyImport(auth.tenantId, acc.id, form.get("includeArchived") === "on");
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "import.onbuy", ip });
+    await recordActivity({ type: "listings.import_started", userId: auth.userId, tenantId: auth.tenantId, detail: { includeArchived: form.get("includeArchived") === "on" } });
     kickScheduler();
     refreshApp();
     return { ok: true, message: "Import started. It reads 500 listings at a time; this page shows its progress." };
@@ -340,7 +399,7 @@ export async function startImportAction(_prev: ActionState, form: FormData): Pro
 }
 
 export async function uploadCsvAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("import.csv", async () => {
     const auth = await authForAction("admin");
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV file." };
@@ -363,6 +422,12 @@ export async function uploadCsvAction(_prev: ActionState, form: FormData): Promi
     await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'reprice' AND enabled = 1", [auth.tenantId]);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "import.csv", detail: `${imported} imported, ${parsed.skipped.length} skipped`, ip });
+    await recordActivity({
+      type: "listings.csv_uploaded",
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      detail: { rows: parsed.rows.length, imported, skipped: parsed.skipped.length, archivedLeftOut: archived, overPlanLimit: overLimit },
+    });
     kickScheduler();
     refreshApp();
     const parts = [`${imported} listing${imported === 1 ? "" : "s"} imported`];
@@ -391,13 +456,14 @@ export async function setPausedAction(form: FormData): Promise<void> {
   await exec("UPDATE tenants SET paused = ? WHERE id = ?", [paused ? 1 : 0, auth.tenantId]);
   const { ip } = await requestInfo();
   await audit({ tenantId: auth.tenantId, userId: auth.userId, action: paused ? "jobs.pause" : "jobs.resume", ip });
+  await recordActivity({ type: paused ? "repricer.paused" : "repricer.resumed", userId: auth.userId, tenantId: auth.tenantId });
   await logEvent(auth.tenantId, paused ? "warn" : "info", "kill-switch", paused ? "All syncing paused. Nothing is sent to OnBuy or Amazon." : "Syncing resumed.");
   if (!paused) kickScheduler();
   refreshApp();
 }
 
 export async function requestFullPushAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("push.full", async () => {
     const auth = await authForAction("admin");
     const n = await requestFullPush(auth.tenantId);
     await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'push'", [auth.tenantId]);
@@ -409,7 +475,9 @@ export async function requestFullPushAction(): Promise<ActionState> {
 
 export async function finishOnboardingAction(): Promise<void> {
   const auth = await authForAction("admin");
+  const was = await one<{ onboarded_at: Date | null }>("SELECT onboarded_at FROM tenants WHERE id = ?", [auth.tenantId]);
   await exec("UPDATE tenants SET onboarded_at = COALESCE(onboarded_at, NOW(3)), pricing_reviewed_at = COALESCE(pricing_reviewed_at, NOW(3)) WHERE id = ?", [auth.tenantId]);
+  if (was && !was.onboarded_at) await recordActivity({ type: "repricer.enabled", userId: auth.userId, tenantId: auth.tenantId });
   await exec("UPDATE jobs SET run_now = 1 WHERE tenant_id = ? AND kind = 'reprice' AND enabled = 1", [auth.tenantId]);
   kickScheduler();
   refreshApp();
@@ -420,11 +488,13 @@ export async function finishOnboardingAction(): Promise<void> {
 
 export async function checkoutAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   let url: string | null = null;
-  const state = await attempt(async () => {
+  const state = await attempt("billing.checkout", async () => {
     const auth = await authForAction("admin");
     const plan = str(form, "plan") as PlanId;
     if (!PAID_PLANS.includes(plan)) return { error: "Choose a plan." };
-    url = await checkoutUrl(auth.tenantId, auth.email, plan, appUrl(), str(form, "interval") === "year" ? "year" : "month");
+    const interval = str(form, "interval") === "year" ? "year" : "month";
+    url = await checkoutUrl(auth.tenantId, auth.email, plan, appUrl(), interval);
+    await recordActivity({ type: "billing.checkout_started", userId: auth.userId, tenantId: auth.tenantId, detail: { plan, interval } });
     return undefined;
   });
   if (url) redirect(url);
@@ -433,7 +503,7 @@ export async function checkoutAction(_prev: ActionState, form: FormData): Promis
 
 export async function portalAction(): Promise<ActionState> {
   let url: string | null = null;
-  const state = await attempt(async () => {
+  const state = await attempt("billing.portal", async () => {
     const auth = await authForAction("admin");
     url = await portalUrl(auth.tenantId, appUrl());
     return undefined;
@@ -445,7 +515,7 @@ export async function portalAction(): Promise<ActionState> {
 // ---- settings --------------------------------------------------------------------
 
 export async function updateWorkspaceAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("settings.workspace", async () => {
     const auth = await authForAction("admin");
     const name = str(form, "name").trim();
     if (!name || name.length > 120) return { error: "Enter a workspace name of up to 120 characters." };
@@ -456,7 +526,7 @@ export async function updateWorkspaceAction(_prev: ActionState, form: FormData):
 }
 
 export async function changePasswordAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  return attempt(async (): Promise<ActionState> => {
+  return attempt("auth.password", async (): Promise<ActionState> => {
     const auth = await authForAction("member");
     const current = str(form, "current").slice(0, PASSWORD_MAX);
     const next = str(form, "next");
@@ -468,12 +538,13 @@ export async function changePasswordAction(_prev: ActionState, form: FormData): 
     await deleteUserSessions(auth.userId, auth.sessionId);
     const { ip } = await requestInfo();
     await audit({ tenantId: auth.tenantId, userId: auth.userId, action: "auth.password", detail: "Password changed; other sessions ended", ip });
+    await recordActivity({ type: "auth.password_changed", userId: auth.userId, tenantId: auth.tenantId, ip });
     return { ok: true, message: "Password changed. You've been logged out everywhere else." };
   });
 }
 
 export async function logoutOtherSessionsAction(): Promise<ActionState> {
-  return attempt(async () => {
+  return attempt("auth.sessions", async () => {
     const auth = await authForAction("member");
     await deleteUserSessions(auth.userId, auth.sessionId);
     refreshApp();

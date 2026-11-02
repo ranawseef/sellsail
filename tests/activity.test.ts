@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ACTIVITY_TYPE_LIST, ACTIVITY_TYPES, cleanDetail, DETAIL_MAX_CHARS, parseDetail, PROBLEM_TYPES, scrubText, typesForFilter } from "../src/lib/activity.ts";
+import { ACTIVITY_TYPE_LIST, ACTIVITY_TYPES, changedKeys, cleanDetail, DETAIL_MAX_CHARS, parseDetail, PROBLEM_TYPES, scrubText, typesForFilter } from "../src/lib/activity.ts";
 
 // No database for this file, whatever the shell has set.
 delete process.env.DATABASE_URL;
@@ -127,4 +127,10 @@ test("the type catalogue and its filters", () => {
   assert.deepEqual(typesForFilter("errors"), PROBLEM_TYPES);
   assert.equal(typesForFilter(""), null);
   assert.equal(typesForFilter("nonsense"), null);
+});
+
+test("changedKeys names the settings that changed, not their values", () => {
+  assert.deepEqual(changedKeys({ fee: 18, boost: null, prefixes: "AB" }, { fee: 15, boost: null, prefixes: "AB" }), ["fee"]);
+  assert.deepEqual(changedKeys({ a: 1 }, { a: 1, b: 2 }), ["b"]);
+  assert.deepEqual(changedKeys({ a: [1, 2] }, { a: [1, 2] }), []);
 });

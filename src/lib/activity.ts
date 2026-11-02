@@ -37,6 +37,7 @@ export const ACTIVITY_TYPES = {
   "repricer.settings_changed": { label: "Repricer settings changed", category: "repricer" },
   "repricer.bands_changed": { label: "Pricing bands changed", category: "repricer" },
   "repricer.competition_changed": { label: "Competition settings changed", category: "repricer" },
+  "repricer.enabled": { label: "Setup finished, repricer on", category: "repricer" },
   "repricer.paused": { label: "Repricer paused", category: "repricer" },
   "repricer.resumed": { label: "Repricer resumed", category: "repricer" },
   "reprice.hourly": { label: "Repricing, hourly summary", category: "repricer" },
@@ -91,6 +92,12 @@ export function typesForFilter(filter: string | null | undefined): ActivityType[
   return inCategory.length ? inCategory : null;
 }
 
+/** Names of the fields whose value differs, for "settings changed" events: which setting, never its value. */
+export function changedKeys(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...keys].filter((k) => JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null)).sort();
+}
+
 // ---- detail cleaning ---------------------------------------------------------------
 
 export type DetailValue = string | number | boolean | null | DetailValue[] | { [k: string]: DetailValue };
@@ -109,7 +116,6 @@ const KEY_SHAPE = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 export function scrubText(s: string): string {
   return (
     s
-      // eslint-disable-next-line no-control-regex
       .replace(/[\u0000-\u001f\u007f]+/g, " ")
       .replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s/@:]+:[^\s/@]+@/gi, "[redacted]@") // user:pass@ in a URL
       .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
