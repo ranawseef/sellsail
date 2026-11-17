@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Mail, MessageCircle, Phone } from "lucide-react";
+import { ArrowRight, Mail, MessageCircle, Phone } from "lucide-react";
 import { LogoMark } from "@/components/logo";
 import { CookieSettingsButton } from "@/components/analytics-consent";
 import { buttonVariants } from "@/components/ui/button";
@@ -59,14 +59,6 @@ export function SiteFooter() {
                   <Phone aria-hidden="true" className="size-4 text-sun" /> {site.phone}
                 </a>
               </li>
-              <li className="flex gap-2.5 text-sm leading-relaxed">
-                <Building2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-sun" />
-                <span>
-                  {site.addressParts.street}
-                  <br />
-                  {site.addressParts.city} {site.addressParts.postcode}
-                </span>
-              </li>
             </ul>
           </div>
           {footerNav.map((group) => (
@@ -89,13 +81,12 @@ export function SiteFooter() {
         <div className="flex flex-col gap-4 border-t border-white/10 py-8 text-[13px] leading-relaxed text-[#8fa89e] lg:flex-row lg:justify-between lg:gap-12">
           <div className="max-w-3xl space-y-2">
             <p>
-              SellSail is a trading name of {site.company}, a company registered in England and Wales (company number{" "}
-              {site.companyNumber}). Registered office: {site.address}, United Kingdom.
+              SellSail is an independent tool and is not affiliated with, endorsed by or sponsored by OnBuy / OnCommerce.
             </p>
           </div>
           <div className="flex shrink-0 flex-col gap-1 lg:items-end">
             <p className="font-semibold text-[#b9cfc6]">
-              © {year} {site.company}. All rights reserved.
+              © {year} SellSail. All rights reserved.
             </p>
             <CookieSettingsButton className="text-left text-[#b9cfc6] underline-offset-4 hover:text-white hover:underline" />
           </div>
