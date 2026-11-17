@@ -20,14 +20,14 @@ export default function AboutPage() {
     <>
       <PageHero
         eyebrow="About"
-        title={<>Built by a UK seller, <span className="highlight px-1">for UK sellers</span></>}
+        title={<>Built in the UK, <span className="highlight px-1">for UK sellers</span></>}
         intro="SellSail started with a simple problem: repricers that chase the lowest price can quietly sell below cost once marketplace fees and VAT are counted."
       />
       <section className="mx-auto max-w-[820px] px-6 py-16">
         <div className="prose-site mx-auto">
           <p>
-            SellSail is made by an OnBuy and eBay dropshipper running a registered UK company. Doing the fee maths by hand
-            for every listing was slow, and getting it wrong was expensive. So we built a tool that does it properly: it
+            SellSail is built and run by a registered UK company. Doing the fee maths by hand for every listing is slow,
+            and getting it wrong is expensive. So we built a tool that does it properly: it
             reads Amazon prices, works out an OnBuy price that covers every fee, and only competes where there is profit
             to win.
           </p>
