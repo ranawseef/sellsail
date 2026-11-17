@@ -78,6 +78,26 @@ Posts appear on their slot automatically (`isPublished`), so the cadence needs n
 The full list, with keyword, volume tier, intent and date, is in
 `src/content/posts/md/*.ts` (each post's `keyword`, `secondary` and `date`).
 
+### Second wave (18 Nov – 17 Dec 2026)
+
+30 more guides, one a day at 07:00 UTC, ordered by UK search volume. Keyword data:
+Google Keyword Planner, location United Kingdom, Google search, Nov 2025 – Oct 2026,
+pulled 17 Nov 2026. The order lives in `ORDER_2` in src/content/posts/index.ts.
+
+| Volume (UK/month) | Guides |
+|---|---|
+| Seasonal | Black Friday pricing (Planner's yearly average hides the November peak) |
+| 10K – 100K | TikTok Shop UK, Royal Mail Click & Drop |
+| 100K – 1M | "vat calculator" → How to calculate VAT |
+| 1K – 10K | How to sell on eBay UK, sell on Amazon UK (+ amazon fba uk), eBay fees / fee calculator, gross vs net profit margin, markup calculator, trading allowance (+ vat threshold uk), print on demand UK, price elasticity |
+| 100 – 1K | Cheapest courier UK (+ evri parcel prices 1K–10K), Amazon buy box, cost of goods sold, average order value, customer lifetime value, consumer rights refunds, Etsy fees UK, packaging for ecommerce, Shopify vs Etsy, side hustle ideas UK, Vinted selling tips |
+| 10 – 100 | Amazon repricer, eBay repricer (high intent, repricing cluster), dropshipping vs wholesale, winning products, ecommerce conversion rate, product descriptions, ecommerce KPIs |
+
+Checked but not written (an existing post already targets them, so a new one would
+compete with it): profit calculator, wholesale suppliers uk, vat threshold uk.
+No measurable volume: product title optimisation, selling online at christmas,
+ecommerce business ideas uk, temu uk sellers.
+
 ## On-page standard (every post)
 
 - Title ≤ 65 characters with the keyword first or early; description 140–160 characters.
