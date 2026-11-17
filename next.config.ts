@@ -10,6 +10,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // One host for search engines: www served a duplicate copy of every page.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.sellsail.io" }],
+        destination: "https://sellsail.io/:path*",
+        permanent: true,
+      },
       { source: "/guides", destination: "/blog", permanent: true },
       // The beta list became the free trial at launch.
       { source: "/beta", destination: "/signup", permanent: true },
