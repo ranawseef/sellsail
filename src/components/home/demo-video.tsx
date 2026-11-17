@@ -75,19 +75,47 @@ export function DemoVideo() {
   const playing = mode === "playing";
   const running = playing && inView;
 
+  const tRef = useRef(0);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
   useEffect(() => {
     if (!running) return;
     let raf = 0;
     let last = performance.now();
     let acc = 0;
+    // How long the clock has waited for a buffering clip. On slow mobile
+    // connections (iPhone especially) the clip can lag; the clock waits for it
+    // instead of re-seeking it every frame, which froze playback. After 2.5 s
+    // it gives up waiting and carries on without the presenter.
+    let held = 0;
     const tick = (now: number) => {
-      acc += now - last;
+      const dt = now - last;
       last = now;
-      // ~30 updates a second is plenty; CSS transitions smooth the rest.
-      if (acc >= 33) {
-        const step = acc;
-        acc = 0;
-        setT((v) => (v + step) % TOTAL);
+      const cur = tRef.current;
+      const ci = CLIPS.findIndex((c) => cur >= c.at && cur < c.at + c.ms);
+      const v = ci >= 0 ? clipRefs.current[ci] : null;
+      if (v && !v.ended && held < 2500) {
+        // While a clip is on screen, the clip is the clock.
+        if (v.paused || v.readyState < 3 || v.seeking) {
+          held += dt;
+          if (v.paused && !v.seeking) v.play().catch(() => {});
+        } else {
+          held = 0;
+          const vt = CLIPS[ci].at + v.currentTime * 1000;
+          if (Math.abs(vt - cur) < 1000 && vt - cur >= 33) setT(vt);
+          else if (Math.abs(vt - cur) >= 1000) setT((x) => (x + dt) % TOTAL);
+        }
+      } else {
+        if (!v) held = 0;
+        acc += dt;
+        // ~30 updates a second is plenty; CSS transitions smooth the rest.
+        if (acc >= 33) {
+          const step = acc;
+          acc = 0;
+          setT((x) => (x + step) % TOTAL);
+        }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -116,7 +144,10 @@ export function DemoVideo() {
       v.muted = muted;
       const local = (shown - c.at) / 1000;
       if (i === activeClip) {
-        if (Math.abs(v.currentTime - local) > (running ? 0.35 : 0.05)) v.currentTime = local;
+        // While running the clock follows the clip, so only a real jump
+        // (chapter click, loop) needs a seek. Seeking on small drift made
+        // iOS re-buffer forever.
+        if (!v.seeking && Math.abs(v.currentTime - local) > (running ? 1.5 : 0.05)) v.currentTime = local;
         if (running && v.paused) v.play().catch(() => {});
         if (!running && !v.paused) v.pause();
       } else {
@@ -126,12 +157,44 @@ export function DemoVideo() {
     });
   }, [shown, running, muted, activeClip, mode]);
 
+  // iOS only lets a video play with sound when play() is called inside the
+  // tap itself, not later from an effect. So on every tap, start the clip
+  // that is due and briefly start/stop the other one to unlock it too. If
+  // sound is refused anyway, fall back to muted with the "Tap for sound" chip.
+  const unlock = (at: number) => {
+    const due = CLIPS.findIndex((c) => at >= c.at && at < c.at + c.ms);
+    CLIPS.forEach((c, i) => {
+      const v = clipRefs.current[i];
+      if (!v) return;
+      v.muted = i === due ? muted : true;
+      if (v.preload !== "auto") v.preload = "auto";
+      const start = v.play();
+      if (i === due) {
+        try {
+          v.currentTime = (at - c.at) / 1000;
+        } catch {
+          // Not seekable yet; the sync effect seeks once it has loaded.
+        }
+        start?.catch(() => {
+          v.muted = true;
+          setMuted(true);
+          v.play().catch(() => {});
+        });
+      } else {
+        start?.then(() => v.pause()).catch(() => {});
+      }
+    });
+  };
+
   const play = () => {
+    const at = mode === "idle" ? 0 : t;
+    unlock(at);
     if (mode === "idle") setT(0);
     setMode("playing");
   };
 
   const seek = (i: number) => {
+    unlock(STARTS[i]);
     setT(STARTS[i]);
     setMode("playing");
   };
